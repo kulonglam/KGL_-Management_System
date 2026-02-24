@@ -1,0 +1,211 @@
+<template>
+  <div class="procurement-form">
+    <fieldset class="procurement-section mb-3">
+      <legend class="section-legend">
+        <i class="bi bi-basket2"></i>
+        <span>Produce Details</span>
+      </legend>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Produce Name *</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="form.name"
+            minlength="2"
+            pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
+            placeholder="e.g. White Maize"
+            @blur="normalizeText('name')"
+            required
+          />
+          <small class="text-muted">Letters, numbers and spaces are allowed.</small>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Produce Type *</label>
+          <select class="form-select" v-model="form.type" @change="$emit('type-change')" required>
+            <option value="">Select type</option>
+            <option value="Beans">Beans</option>
+            <option value="Grain Maize">Grain Maize</option>
+            <option value="Cow peas">Cow peas</option>
+            <option value="G-nuts">G-nuts</option>
+            <option value="Soybeans">Soybeans</option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Source Type *</label>
+          <select class="form-select" v-model="form.sourceType" required>
+            <option value="">Select source</option>
+            <option value="individual">Individual Dealer</option>
+            <option value="company">Company</option>
+            <option value="own_farm">Own Farm</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Date *</label>
+          <input type="date" class="form-control" v-model="form.dateReceived" required />
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Time *</label>
+          <input type="time" class="form-control" v-model="form.timeReceived" required />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="procurement-section mb-3">
+      <legend class="section-legend">
+        <i class="bi bi-cash-coin"></i>
+        <span>Quantity & Pricing</span>
+      </legend>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Tonnage (kg) *</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="form.tonnageKg"
+            :min="minimumTonnage"
+            required
+          />
+          <small class="text-muted">
+            {{ form.sourceType === 'individual' ? 'Minimum 1000 kg for individual dealers.' : 'Enter quantity in kg.' }}
+          </small>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Cost (UGX) *</label>
+          <input type="number" class="form-control" v-model.number="form.costUgx" min="10000" required />
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Selling Price per kg (UGX) *</label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="form.sellingPrice"
+            min="10000"
+            required
+            :readonly="priceLocked"
+          />
+          <small v-if="priceLocked" class="text-muted">{{ priceLockHint }}</small>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="procurement-section">
+      <legend class="section-legend">
+        <i class="bi bi-person-badge"></i>
+        <span>Dealer Information</span>
+      </legend>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Dealer Name *</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="form.dealerName"
+            minlength="2"
+            pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
+            placeholder="e.g. Lam Traders"
+            @blur="normalizeText('dealerName')"
+            required
+          />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Dealer Contact *</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model="form.dealerContact"
+            pattern="^(\+256|0)[0-9]{9}$"
+            placeholder="+256700000000 or 0700000000"
+            required
+          />
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Branch</label>
+          <input type="text" class="form-control branch-display" :value="user.branch" disabled />
+        </div>
+      </div>
+    </fieldset>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+
+const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
+
+const form = defineModel('form', {
+  type: Object,
+  required: true
+});
+
+const normalizeText = (field) => {
+  if (typeof form.value[field] !== 'string') return;
+  form.value[field] = normalizeTextValue(form.value[field]);
+};
+
+const minimumTonnage = computed(() => (form.value.sourceType === 'individual' ? 1000 : 1));
+
+defineProps({
+  user: {
+    type: Object,
+    required: true
+  },
+  priceLocked: {
+    type: Boolean,
+    required: true
+  },
+  priceLockHint: {
+    type: String,
+    default: 'Price is controlled in Price Management.'
+  }
+});
+
+defineEmits(['type-change']);
+</script>
+
+<style scoped>
+.procurement-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.95rem 0.95rem 1rem;
+  background: #fbfcfd;
+  min-width: 0;
+}
+
+.section-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1f2937;
+  margin: 0 auto 0.8rem;
+  padding: 0 0.45rem;
+  text-align: center;
+}
+
+.section-legend i {
+  color: #198754;
+}
+
+.procurement-form .form-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+
+.branch-display {
+  background-color: #f1f5f9;
+  color: #334155;
+  font-weight: 500;
+}
+</style>
