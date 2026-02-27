@@ -1,8 +1,10 @@
 import StockNotification from '../models/StockNotification.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
+// Retrieve stock notifications.
 const getStockNotifications = async (req, res) => {
   try {
+    // Configure filter.
     const filter = {
       branch: req.user.branch
     };
@@ -12,9 +14,7 @@ const getStockNotifications = async (req, res) => {
     }
 
     const pagination = parsePagination(req.query);
-    const notificationsQuery = StockNotification.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const notificationsQuery = StockNotification.find(filter).sort({ createdAt: -1 }).lean();
 
     if (pagination.enabled) {
       notificationsQuery.skip(pagination.skip).limit(pagination.limit);
@@ -41,6 +41,7 @@ const getStockNotifications = async (req, res) => {
   }
 };
 
+// Handle mark stock notification read.
 const markStockNotificationRead = async (req, res) => {
   try {
     const notification = await StockNotification.findById(req.params.id);

@@ -1,9 +1,10 @@
 import { ref } from 'vue';
 import { priceAPI } from '../services/api';
 
+// Create initial procurement form.
 const createInitialProcurementForm = () => ({
-  name: '',
-  type: '',
+  produceName: '',
+  produceType: '',
   sourceType: '',
   dateReceived: new Date().toISOString().split('T')[0],
   timeReceived: new Date().toTimeString().slice(0, 5),
@@ -14,16 +15,20 @@ const createInitialProcurementForm = () => ({
   dealerContact: ''
 });
 
+// Handle use procurement pricing.
 const useProcurementPricing = () => {
   const priceSettings = ref({});
-  const priceLocked = ref(false);
+  const priceLocked = ref(true);
 
+  // Handle load prices.
   const loadPrices = async () => {
     try {
       const response = await priceAPI.getAll();
       const map = {};
       response.data.forEach((entry) => {
-        map[entry.produceType] = entry.priceUgx;
+        if (entry.source === 'managed' && typeof entry.priceUgx === 'number') {
+          map[entry.produceType] = entry.priceUgx;
+        }
       });
       priceSettings.value = map;
     } catch (fetchError) {
@@ -31,18 +36,20 @@ const useProcurementPricing = () => {
     }
   };
 
+  // Handle apply price setting.
   const applyPriceSetting = (form) => {
-    const price = priceSettings.value[form.type];
-    if (price) {
+    const price = priceSettings.value[form.produceType];
+    if (typeof price === 'number') {
       form.sellingPrice = price;
-      priceLocked.value = true;
     } else {
-      priceLocked.value = false;
+      form.sellingPrice = '';
     }
+    priceLocked.value = true;
   };
 
+  // Handle clear price lock.
   const clearPriceLock = () => {
-    priceLocked.value = false;
+    priceLocked.value = true;
   };
 
   return {
@@ -54,13 +61,15 @@ const useProcurementPricing = () => {
   };
 };
 
+// Format source.
 const formatSource = (value) => {
   if (value === 'individual') return 'Individual';
   if (value === 'company') return 'Company';
-  if (value === 'own_farm') return 'Own Farm';
+  if (value === 'kgl_farm') return 'KGL Farm';
   return value || '-';
 };
 
+// Handle to date input.
 const toDateInput = (value) => {
   if (!value) return '';
   const date = new Date(value);
@@ -68,9 +77,4 @@ const toDateInput = (value) => {
   return date.toISOString().split('T')[0];
 };
 
-export {
-  createInitialProcurementForm,
-  useProcurementPricing,
-  formatSource,
-  toDateInput
-};
+export { createInitialProcurementForm, useProcurementPricing, formatSource, toDateInput };

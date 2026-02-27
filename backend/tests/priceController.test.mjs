@@ -11,7 +11,9 @@ import {
   deletePrice
 } from '../controllers/priceController.js';
 
+// Create res.
 const createRes = () => {
+  // Configure response.
   const response = {
     statusCode: 200,
     body: null,
@@ -27,6 +29,7 @@ const createRes = () => {
   return response;
 };
 
+// Configure originals.
 const originals = {
   priceFind: PriceSetting.find,
   priceFindOne: PriceSetting.findOne,
@@ -50,7 +53,7 @@ test('getPrices returns managed, inferred, and unset rows for all produce types'
     sort: async () => [{ _id: 'ps1', produceType: 'Beans', priceUgx: 36000 }]
   });
   Procurement.find = () => ({
-    sort: async () => [{ type: 'Grain Maize', sellingPrice: 28000 }]
+    sort: async () => [{ produceType: 'Grain Maize', sellingPrice: 28000 }]
   });
 
   const req = { user: { branch: 'Maganjo' } };
@@ -83,6 +86,7 @@ test('createPrice creates a new managed price and syncs procurements', async () 
   PriceSetting.create = async (payload) => ({ _id: 'new1', ...payload });
   Procurement.updateMany = async () => ({ modifiedCount: 3 });
 
+  // Configure req.
   const req = {
     user: { branch: 'Maganjo' },
     body: { produceType: 'Beans', priceUgx: 40000 }
@@ -101,6 +105,7 @@ test('createPrice creates a new managed price and syncs procurements', async () 
 test('createPrice rejects duplicate produce type in same branch', async () => {
   PriceSetting.findOne = async () => ({ _id: 'existing' });
 
+  // Configure req.
   const req = {
     user: { branch: 'Maganjo' },
     body: { produceType: 'Beans', priceUgx: 40000 }
@@ -134,6 +139,7 @@ test('getPriceById returns setting for same branch and blocks other branches', a
 });
 
 test('updatePrice updates existing price and syncs procurements', async () => {
+  // Set ting.
   const setting = {
     _id: 'ps3',
     branch: 'Maganjo',
@@ -148,6 +154,7 @@ test('updatePrice updates existing price and syncs procurements', async () => {
   PriceSetting.findOne = async () => null;
   Procurement.updateMany = async () => ({ modifiedCount: 4 });
 
+  // Configure req.
   const req = {
     user: { branch: 'Maganjo' },
     params: { id: 'ps3' },
@@ -163,6 +170,7 @@ test('updatePrice updates existing price and syncs procurements', async () => {
 });
 
 test('deletePrice deletes setting in same branch', async () => {
+  // Set ting.
   const setting = {
     _id: 'ps4',
     branch: 'Maganjo',
@@ -170,6 +178,7 @@ test('deletePrice deletes setting in same branch', async () => {
   };
   PriceSetting.findById = async () => setting;
 
+  // Configure req.
   const req = {
     user: { branch: 'Maganjo' },
     params: { id: 'ps4' }

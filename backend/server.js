@@ -6,8 +6,10 @@ import logger from './utils/logger.js';
 
 dotenv.config();
 
+// Configure port.
 const PORT = Number(process.env.PORT || 5000);
 
+// Handle start server.
 const startServer = async () => {
   await connectDB();
 
@@ -19,6 +21,7 @@ const startServer = async () => {
   server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS || 30000);
   server.headersTimeout = Number(process.env.SERVER_HEADERS_TIMEOUT_MS || 35000);
 
+  // Handle shutdown.
   const shutdown = async (signal) => {
     logger.warn('server.shutdown.requested', { signal });
 
@@ -33,10 +36,13 @@ const startServer = async () => {
       }
     });
 
-    setTimeout(() => {
-      logger.error('server.shutdown.forced', { signal });
-      process.exit(1);
-    }, Number(process.env.SERVER_SHUTDOWN_TIMEOUT_MS || 10000)).unref();
+    setTimeout(
+      () => {
+        logger.error('server.shutdown.forced', { signal });
+        process.exit(1);
+      },
+      Number(process.env.SERVER_SHUTDOWN_TIMEOUT_MS || 10000)
+    ).unref();
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));

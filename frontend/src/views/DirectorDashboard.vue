@@ -3,7 +3,9 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
       <div>
         <h2 class="mb-1">Director Dashboard</h2>
-        <p class="text-muted mb-0">Cross-branch report for {{ selectedPeriodLabel.toLowerCase() }} performance.</p>
+        <p class="text-muted mb-0">
+          Cross-branch report for {{ selectedPeriodLabel.toLowerCase() }} performance.
+        </p>
       </div>
       <div class="dashboard-actions">
         <div class="dashboard-filters">
@@ -25,13 +27,28 @@
           </div>
         </div>
         <div class="export-actions btn-group btn-group-sm" role="group" aria-label="Export report">
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportCsv">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportCsv"
+          >
             Export CSV
           </button>
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportExcel">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportExcel"
+          >
             Export Excel
           </button>
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportPdf">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportPdf"
+          >
             Export PDF
           </button>
         </div>
@@ -94,7 +111,9 @@
           <div class="card-body">
             <h6 class="text-muted">Total Procurement</h6>
             <h3 class="stats-value">{{ formatStatCurrency(procurementTotal) }}</h3>
-            <small class="text-muted">{{ procurementCount.toLocaleString('en-UG') }} record(s)</small>
+            <small class="text-muted"
+              >{{ procurementCount.toLocaleString('en-UG') }} record(s)</small
+            >
           </div>
         </div>
       </div>
@@ -132,7 +151,10 @@
           <div class="card-body">
             <div v-if="!hasRevenueData" class="chart-empty">No revenue data available</div>
             <div v-else class="chart-panel chart-panel-sm">
-              <Doughnut :data="revenueCompositionChartData" :options="chartOptions.doughnutCurrency" />
+              <Doughnut
+                :data="revenueCompositionChartData"
+                :options="chartOptions.doughnutCurrency"
+              />
             </div>
           </div>
         </div>
@@ -144,7 +166,9 @@
             <h5 class="mb-0">Branch Revenue Comparison</h5>
           </div>
           <div class="card-body">
-            <div v-if="branchLabels.length === 0" class="chart-empty">No branch sales recorded yet</div>
+            <div v-if="branchLabels.length === 0" class="chart-empty">
+              No branch sales recorded yet
+            </div>
             <div v-else class="chart-panel">
               <Bar :data="branchRevenueChartData" :options="chartOptions.groupedBarCurrency" />
             </div>
@@ -158,7 +182,9 @@
             <h5 class="mb-0">Branch Volume Sold</h5>
           </div>
           <div class="card-body">
-            <div v-if="branchLabels.length === 0" class="chart-empty">No branch volume data available</div>
+            <div v-if="branchLabels.length === 0" class="chart-empty">
+              No branch volume data available
+            </div>
             <div v-else class="chart-panel">
               <Bar :data="branchVolumeChartData" :options="chartOptions.horizontalBarKg" />
             </div>
@@ -172,7 +198,9 @@
             <h5 class="mb-0">Branch Totals Summary</h5>
           </div>
           <div class="card-body">
-            <div v-if="branchLabels.length === 0" class="chart-empty chart-empty-sm">No branch totals available</div>
+            <div v-if="branchLabels.length === 0" class="chart-empty chart-empty-sm">
+              No branch totals available
+            </div>
             <div v-else class="table-responsive">
               <table class="table table-hover align-middle mb-0">
                 <thead>
@@ -192,7 +220,9 @@
                     <td class="text-end fw-semibold">
                       {{ formatCurrency(branchTotals[branch].cash + branchTotals[branch].credit) }}
                     </td>
-                    <td class="text-end">{{ branchTotals[branch].totalKg.toLocaleString('en-UG') }} kg</td>
+                    <td class="text-end">
+                      {{ branchTotals[branch].totalKg.toLocaleString('en-UG') }} kg
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -205,9 +235,9 @@
 </template>
 
 <script>
-import { salesAPI } from '../services/api'
-import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat'
-import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs'
+import { salesAPI } from '../services/api';
+import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
+import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs';
 import {
   Chart as ChartJS,
   Title,
@@ -220,7 +250,7 @@ import {
   CategoryScale,
   LinearScale,
   Filler
-} from 'chart.js'
+} from 'chart.js';
 
 ChartJS.register(
   Title,
@@ -233,59 +263,70 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   Filler
-)
+);
 
+// Configure period options.
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' }
-]
+];
 
+// Configure branch options.
 const BRANCH_OPTIONS = [
   { value: 'all', label: 'All Branches' },
   { value: 'Maganjo', label: 'Maganjo' },
   { value: 'Matugga', label: 'Matugga' }
-]
+];
 
-const toNumber = (value) => Number(value || 0)
+// Handle to number.
+const toNumber = (value) => Number(value || 0);
+// Format compact.
 const formatCompact = (value) =>
-  new Intl.NumberFormat('en-UG', { notation: 'compact', maximumFractionDigits: 1 }).format(toNumber(value))
+  new Intl.NumberFormat('en-UG', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    toNumber(value)
+  );
+// Format currency value.
 const formatCurrencyValue = (value) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',
     currency: 'UGX',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(toNumber(value))
+  }).format(toNumber(value));
 
+// Handle escape csv value.
 const escapeCsvValue = (value) => {
-  const text = value === undefined || value === null ? '' : String(value)
+  const text = value === undefined || value === null ? '' : String(value);
   if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`
+    return `"${text.replace(/"/g, '""')}"`;
   }
-  return text
-}
+  return text;
+};
 
+// Handle escape html.
 const escapeHtml = (value) =>
   String(value === undefined || value === null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+    .replace(/'/g, '&#39;');
 
+// Handle sanitize file segment.
 const sanitizeFileSegment = (value) => {
   const cleaned = String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return cleaned || 'all'
-}
+    .replace(/^_+|_+$/g, '');
+  return cleaned || 'all';
+};
 
+// Handle axis ticks.
 const axisTicks = (formatter) => ({
   grid: { color: 'rgba(148, 163, 184, 0.2)' },
   ticks: { callback: formatter }
-})
+});
 
 export default {
   name: 'DirectorDashboard',
@@ -331,8 +372,9 @@ export default {
             },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `${context.label}: ${formatCurrencyValue(context.raw)}`
+                  return `${context.label}: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -346,8 +388,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Sales: ${formatCurrencyValue(context.raw)}`
+                  return `Sales: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -374,8 +417,9 @@ export default {
             },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `${context.dataset.label}: ${formatCurrencyValue(context.raw)}`
+                  return `${context.dataset.label}: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -396,8 +440,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Volume: ${toNumber(context.raw).toLocaleString('en-UG')} kg`
+                  return `Volume: ${toNumber(context.raw).toLocaleString('en-UG')} kg`;
                 }
               }
             }
@@ -411,43 +456,49 @@ export default {
           }
         }
       }
-    }
+    };
   },
   computed: {
+    // Handle total revenue.
     totalRevenue() {
-      return this.grandTotal.cash + this.grandTotal.credit
+      return this.grandTotal.cash + this.grandTotal.credit;
     },
     totalTransactions() {
-      return toNumber(this.report.salesCount) + toNumber(this.report.creditSalesCount)
+      return toNumber(this.report.salesCount) + toNumber(this.report.creditSalesCount);
     },
     procurementTotal() {
-      return toNumber(this.report.procurementTotal)
+      return toNumber(this.report.procurementTotal);
     },
     procurementCount() {
-      return toNumber(this.report.procurementCount)
+      return toNumber(this.report.procurementCount);
     },
     selectedPeriodLabel() {
-      return this.periodOptions.find((option) => option.value === this.filters.period)?.label || 'Weekly'
+      return (
+        this.periodOptions.find((option) => option.value === this.filters.period)?.label || 'Weekly'
+      );
     },
     selectedBranchLabel() {
-      return this.branchOptions.find((option) => option.value === this.filters.branch)?.label || 'All Branches'
+      return (
+        this.branchOptions.find((option) => option.value === this.filters.branch)?.label ||
+        'All Branches'
+      );
     },
     formattedRange() {
-      if (!this.range.from || !this.range.to) return '-'
-      const from = new Date(this.range.from)
-      const to = new Date(this.range.to)
-      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '-'
-      const options = { month: 'short', day: 'numeric', year: 'numeric' }
-      return `${from.toLocaleDateString('en-UG', options)} - ${to.toLocaleDateString('en-UG', options)}`
+      if (!this.range.from || !this.range.to) return '-';
+      const from = new Date(this.range.from);
+      const to = new Date(this.range.to);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '-';
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      return `${from.toLocaleDateString('en-UG', options)} - ${to.toLocaleDateString('en-UG', options)}`;
     },
     branchLabels() {
-      return Object.keys(this.branchTotals)
+      return Object.keys(this.branchTotals);
     },
     hasRevenueData() {
-      return this.totalRevenue > 0
+      return this.totalRevenue > 0;
     },
     hasTrendData() {
-      return this.trendSeries.some((value) => value > 0)
+      return this.trendSeries.some((value) => value > 0);
     },
     trendChartData() {
       return {
@@ -464,7 +515,7 @@ export default {
             pointHoverRadius: 5
           }
         ]
-      }
+      };
     },
     revenueCompositionChartData() {
       return {
@@ -478,7 +529,7 @@ export default {
             hoverOffset: 8
           }
         ]
-      }
+      };
     },
     branchRevenueChartData() {
       return {
@@ -499,7 +550,7 @@ export default {
             maxBarThickness: 36
           }
         ]
-      }
+      };
     },
     branchVolumeChartData() {
       return {
@@ -513,72 +564,80 @@ export default {
             barThickness: 20
           }
         ]
-      }
+      };
     }
   },
   async created() {
-    await this.loadData()
+    await this.loadData();
   },
   methods: {
+    // Handle load data.
     async loadData() {
-      this.loading = true
+      this.loading = true;
       try {
         const response = await salesAPI.getAggregation({
           period: this.filters.period,
           branch: this.filters.branch
-        })
-        this.branchTotals = response.data.branchTotals || {}
-        this.procurementTotals = response.data.procurementTotals || {}
-        this.grandTotal = response.data.grandTotal || { cash: 0, credit: 0, totalKg: 0 }
-        this.trendLabels = response.data.trends?.labels || []
-        this.trendSeries = response.data.trends?.data || []
+        });
+        this.branchTotals = response.data.branchTotals || {};
+        this.procurementTotals = response.data.procurementTotals || {};
+        this.grandTotal = response.data.grandTotal || { cash: 0, credit: 0, totalKg: 0 };
+        this.trendLabels = response.data.trends?.labels || [];
+        this.trendSeries = response.data.trends?.data || [];
         this.report = response.data.report || {
           salesCount: 0,
           creditSalesCount: 0,
           procurementCount: 0,
           procurementTotal: 0
-        }
-        this.range = response.data.range || { from: '', to: '' }
+        };
+        this.range = response.data.range || { from: '', to: '' };
       } catch (error) {
-        this.branchTotals = {}
-        this.procurementTotals = {}
-        this.grandTotal = { cash: 0, credit: 0, totalKg: 0 }
-        this.trendLabels = []
-        this.trendSeries = []
-        this.report = { salesCount: 0, creditSalesCount: 0, procurementCount: 0, procurementTotal: 0 }
-        this.range = { from: '', to: '' }
-        console.error('Error loading aggregation:', error)
+        this.branchTotals = {};
+        this.procurementTotals = {};
+        this.grandTotal = { cash: 0, credit: 0, totalKg: 0 };
+        this.trendLabels = [];
+        this.trendSeries = [];
+        this.report = {
+          salesCount: 0,
+          creditSalesCount: 0,
+          procurementCount: 0,
+          procurementTotal: 0
+        };
+        this.range = { from: '', to: '' };
+        console.error('Error loading aggregation:', error);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     formatCurrency(amount) {
-      return formatCurrencyValue(amount)
+      return formatCurrencyValue(amount);
     },
     formatStatCurrency(amount) {
-      return formatCompactCurrency(amount)
+      return formatCompactCurrency(amount);
     },
     buildFileName(extension) {
-      const period = sanitizeFileSegment(this.selectedPeriodLabel)
-      const branch = sanitizeFileSegment(this.selectedBranchLabel)
-      const stamp = new Date().toISOString().slice(0, 10)
-      return `director_report_${period}_${branch}_${stamp}.${extension}`
+      const period = sanitizeFileSegment(this.selectedPeriodLabel);
+      const branch = sanitizeFileSegment(this.selectedBranchLabel);
+      const stamp = new Date().toISOString().slice(0, 10);
+      return `director_report_${period}_${branch}_${stamp}.${extension}`;
     },
     downloadFile(filename, content, type) {
-      const blob = new Blob([content], { type })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     },
     getReportSummaryRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      // Format number.
       const formatNumber = (value) =>
-        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value)
+        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
 
       return [
         ['Report Period', this.selectedPeriodLabel],
@@ -590,84 +649,91 @@ export default {
         ['Credit Sales (UGX)', formatCurrency(this.grandTotal.credit)],
         ['Total Procurement (UGX)', formatCurrency(this.procurementTotal)],
         ['Total Produce Sold (kg)', formatNumber(this.grandTotal.totalKg)]
-      ]
+      ];
     },
     getBranchTotalsRows(formatted = false) {
-      const includeProcurement = Object.keys(this.procurementTotals || {}).length > 0
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
+      const includeProcurement = Object.keys(this.procurementTotals || {}).length > 0;
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      // Format number.
       const formatNumber = (value) =>
-        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value)
+        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
 
+      // Configure headers.
       const headers = [
         'Branch',
         'Cash Sales (UGX)',
         'Credit Sales (UGX)',
         'Total Revenue (UGX)',
         'Total Weight (kg)'
-      ]
+      ];
       if (includeProcurement) {
-        headers.push('Procurement Cost (UGX)')
+        headers.push('Procurement Cost (UGX)');
       }
 
       const rows = this.branchLabels.map((branch) => {
-        const totals = this.branchTotals[branch] || { cash: 0, credit: 0, totalKg: 0 }
-        const procurementCost = this.procurementTotals?.[branch]?.totalCost || 0
+        const totals = this.branchTotals[branch] || { cash: 0, credit: 0, totalKg: 0 };
+        const procurementCost = this.procurementTotals?.[branch]?.totalCost || 0;
+        // Configure row.
         const row = [
           branch,
           formatCurrency(totals.cash),
           formatCurrency(totals.credit),
           formatCurrency(totals.cash + totals.credit),
           formatNumber(totals.totalKg)
-        ]
+        ];
         if (includeProcurement) {
-          row.push(formatCurrency(procurementCost))
+          row.push(formatCurrency(procurementCost));
         }
-        return row
-      })
+        return row;
+      });
 
-      return { headers, rows }
+      return { headers, rows };
     },
     getTrendRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
-      const headers = ['Period', 'Total Sales (UGX)']
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      const headers = ['Period', 'Total Sales (UGX)'];
       const rows = this.trendLabels.map((label, index) => [
         label,
         formatCurrency(this.trendSeries[index] || 0)
-      ])
-      return { headers, rows }
+      ]);
+      return { headers, rows };
     },
     buildCsvContent() {
-      const lines = []
+      const lines = [];
+      // Handle add section.
       const addSection = (title, headers, rows) => {
-        lines.push([title])
+        lines.push([title]);
         if (headers?.length) {
-          lines.push(headers)
+          lines.push(headers);
         }
-        rows.forEach((row) => lines.push(row))
-        lines.push([])
-      }
+        rows.forEach((row) => lines.push(row));
+        lines.push([]);
+      };
 
-      const summaryRows = this.getReportSummaryRows(false)
-      addSection('Summary', ['Metric', 'Value'], summaryRows)
+      const summaryRows = this.getReportSummaryRows(false);
+      addSection('Summary', ['Metric', 'Value'], summaryRows);
 
-      const branchSection = this.getBranchTotalsRows(false)
-      addSection('Branch Totals', branchSection.headers, branchSection.rows)
+      const branchSection = this.getBranchTotalsRows(false);
+      addSection('Branch Totals', branchSection.headers, branchSection.rows);
 
-      const trendSection = this.getTrendRows(false)
-      addSection('Sales Trend', trendSection.headers, trendSection.rows)
+      const trendSection = this.getTrendRows(false);
+      addSection('Sales Trend', trendSection.headers, trendSection.rows);
 
-      const content = lines.map((row) => row.map(escapeCsvValue).join(',')).join('\r\n')
-      return `\ufeff${content}`
+      const content = lines.map((row) => row.map(escapeCsvValue).join(',')).join('\r\n');
+      return `\ufeff${content}`;
     },
     buildExcelContent() {
+      // Handle build table.
       const buildTable = (title, headers, rows) => {
-        const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1)
+        const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
         const headerRow = headers.length
           ? `<tr>${headers.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr>`
-          : ''
+          : '';
         const bodyRows = rows
           .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
-          .join('')
+          .join('');
 
         return `
           <table border="1">
@@ -676,12 +742,12 @@ export default {
             ${bodyRows}
           </table>
           <br />
-        `
-      }
+        `;
+      };
 
-      const summaryRows = this.getReportSummaryRows(false)
-      const branchSection = this.getBranchTotalsRows(false)
-      const trendSection = this.getTrendRows(false)
+      const summaryRows = this.getReportSummaryRows(false);
+      const branchSection = this.getBranchTotalsRows(false);
+      const trendSection = this.getTrendRows(false);
 
       return `
         <html>
@@ -694,31 +760,33 @@ export default {
             ${buildTable('Sales Trend', trendSection.headers, trendSection.rows)}
           </body>
         </html>
-      `
+      `;
     },
     buildReportHtml() {
-      const summaryRows = this.getReportSummaryRows(true)
-      const branchSection = this.getBranchTotalsRows(true)
-      const trendSection = this.getTrendRows(true)
-      const generatedAt = new Date().toLocaleString('en-UG')
+      const summaryRows = this.getReportSummaryRows(true);
+      const branchSection = this.getBranchTotalsRows(true);
+      const trendSection = this.getTrendRows(true);
+      const generatedAt = new Date().toLocaleString('en-UG');
 
       const summaryBody = summaryRows
-        .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
-        .join('')
+        .map(
+          ([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+        )
+        .join('');
 
       const branchHeader = `<tr>${branchSection.headers
         .map((header) => `<th>${escapeHtml(header)}</th>`)
-        .join('')}</tr>`
+        .join('')}</tr>`;
       const branchBody = branchSection.rows
         .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
-        .join('')
+        .join('');
 
       const trendHeader = `<tr>${trendSection.headers
         .map((header) => `<th>${escapeHtml(header)}</th>`)
-        .join('')}</tr>`
+        .join('')}</tr>`;
       const trendBody = trendSection.rows
         .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
-        .join('')
+        .join('');
 
       return `
         <html>
@@ -726,6 +794,7 @@ export default {
             <meta charset="UTF-8" />
             <title>Director Report</title>
             <style>
+/* Component styles */
               body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; margin: 24px; }
               h1 { margin: 0 0 6px; font-size: 22px; }
               h2 { margin: 24px 0 10px; font-size: 16px; color: #1e293b; }
@@ -768,36 +837,37 @@ export default {
             </table>
           </body>
         </html>
-      `
+      `;
     },
     exportCsv() {
-      const content = this.buildCsvContent()
-      this.downloadFile(this.buildFileName('csv'), content, 'text/csv;charset=utf-8')
+      const content = this.buildCsvContent();
+      this.downloadFile(this.buildFileName('csv'), content, 'text/csv;charset=utf-8');
     },
     exportExcel() {
-      const content = this.buildExcelContent()
-      this.downloadFile(this.buildFileName('xls'), content, 'application/vnd.ms-excel')
+      const content = this.buildExcelContent();
+      this.downloadFile(this.buildFileName('xls'), content, 'application/vnd.ms-excel');
     },
     exportPdf() {
-      const reportHtml = this.buildReportHtml()
-      const printWindow = window.open('', '_blank')
+      const reportHtml = this.buildReportHtml();
+      const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        alert('Please allow pop-ups to export the PDF report.')
-        return
+        alert('Please allow pop-ups to export the PDF report.');
+        return;
       }
-      printWindow.document.open()
-      printWindow.document.write(reportHtml)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.onafterprint = () => printWindow.close()
-      setTimeout(() => printWindow.print(), 300)
+      printWindow.document.open();
+      printWindow.document.write(reportHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.onafterprint = () => printWindow.close();
+      setTimeout(() => printWindow.print(), 300);
     },
     formatCompactNumber
   }
-}
+};
 </script>
 
 <style scoped>
+/* Component styles */
 .dashboard-filters {
   display: flex;
   gap: 0.75rem;

@@ -23,7 +23,12 @@
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Record Procurement
             </button>
-            <button type="button" class="btn btn-outline-secondary ms-2" @click="resetForm" :disabled="loading">
+            <button
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click="resetForm"
+              :disabled="loading"
+            >
               Clear
             </button>
           </div>
@@ -44,23 +49,28 @@ import {
 } from '../composables/useProcurementForm';
 import { procurementAPI } from '../services/api';
 
+// Configure user.
 const user = ref({});
+// Configure form.
 const form = ref(createInitialProcurementForm());
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
 const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
 
+// Handle type change.
 const handleTypeChange = () => {
   applyPriceSetting(form.value);
 };
 
+// Handle reset form.
 const resetForm = () => {
   form.value = createInitialProcurementForm();
   clearPriceLock();
   resetFeedback();
 };
 
+// Handle submit.
 const handleSubmit = async () => {
   beginSubmit();
   try {

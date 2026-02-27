@@ -31,7 +31,12 @@
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Record Credit Sale
             </button>
-            <button type="button" class="btn btn-outline-danger ms-2" :disabled="loading" @click="resetForm">
+            <button
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              :disabled="loading"
+              @click="resetForm"
+            >
               Reset Form
             </button>
           </div>
@@ -43,7 +48,12 @@
       <div class="modal-card credit-review-modal">
         <div class="modal-header">
           <h5 class="mb-0">Review Credit Sale</h5>
-          <button type="button" class="btn-close" :disabled="loading" @click="closeReviewModal"></button>
+          <button
+            type="button"
+            class="btn-close"
+            :disabled="loading"
+            @click="closeReviewModal"
+          ></button>
         </div>
         <div class="modal-body">
           <div class="credit-summary card border-0 mb-3">
@@ -77,12 +87,17 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Produce Name</label>
-              <select class="form-select" v-model="form.produceName" @change="updateProduceDetails">
+              <select
+                class="form-select"
+                v-model="form.produceName"
+                @change="handleReviewProduceChange"
+              >
                 <option value="">Select produce</option>
                 <option
                   v-for="item in inventory"
                   :key="`${item.produceName}-${item.produceType}`"
                   :value="item.produceName"
+                  :data-produce-type="item.produceType"
                 >
                   {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
                 </option>
@@ -90,7 +105,14 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Tonnage (kg)</label>
-              <input type="number" class="form-control" v-model="form.tonnageKg" min="1" @input="updatePrice" required />
+              <input
+                type="number"
+                class="form-control"
+                v-model="form.tonnageKg"
+                min="1"
+                @input="updatePrice"
+                required
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Amount Due (UGX)</label>
@@ -98,7 +120,13 @@
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Due Date</label>
-              <input type="date" class="form-control" v-model="form.dueDate" :min="todayIsoDate" required />
+              <input
+                type="date"
+                class="form-control"
+                v-model="form.dueDate"
+                :min="todayIsoDate"
+                required
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label fw-bold">Dispatch Date</label>
@@ -107,10 +135,20 @@
           </div>
 
           <div class="mt-4 d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-outline-secondary" :disabled="loading" @click="closeReviewModal">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="loading"
+              @click="closeReviewModal"
+            >
               Back
             </button>
-            <button type="button" class="btn btn-primary" :disabled="loading" @click="confirmSaveCreditSale">
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="loading"
+              @click="confirmSaveCreditSale"
+            >
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Save Credit Sale
             </button>
@@ -131,18 +169,26 @@ import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
 
+// Configure user.
 const user = ref({});
+// Configure trusted buyers.
 const trustedBuyers = ref([]);
+// Configure inventory.
 const inventory = ref([]);
+// Configure form.
 const form = ref(createInitialForm());
+// Configure show review modal.
 const showReviewModal = ref(false);
+// Configure today iso date.
 const todayIsoDate = new Date().toISOString().split('T')[0];
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
 
+// Configure can manage buyers.
 const canManageBuyers = computed(() => user.value.role === 'manager');
 
+// Create initial form.
 function createInitialForm() {
   return {
     trustedBuyerId: '',
@@ -159,6 +205,7 @@ function createInitialForm() {
   };
 }
 
+// Handle load inventory.
 const loadInventory = async () => {
   try {
     const response = await inventoryAPI.get();
@@ -168,6 +215,7 @@ const loadInventory = async () => {
   }
 };
 
+// Handle load trusted buyers.
 const loadTrustedBuyers = async () => {
   try {
     const response = await trustedBuyersAPI.getAll();
@@ -177,6 +225,7 @@ const loadTrustedBuyers = async () => {
   }
 };
 
+// Handle buyer select.
 const handleBuyerSelect = () => {
   const buyer = trustedBuyers.value.find((entry) => entry._id === form.value.trustedBuyerId);
   if (!buyer) {
@@ -193,13 +242,27 @@ const handleBuyerSelect = () => {
   form.value.contact = buyer.contact;
 };
 
+// Update produce details.
 const updateProduceDetails = () => {
   if (!form.value.produceName) {
+    form.value.produceType = '';
+    form.value.amountDueUgx = '';
     return;
   }
 
-  const item = inventory.value.find((entry) => entry.produceName === form.value.produceName);
+  let item = inventory.value.find(
+    (entry) =>
+      entry.produceName === form.value.produceName &&
+      (!form.value.produceType || entry.produceType === form.value.produceType)
+  );
+
+  if (!item && form.value.produceType) {
+    item = inventory.value.find((entry) => entry.produceName === form.value.produceName);
+  }
+
   if (!item) {
+    form.value.produceType = '';
+    form.value.amountDueUgx = '';
     return;
   }
 
@@ -207,6 +270,14 @@ const updateProduceDetails = () => {
   updatePrice();
 };
 
+// Keep produce type synchronized when selecting produce from review modal.
+const handleReviewProduceChange = (event) => {
+  const selected = event?.target?.options?.[event.target.selectedIndex];
+  form.value.produceType = selected?.dataset?.produceType || '';
+  updateProduceDetails();
+};
+
+// Update price.
 const updatePrice = () => {
   const { amount } = evaluateStock(
     inventory.value,
@@ -217,11 +288,13 @@ const updatePrice = () => {
   form.value.amountDueUgx = amount || '';
 };
 
+// Handle reset form.
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
 };
 
+// Handle open review modal.
 const openReviewModal = () => {
   if (stockWarning.value) {
     setError(stockWarning.value);
@@ -250,11 +323,13 @@ const openReviewModal = () => {
   showReviewModal.value = true;
 };
 
+// Handle close review modal.
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
 };
 
+// Handle confirm save credit sale.
 const confirmSaveCreditSale = async () => {
   if (stockWarning.value) {
     setError(stockWarning.value);
@@ -281,11 +356,13 @@ const confirmSaveCreditSale = async () => {
   }
 };
 
-const formatCurrency = (amount) => new Intl.NumberFormat('en-UG', {
-  style: 'currency',
-  currency: 'UGX',
-  minimumFractionDigits: 0
-}).format(Number(amount || 0));
+// Format currency.
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat('en-UG', {
+    style: 'currency',
+    currency: 'UGX',
+    minimumFractionDigits: 0
+  }).format(Number(amount || 0));
 
 onMounted(async () => {
   user.value = JSON.parse(localStorage.getItem('user') || '{}');
@@ -294,6 +371,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Component styles */
 .credit-review-modal {
   max-width: 760px;
 }

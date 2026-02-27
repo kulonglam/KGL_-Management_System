@@ -1,22 +1,27 @@
 import mongoose from 'mongoose';
 
+// Define stock lock schema.
 const stockLockSchema = new mongoose.Schema(
   {
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
-    produceName: { type: String, required: true },
-    produceType: {
+    key: {
       type: String,
       required: true,
-      enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+      unique: true
     },
-    owner: { type: String, default: null },
-    lockUntil: { type: Date, default: new Date(0) }
+    ownerId: {
+      type: String,
+      required: true
+    },
+    expiresAt: {
+      type: Date,
+      required: true
+    }
   },
   {
     timestamps: true
   }
 );
 
-stockLockSchema.index({ branch: 1, produceName: 1, produceType: 1 }, { unique: true });
+stockLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model('StockLock', stockLockSchema);

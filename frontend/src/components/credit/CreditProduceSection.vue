@@ -6,13 +6,19 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Produce Name *</label>
-        <select class="form-select" v-model="form.produceName" @change="$emit('produce-change')" required>
+        <label class="form-label">Produce Name </label>
+        <select
+          class="form-select"
+          v-model="form.produceName"
+          @change="handleProduceChange"
+          required
+        >
           <option value="">Select produce</option>
           <option
             v-for="item in inventory"
             :key="`${item.produceName}-${item.produceType}`"
             :value="item.produceName"
+            :data-produce-type="item.produceType"
           >
             {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
           </option>
@@ -20,10 +26,15 @@
       </div>
       <div class="col-md-6">
         <label class="form-label">Produce Type</label>
-        <input type="text" class="form-control branch-display" v-model="form.produceType" disabled />
+        <input
+          type="text"
+          class="form-control branch-display"
+          v-model="form.produceType"
+          disabled
+        />
       </div>
       <div class="col-md-6">
-        <label class="form-label">Tonnage (kg) *</label>
+        <label class="form-label">Tonnage (kg)</label>
         <input
           type="number"
           class="form-control"
@@ -34,7 +45,7 @@
         />
       </div>
       <div class="col-md-6">
-        <label class="form-label">Amount Due (UGX) *</label>
+        <label class="form-label">Amount Due (UGX) </label>
         <input
           type="number"
           class="form-control"
@@ -50,10 +61,20 @@
 </template>
 
 <script setup>
+// Configure form.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
+
+const emit = defineEmits(['produce-change', 'tonnage-input']);
+
+// Keep produce name/type synchronized from the selected option.
+const handleProduceChange = (event) => {
+  const selected = event?.target?.options?.[event.target.selectedIndex];
+  form.value.produceType = selected?.dataset?.produceType || '';
+  emit('produce-change');
+};
 
 defineProps({
   inventory: {
@@ -61,11 +82,10 @@ defineProps({
     required: true
   }
 });
-
-defineEmits(['produce-change', 'tonnage-input']);
 </script>
 
 <style scoped>
+/* Component styles */
 .credit-section {
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;

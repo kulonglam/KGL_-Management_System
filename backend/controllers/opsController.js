@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { getMetricsSnapshot } from '../services/metricsService.js';
 
+// Retrieve health.
 const getHealth = (req, res) => {
   res.json({
     status: 'ok',
@@ -9,6 +9,7 @@ const getHealth = (req, res) => {
   });
 };
 
+// Retrieve readiness.
 const getReadiness = (req, res) => {
   const readyState = mongoose.connection.readyState;
   const isReady = readyState === 1;
@@ -26,16 +27,4 @@ const getReadiness = (req, res) => {
   });
 };
 
-const getMetrics = (req, res) => {
-  const token = process.env.METRICS_TOKEN;
-  if (token && req.headers['x-metrics-token'] !== token) {
-    return res.status(401).json({ message: 'Unauthorized metrics access' });
-  }
-
-  return res.json({
-    status: 'ok',
-    metrics: getMetricsSnapshot()
-  });
-};
-
-export { getHealth, getReadiness, getMetrics };
+export { getHealth, getReadiness };

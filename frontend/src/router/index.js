@@ -1,20 +1,21 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import DashboardLayout from '../views/DashboardLayout.vue'
-import DirectorDashboard from '../views/DirectorDashboard.vue'
-import ManagerDashboard from '../views/ManagerDashboard.vue'
-import SalesAgentDashboard from '../views/SalesAgentDashboard.vue'
-import Procurement from '../views/Procurement.vue'
-import ProcurementRecords from '../views/ProcurementRecords.vue'
-import Sales from '../views/Sales.vue'
-import CreditSales from '../views/CreditSales.vue'
-import CreditSalesRecords from '../views/CreditSalesRecords.vue'
-import Inventory from '../views/Inventory.vue'
-import Users from '../views/Users.vue'
-import TrustedBuyers from '../views/TrustedBuyers.vue'
-import PriceManagement from '../views/PriceManagement.vue'
-import Profile from '../views/Profile.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import Login from '../views/Login.vue';
+import DashboardLayout from '../views/DashboardLayout.vue';
+import DirectorDashboard from '../views/DirectorDashboard.vue';
+import ManagerDashboard from '../views/ManagerDashboard.vue';
+import SalesAgentDashboard from '../views/SalesAgentDashboard.vue';
+import Procurement from '../views/Procurement.vue';
+import ProcurementRecords from '../views/ProcurementRecords.vue';
+import Sales from '../views/Sales.vue';
+import CreditSales from '../views/CreditSales.vue';
+import CreditSalesRecords from '../views/CreditSalesRecords.vue';
+import Inventory from '../views/Inventory.vue';
+import Users from '../views/Users.vue';
+import TrustedBuyers from '../views/TrustedBuyers.vue';
+import PriceManagement from '../views/PriceManagement.vue';
+import Profile from '../views/Profile.vue';
 
+// Configure routes.
 const routes = [
   {
     path: '/',
@@ -105,27 +106,28 @@ const routes = [
       }
     ]
   }
-]
+];
 
+// Configure router.
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
+});
 
 // Navigation guard
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   if (to.meta.requiresAuth && !token) {
-    next('/')
+    next('/');
   } else if (to.meta.role && user.role !== to.meta.role) {
-    next('/')
+    next('/');
   } else if (to.meta.roles && !to.meta.roles.includes(user.role)) {
-    next('/')
+    next('/');
   } else {
-    next()
+    next();
   }
-})
+});
 
-export default router
+export default router;

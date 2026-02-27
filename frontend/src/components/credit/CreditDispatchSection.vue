@@ -6,8 +6,14 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Due Date *</label>
-        <input type="date" class="form-control" v-model="form.dueDate" :min="todayIsoDate" required />
+        <label class="form-label">Due Date </label>
+        <input
+          type="date"
+          class="form-control"
+          v-model="form.dueDate"
+          :min="todayIsoDate"
+          required
+        />
       </div>
       <div class="col-md-6">
         <label class="form-label">Date of Dispatch</label>
@@ -26,11 +32,13 @@
 </template>
 
 <script setup>
+// Configure form.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
+// Configure today iso date.
 const todayIsoDate = new Date().toISOString().split('T')[0];
 
 defineProps({
@@ -42,6 +50,7 @@ defineProps({
 </script>
 
 <style scoped>
+/* Component styles */
 .credit-section {
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;

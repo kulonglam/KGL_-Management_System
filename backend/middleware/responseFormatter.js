@@ -1,3 +1,4 @@
+// Handle is unified shape.
 const isUnifiedShape = (payload) =>
   payload &&
   typeof payload === 'object' &&
@@ -5,6 +6,7 @@ const isUnifiedShape = (payload) =>
   Object.prototype.hasOwnProperty.call(payload, 'data') &&
   Object.prototype.hasOwnProperty.call(payload, 'error');
 
+// Handle normalize error.
 const normalizeError = (payload, statusCode) => {
   if (payload && typeof payload === 'object') {
     if (payload.error && typeof payload.error === 'object') {
@@ -23,6 +25,7 @@ const normalizeError = (payload, statusCode) => {
   return { message: 'Request failed', details: null, statusCode };
 };
 
+// Handle response formatter.
 const responseFormatter = (req, res, next) => {
   const originalJson = res.json.bind(res);
 

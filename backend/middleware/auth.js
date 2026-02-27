@@ -51,7 +51,15 @@ const authorizeDirectorOrban = (req, res, next) => {
     return res.status(401).json({ message: 'Not authorized' });
   }
 
-  if (req.user.canViewCrossBranchTotals === true) {
+  const username = String(req.user.username || '')
+    .trim()
+    .toLowerCase();
+  const name = String(req.user.name || '')
+    .trim()
+    .toLowerCase();
+  const isOrbanIdentity = username === 'orban' || name === 'mr. orban';
+
+  if (req.user.role === 'director' && isOrbanIdentity) {
     return next();
   }
 

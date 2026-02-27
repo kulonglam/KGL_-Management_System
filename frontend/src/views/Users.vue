@@ -122,7 +122,7 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api'
+import { authAPI } from '../services/api';
 
 export default {
   name: 'Users',
@@ -142,107 +142,109 @@ export default {
       loading: false,
       error: '',
       success: ''
-    }
+    };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}')
-    await this.loadUsers()
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    await this.loadUsers();
   },
   methods: {
+    // Handle load users.
     async loadUsers() {
-      this.loadingList = true
+      this.loadingList = true;
       try {
-        const response = await authAPI.listUsers()
-        this.users = response.data
+        const response = await authAPI.listUsers();
+        this.users = response.data;
       } catch (error) {
-        console.error('Failed to load users:', error)
+        console.error('Failed to load users:', error);
       } finally {
-        this.loadingList = false
+        this.loadingList = false;
       }
     },
     async handleSubmit() {
-      this.loading = true
-      this.error = ''
-      this.success = ''
+      this.loading = true;
+      this.error = '';
+      this.success = '';
 
       try {
         if (this.editingId) {
+          // Configure payload.
           const payload = {
             name: this.form.name,
             username: this.form.username,
             role: this.form.role
-          }
+          };
           if (this.form.password) {
-            payload.password = this.form.password
+            payload.password = this.form.password;
           }
-          await authAPI.updateUser(this.editingId, payload)
-          this.success = 'User updated successfully!'
+          await authAPI.updateUser(this.editingId, payload);
+          this.success = 'User updated successfully!';
         } else {
-          await authAPI.register(this.form)
-          this.success = 'User created successfully!'
+          await authAPI.register(this.form);
+          this.success = 'User created successfully!';
         }
-        this.resetForm()
-        await this.loadUsers()
+        this.resetForm();
+        await this.loadUsers();
       } catch (error) {
         this.error =
           error.response?.data?.message ||
-          (this.editingId ? 'Failed to update user' : 'Failed to create user')
+          (this.editingId ? 'Failed to update user' : 'Failed to create user');
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     startEdit(item) {
-      this.editingId = item._id
-      this.showForm = true
+      this.editingId = item._id;
+      this.showForm = true;
       this.form = {
         name: item.name,
         username: item.username,
         password: '',
         role: item.role
-      }
-      this.error = ''
-      this.success = ''
+      };
+      this.error = '';
+      this.success = '';
     },
     cancelEdit() {
-      this.resetForm()
+      this.resetForm();
     },
     async deleteUser(item) {
-      if (!confirm(`Delete user ${item.name}?`)) return
+      if (!confirm(`Delete user ${item.name}?`)) return;
       try {
-        await authAPI.deleteUser(item._id)
+        await authAPI.deleteUser(item._id);
         if (this.editingId === item._id) {
-          this.resetForm()
+          this.resetForm();
         }
-        await this.loadUsers()
+        await this.loadUsers();
       } catch (error) {
-        this.error = error.response?.data?.message || 'Failed to delete user'
+        this.error = error.response?.data?.message || 'Failed to delete user';
       }
     },
     resetForm() {
-      this.editingId = null
-      this.showForm = false
+      this.editingId = null;
+      this.showForm = false;
       this.form = {
         name: '',
         username: '',
         password: '',
         role: ''
-      }
+      };
     },
     toggleForm() {
       if (this.showForm && this.editingId) {
-        this.resetForm()
+        this.resetForm();
       } else {
-        this.showForm = !this.showForm
+        this.showForm = !this.showForm;
       }
-      this.error = ''
-      this.success = ''
+      this.error = '';
+      this.success = '';
     },
     formatRole(role) {
-      if (role === 'sales_agent') return 'Sales Agent'
-      if (role === 'manager') return 'Manager'
-      if (role === 'director') return 'Director'
-      return role
+      if (role === 'sales_agent') return 'Sales Agent';
+      if (role === 'manager') return 'Manager';
+      if (role === 'director') return 'Director';
+      return role;
     }
   }
-}
+};
 </script>

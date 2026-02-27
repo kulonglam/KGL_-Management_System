@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// Configure api url.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
@@ -122,8 +123,7 @@ export const priceAPI = {
   getById: (id) => api.get(`/prices/${id}`),
   create: (data) => api.post('/prices', data),
   update: (id, data) => api.put(`/prices/${id}`, data),
-  delete: (id) => api.delete(`/prices/${id}`),
-  setPrice: (data) => api.post('/prices', data)
+  delete: (id) => api.delete(`/prices/${id}`)
 };
 
 export default api;

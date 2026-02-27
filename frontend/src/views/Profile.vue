@@ -131,10 +131,12 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api'
+import { authAPI } from '../services/api';
 
-const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024
-const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+// Configure max profile image size bytes.
+const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
+// Configure allowed profile image types.
+const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
 export default {
   name: 'Profile',
@@ -155,23 +157,24 @@ export default {
         password: '',
         confirmPassword: ''
       }
-    }
+    };
   },
   async created() {
-    await this.loadProfile()
+    await this.loadProfile();
   },
   methods: {
+    // Handle load profile.
     async loadProfile() {
-      this.loading = true
-      this.error = ''
-      this.success = ''
+      this.loading = true;
+      this.error = '';
+      this.success = '';
       try {
-        const response = await authAPI.getMe()
-        this.applyUserToForm(response.data)
+        const response = await authAPI.getMe();
+        this.applyUserToForm(response.data);
       } catch (error) {
-        this.error = error.response?.data?.message || 'Failed to load profile'
+        this.error = error.response?.data?.message || 'Failed to load profile';
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     applyUserToForm(user) {
@@ -183,13 +186,14 @@ export default {
         branch: user.branch || '',
         password: '',
         confirmPassword: ''
-      }
-      this.profileImagePreview = user.profileImage || ''
-      this.profileImageChanged = false
-      this.updateSessionUser(user)
+      };
+      this.profileImagePreview = user.profileImage || '';
+      this.profileImageChanged = false;
+      this.updateSessionUser(user);
     },
     updateSessionUser(user) {
-      const current = JSON.parse(localStorage.getItem('user') || '{}')
+      const current = JSON.parse(localStorage.getItem('user') || '{}');
+      // Update d.
       const updated = {
         ...current,
         _id: user._id ?? current._id,
@@ -198,93 +202,95 @@ export default {
         profileImage: user.profileImage ?? current.profileImage ?? '',
         role: user.role ?? current.role,
         branch: user.branch ?? current.branch
-      }
-      localStorage.setItem('user', JSON.stringify(updated))
-      window.dispatchEvent(new Event('user-updated'))
+      };
+      localStorage.setItem('user', JSON.stringify(updated));
+      window.dispatchEvent(new Event('user-updated'));
     },
     handleImageChange(event) {
-      const file = event.target.files?.[0]
-      if (!file) return
+      const file = event.target.files?.[0];
+      if (!file) return;
 
       if (!ALLOWED_PROFILE_IMAGE_TYPES.includes(file.type)) {
-        this.error = 'Profile image must be PNG, JPG, or WEBP.'
-        event.target.value = ''
-        return
+        this.error = 'Profile image must be PNG, JPG, or WEBP.';
+        event.target.value = '';
+        return;
       }
 
       if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
-        this.error = 'Profile image must be 1 MB or smaller.'
-        event.target.value = ''
-        return
+        this.error = 'Profile image must be 1 MB or smaller.';
+        event.target.value = '';
+        return;
       }
 
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = () => {
-        this.error = ''
-        this.profileImagePreview = typeof reader.result === 'string' ? reader.result : ''
-        this.profileImageChanged = true
-      }
+        this.error = '';
+        this.profileImagePreview = typeof reader.result === 'string' ? reader.result : '';
+        this.profileImageChanged = true;
+      };
       reader.onerror = () => {
-        this.error = 'Failed to process the selected image.'
-      }
-      reader.readAsDataURL(file)
-      event.target.value = ''
+        this.error = 'Failed to process the selected image.';
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
     },
     removeImage() {
-      this.error = ''
-      this.profileImagePreview = ''
-      this.profileImageChanged = true
+      this.error = '';
+      this.profileImagePreview = '';
+      this.profileImageChanged = true;
     },
     async handleSave() {
-      this.error = ''
-      this.success = ''
+      this.error = '';
+      this.success = '';
 
       if (this.form.password || this.form.confirmPassword) {
         if (this.form.password.length < 6) {
-          this.error = 'Password must be at least 6 characters.'
-          return
+          this.error = 'Password must be at least 6 characters.';
+          return;
         }
         if (this.form.password !== this.form.confirmPassword) {
-          this.error = 'Password confirmation does not match.'
-          return
+          this.error = 'Password confirmation does not match.';
+          return;
         }
       }
 
-      this.saving = true
+      this.saving = true;
       try {
+        // Configure payload.
         const payload = {
           name: this.form.name.trim(),
           username: this.form.username.trim()
-        }
+        };
 
         if (this.profileImageChanged) {
-          payload.profileImage = this.profileImagePreview
+          payload.profileImage = this.profileImagePreview;
         }
 
         if (this.form.password) {
-          payload.password = this.form.password
+          payload.password = this.form.password;
         }
 
-        const response = await authAPI.updateMe(payload)
-        this.applyUserToForm(response.data)
-        this.success = 'Profile updated successfully.'
+        const response = await authAPI.updateMe(payload);
+        this.applyUserToForm(response.data);
+        this.success = 'Profile updated successfully.';
       } catch (error) {
-        this.error = error.response?.data?.message || 'Failed to update profile'
+        this.error = error.response?.data?.message || 'Failed to update profile';
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
     formatRole(role) {
-      if (role === 'sales_agent') return 'Sales Agent'
-      if (role === 'manager') return 'Manager'
-      if (role === 'director') return 'Director'
-      return role || '-'
+      if (role === 'sales_agent') return 'Sales Agent';
+      if (role === 'manager') return 'Manager';
+      if (role === 'director') return 'Director';
+      return role || '-';
     }
   }
-}
+};
 </script>
 
 <style scoped>
+/* Component styles */
 .profile-page {
   max-width: 960px;
 }

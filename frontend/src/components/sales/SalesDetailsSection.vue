@@ -8,14 +8,21 @@
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label">Produce Name *</label>
-          <select class="form-select" v-model="form.produceName" @change="$emit('produce-change')" required>
+          <select
+            class="form-select"
+            v-model="form.produceName"
+            @change="handleProduceChange"
+            required
+          >
             <option value="">Select produce</option>
             <option
               v-for="item in inventory"
               :key="`${item.produceName}-${item.produceType}`"
               :value="item.produceName"
+              :data-produce-type="item.produceType"
             >
-              {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg available
+              {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
+              available
             </option>
           </select>
         </div>
@@ -85,16 +92,28 @@
 </template>
 
 <script setup>
+// Handle normalize text value.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
 
+// Configure form.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
+// Handle normalize text.
 const normalizeText = (field) => {
   if (typeof form.value[field] !== 'string') return;
   form.value[field] = normalizeTextValue(form.value[field]);
+};
+
+const emit = defineEmits(['produce-change', 'tonnage-input']);
+
+// Keep produce name/type synchronized from the selected option.
+const handleProduceChange = (event) => {
+  const selected = event?.target?.options?.[event.target.selectedIndex];
+  form.value.produceType = selected?.dataset?.produceType || '';
+  emit('produce-change');
 };
 
 defineProps({
@@ -107,11 +126,10 @@ defineProps({
     required: true
   }
 });
-
-defineEmits(['produce-change', 'tonnage-input']);
 </script>
 
 <style scoped>
+/* Component styles */
 .sales-section {
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;

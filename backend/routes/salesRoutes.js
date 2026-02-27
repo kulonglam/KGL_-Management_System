@@ -1,4 +1,5 @@
 import express from 'express';
+// Configure router.
 const router = express.Router();
 import {
   getAllSales,
@@ -15,12 +16,40 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router.route('/')
-  .get(protect, authorize('manager', 'sales_agent'), paginationValidation, validateRequest, getAllSales)
-  .post(protect, authorize('manager', 'sales_agent'), writeLimiter, saleCreateValidation, validateRequest, createSale);
+router
+  .route('/')
+  .get(
+    protect,
+    authorize('manager', 'sales_agent'),
+    paginationValidation,
+    validateRequest,
+    getAllSales
+  )
+  .post(
+    protect,
+    authorize('manager', 'sales_agent'),
+    writeLimiter,
+    saleCreateValidation,
+    validateRequest,
+    createSale
+  );
 
-router.get('/aggregation', protect, authorize('director'), authorizeDirectorOrban, getSalesAggregation);
+router.get(
+  '/aggregation',
+  protect,
+  authorize('director'),
+  authorizeDirectorOrban,
+  getSalesAggregation
+);
 
-router.delete('/:id', protect, authorize('manager'), writeLimiter, mongoIdParamValidation, validateRequest, deleteSale);
+router.delete(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  deleteSale
+);
 
 export default router;

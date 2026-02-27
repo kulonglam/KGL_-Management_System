@@ -11,15 +11,31 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Buyer</label>
-              <input type="text" class="form-control" :value="selectedCreditSale?.buyerName" disabled />
+              <input
+                type="text"
+                class="form-control"
+                :value="selectedCreditSale?.buyerName"
+                disabled
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label">Balance (UGX)</label>
-              <input type="text" class="form-control" :value="formatCurrency(balanceForSelected)" disabled />
+              <input
+                type="text"
+                class="form-control"
+                :value="formatCurrency(balanceForSelected)"
+                disabled
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label">Amount Paid (UGX) *</label>
-              <input type="number" class="form-control" v-model="repayForm.amountUgx" min="1" required />
+              <input
+                type="number"
+                class="form-control"
+                v-model="repayForm.amountUgx"
+                min="1"
+                required
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label">Payment Date</label>
@@ -46,7 +62,11 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Credit Sales Records</h5>
-        <button class="btn btn-outline-primary btn-sm" @click="loadCreditSales" :disabled="loadingList">
+        <button
+          class="btn btn-outline-primary btn-sm"
+          @click="loadCreditSales"
+          :disabled="loadingList"
+        >
           <span v-if="loadingList" class="spinner-border spinner-border-sm me-2"></span>
           Refresh
         </button>
@@ -60,36 +80,27 @@
             <thead>
               <tr>
                 <th>Buyer</th>
+                <th>NIN</th>
+                <th>Location</th>
+                <th>Contact</th>
+                <th class="text-end">Amount Due (UGX)</th>
                 <th>Produce</th>
-                <th class="text-end">Amount Due</th>
-                <th class="text-end">Paid</th>
-                <th class="text-end">Balance</th>
+                <th>Sales Agent</th>
                 <th>Due Date</th>
-                <th>Status</th>
-                <th v-if="canRepay" class="text-end">Actions</th>
+                <th>Dispatch Date</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in creditSales" :key="item._id">
                 <td>{{ item.buyerName }}</td>
-                <td>{{ item.produceName }} ({{ item.produceType }})</td>
+                <td>{{ item.nationalId || '-' }}</td>
+                <td>{{ item.location || '-' }}</td>
+                <td>{{ item.contact || '-' }}</td>
                 <td class="text-end">{{ formatCurrency(item.amountDueUgx) }}</td>
-                <td class="text-end">{{ formatCurrency(item.amountPaidUgx || 0) }}</td>
-                <td class="text-end">{{ formatCurrency(getBalance(item)) }}</td>
+                <td>{{ item.produceName }} ({{ item.produceType }})</td>
+                <td>{{ item.salesAgentName || '-' }}</td>
                 <td>{{ formatDate(item.dueDate) }}</td>
-                <td>
-                  <span v-if="getBalance(item) === 0" class="badge bg-success">Paid</span>
-                  <span v-else class="badge bg-warning text-dark">Pending</span>
-                </td>
-                <td v-if="canRepay" class="text-end">
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    :disabled="getBalance(item) === 0"
-                    @click="startRepay(item)"
-                  >
-                    Record Payment
-                  </button>
-                </td>
+                <td>{{ formatDate(item.dateOfDispatch) }}</td>
               </tr>
             </tbody>
           </table>
@@ -100,7 +111,7 @@
 </template>
 
 <script>
-import { creditSalesAPI } from '../services/api'
+import { creditSalesAPI } from '../services/api';
 
 export default {
   name: 'CreditSalesRecords',
@@ -117,97 +128,99 @@ export default {
       repayLoading: false,
       repayError: '',
       repaySuccess: ''
-    }
+    };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}')
-    await this.loadCreditSales()
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    await this.loadCreditSales();
   },
   computed: {
+    // Handle can repay.
     canRepay() {
-      return this.user.role === 'manager'
+      return this.user.role === 'manager';
     },
     selectedCreditSale() {
-      return this.creditSales.find(c => c._id === this.repayId)
+      return this.creditSales.find((c) => c._id === this.repayId);
     },
     balanceForSelected() {
-      if (!this.selectedCreditSale) return 0
-      return this.getBalance(this.selectedCreditSale)
+      if (!this.selectedCreditSale) return 0;
+      return this.getBalance(this.selectedCreditSale);
     }
   },
   methods: {
+    // Handle load credit sales.
     async loadCreditSales() {
-      this.loadingList = true
+      this.loadingList = true;
       try {
-        const response = await creditSalesAPI.getAll()
-        this.creditSales = response.data
+        const response = await creditSalesAPI.getAll();
+        this.creditSales = response.data;
       } catch (error) {
-        console.error('Error loading credit sales:', error)
+        console.error('Error loading credit sales:', error);
       } finally {
-        this.loadingList = false
+        this.loadingList = false;
       }
     },
     startRepay(item) {
-      this.repayId = item._id
+      this.repayId = item._id;
       this.repayForm = {
         amountUgx: '',
         paidAt: new Date().toISOString().split('T')[0]
-      }
-      this.repayError = ''
-      this.repaySuccess = ''
+      };
+      this.repayError = '';
+      this.repaySuccess = '';
     },
     cancelRepay() {
-      this.repayId = null
+      this.repayId = null;
       this.repayForm = {
         amountUgx: '',
         paidAt: new Date().toISOString().split('T')[0]
-      }
-      this.repayError = ''
-      this.repaySuccess = ''
+      };
+      this.repayError = '';
+      this.repaySuccess = '';
     },
     async handleRepay() {
-      if (!this.repayId) return
-      this.repayLoading = true
-      this.repayError = ''
-      this.repaySuccess = ''
+      if (!this.repayId) return;
+      this.repayLoading = true;
+      this.repayError = '';
+      this.repaySuccess = '';
 
       try {
         await creditSalesAPI.repay(this.repayId, {
           amountUgx: this.repayForm.amountUgx,
           paidAt: this.repayForm.paidAt
-        })
-        this.repaySuccess = 'Payment recorded successfully!'
-        await this.loadCreditSales()
-        const updated = this.creditSales.find(c => c._id === this.repayId)
+        });
+        this.repaySuccess = 'Payment recorded successfully!';
+        await this.loadCreditSales();
+        const updated = this.creditSales.find((c) => c._id === this.repayId);
         if (!updated || this.getBalance(updated) === 0) {
-          this.repayId = null
+          this.repayId = null;
         }
-        this.repayForm.amountUgx = ''
+        this.repayForm.amountUgx = '';
       } catch (error) {
-        this.repayError = error.response?.data?.message || 'Failed to record payment'
+        this.repayError = error.response?.data?.message || 'Failed to record payment';
       } finally {
-        this.repayLoading = false
+        this.repayLoading = false;
       }
     },
     getBalance(item) {
       if (item.balanceUgx !== undefined && item.balanceUgx !== null) {
-        return item.balanceUgx
+        return item.balanceUgx;
       }
-      return Math.max((item.amountDueUgx || 0) - (item.amountPaidUgx || 0), 0)
+      return Math.max((item.amountDueUgx || 0) - (item.amountPaidUgx || 0), 0);
     },
     formatDate(value) {
-      if (!value) return '-'
-      const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return '-'
-      return date.toLocaleDateString()
+      if (!value) return '-';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString();
     },
     formatCurrency(amount) {
       return new Intl.NumberFormat('en-UG', {
         style: 'currency',
         currency: 'UGX',
         minimumFractionDigits: 0
-      }).format(amount || 0)
+      }).format(amount || 0);
     }
   }
-}
+};
 </script>

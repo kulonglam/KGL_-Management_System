@@ -1,5 +1,6 @@
 import StockNotification from '../models/StockNotification.js';
 
+// Create out of stock notification.
 const createOutOfStockNotification = async ({ branch, produceName, produceType }) => {
   const existingUnread = await StockNotification.findOne({
     branch,
@@ -23,6 +24,7 @@ const createOutOfStockNotification = async ({ branch, produceName, produceType }
   });
 };
 
+// Handle resolve out of stock notification.
 const resolveOutOfStockNotification = async ({ branch, produceName, produceType }) => {
   await StockNotification.updateMany(
     {

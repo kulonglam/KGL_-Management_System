@@ -1,4 +1,5 @@
 import express from 'express';
+// Configure router.
 const router = express.Router();
 import {
   getAllProcurement,
@@ -17,13 +18,36 @@ import {
   procurementUpdateValidation
 } from '../validators/requestValidators.js';
 
-router.route('/')
+router
+  .route('/')
   .get(protect, authorize('manager'), paginationValidation, validateRequest, getAllProcurement)
-  .post(protect, authorize('manager'), writeLimiter, procurementCreateValidation, validateRequest, createProcurement);
+  .post(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    procurementCreateValidation,
+    validateRequest,
+    createProcurement
+  );
 
-router.route('/:id')
+router
+  .route('/:id')
   .get(protect, authorize('manager'), mongoIdParamValidation, validateRequest, getProcurementById)
-  .put(protect, authorize('manager'), writeLimiter, procurementUpdateValidation, validateRequest, updateProcurement)
-  .delete(protect, authorize('manager'), writeLimiter, mongoIdParamValidation, validateRequest, deleteProcurement);
+  .put(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    procurementUpdateValidation,
+    validateRequest,
+    updateProcurement
+  )
+  .delete(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    mongoIdParamValidation,
+    validateRequest,
+    deleteProcurement
+  );
 
 export default router;

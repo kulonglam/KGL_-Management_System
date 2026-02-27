@@ -1,3 +1,4 @@
+// Handle success response.
 const successResponse = (dataSchema, description = 'Successful response') => ({
   description,
   content: {
@@ -17,6 +18,7 @@ const successResponse = (dataSchema, description = 'Successful response') => ({
   }
 });
 
+// Configure swagger spec.
 const swaggerSpec = {
   openapi: '3.0.0',
   info: {
@@ -153,12 +155,19 @@ const swaggerSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string' },
-          name: { type: 'string' },
-          type: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
-          sourceType: { type: 'string', enum: ['individual', 'company', 'own_farm'] },
+          produceName: { type: 'string' },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
+          sourceType: { type: 'string', enum: ['individual', 'company', 'kgl_farm'] },
           dateReceived: { type: 'string', format: 'date' },
           timeReceived: { type: 'string' },
-          tonnageKg: { type: 'number', minimum: 1000 },
+          tonnageKg: {
+            type: 'number',
+            minimum: 100,
+            description: 'Minimum 100 kg. For sourceType=individual, minimum is 1000 kg.'
+          },
           costUgx: { type: 'number' },
           dealerName: { type: 'string' },
           dealerContact: { type: 'string' },
@@ -169,28 +178,33 @@ const swaggerSpec = {
       ProcurementCreateRequest: {
         type: 'object',
         required: [
-          'name',
-          'type',
+          'produceName',
+          'produceType',
           'sourceType',
           'dateReceived',
           'timeReceived',
           'tonnageKg',
           'costUgx',
           'dealerName',
-          'dealerContact',
-          'sellingPrice'
+          'dealerContact'
         ],
         properties: {
-          name: { type: 'string' },
-          type: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
-          sourceType: { type: 'string', enum: ['individual', 'company', 'own_farm'] },
+          produceName: { type: 'string' },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
+          sourceType: { type: 'string', enum: ['individual', 'company', 'kgl_farm'] },
           dateReceived: { type: 'string', format: 'date' },
           timeReceived: { type: 'string', example: '10:45' },
-          tonnageKg: { type: 'number', minimum: 1000 },
+          tonnageKg: {
+            type: 'number',
+            minimum: 100,
+            description: 'Minimum 100 kg. For sourceType=individual, minimum is 1000 kg.'
+          },
           costUgx: { type: 'number', minimum: 10000 },
           dealerName: { type: 'string' },
-          dealerContact: { type: 'string', example: '+256700000000' },
-          sellingPrice: { type: 'number', minimum: 10000 }
+          dealerContact: { type: 'string', example: '+256700000000' }
         }
       },
       Sale: {
@@ -198,7 +212,10 @@ const swaggerSpec = {
         properties: {
           _id: { type: 'string' },
           produceName: { type: 'string' },
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
           tonnageKg: { type: 'number' },
           amountPaidUgx: { type: 'number' },
           buyerName: { type: 'string' },
@@ -212,7 +229,11 @@ const swaggerSpec = {
         required: ['produceName', 'tonnageKg', 'buyerName', 'date', 'time'],
         properties: {
           produceName: { type: 'string' },
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'], nullable: true },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'],
+            nullable: true
+          },
           tonnageKg: { type: 'number', minimum: 1 },
           buyerName: { type: 'string' },
           date: { type: 'string', format: 'date' },
@@ -241,7 +262,10 @@ const swaggerSpec = {
           salesAgentName: { type: 'string' },
           dueDate: { type: 'string', format: 'date' },
           produceName: { type: 'string' },
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
           tonnageKg: { type: 'number' },
           dateOfDispatch: { type: 'string', format: 'date' },
           isPaid: { type: 'boolean' }
@@ -254,7 +278,11 @@ const swaggerSpec = {
           trustedBuyerId: { type: 'string' },
           dueDate: { type: 'string', format: 'date' },
           produceName: { type: 'string' },
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'], nullable: true },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'],
+            nullable: true
+          },
           tonnageKg: { type: 'number', minimum: 1 },
           dateOfDispatch: { type: 'string', format: 'date' }
         }
@@ -322,7 +350,10 @@ const swaggerSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string', nullable: true },
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
           priceUgx: { type: 'number', nullable: true },
           source: { type: 'string', enum: ['managed', 'inferred', 'unset'], nullable: true }
         }
@@ -331,7 +362,10 @@ const swaggerSpec = {
         type: 'object',
         required: ['produceType', 'priceUgx'],
         properties: {
-          produceType: { type: 'string', enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'] },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+          },
           priceUgx: { type: 'number', minimum: 10000 }
         }
       },
@@ -362,10 +396,6 @@ const swaggerSpec = {
       },
       Conflict: {
         description: 'Conflict',
-        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
-      },
-      Locked: {
-        description: 'Stock lock timeout / contention',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
       },
       InternalServerError: {
@@ -409,7 +439,9 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/RegisterRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/RegisterRequest' } }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
@@ -484,7 +516,9 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateUserRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/UpdateUserRequest' } }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/UserPublic' }),
@@ -528,7 +562,11 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ProcurementCreateRequest' } } }
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ProcurementCreateRequest' }
+            }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/Procurement' }),
@@ -558,7 +596,11 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ProcurementCreateRequest' } } }
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ProcurementCreateRequest' }
+            }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/Procurement' }),
@@ -601,14 +643,15 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/SaleCreateRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/SaleCreateRequest' } }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/Sale' }),
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' },
-          423: { $ref: '#/components/responses/Locked' }
+          403: { $ref: '#/components/responses/Forbidden' }
         }
       }
     },
@@ -658,14 +701,15 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreditSaleCreateRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CreditSaleCreateRequest' } }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/CreditSale' }),
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' },
-          423: { $ref: '#/components/responses/Locked' }
+          403: { $ref: '#/components/responses/Forbidden' }
         }
       }
     },
@@ -677,7 +721,11 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreditSalePaymentStatusRequest' } } }
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/CreditSalePaymentStatusRequest' }
+            }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
@@ -696,7 +744,9 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/CreditSaleRepayRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CreditSaleRepayRequest' } }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
@@ -740,7 +790,9 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/InventoryCheckRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/InventoryCheckRequest' } }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/InventoryCheckResult' }),
@@ -769,7 +821,9 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/TrustedBuyerRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/TrustedBuyerRequest' } }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/TrustedBuyer' }),
@@ -787,7 +841,9 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/TrustedBuyerRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/TrustedBuyerRequest' } }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/TrustedBuyer' }),
@@ -830,7 +886,9 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/PriceUpsertRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/PriceUpsertRequest' } }
+          }
         },
         responses: {
           201: successResponse({ $ref: '#/components/schemas/PriceWriteResult' }),
@@ -862,7 +920,9 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/PriceUpsertRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/PriceUpsertRequest' } }
+          }
         },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/PriceWriteResult' }),

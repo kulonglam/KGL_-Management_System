@@ -5,18 +5,21 @@ Vue.js 3 + Bootstrap 5 frontend for the Karibu Groceries wholesale produce distr
 ## Setup Instructions
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - Backend API running on `http://localhost:5000`
 
 ### Installation
 
 1. Install dependencies:
+
 ```bash
 cd frontend
 npm install
 ```
 
 2. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -24,6 +27,7 @@ npm run dev
 The application will be available at `http://localhost:3000`
 
 3. Build for production:
+
 ```bash
 npm run build
 ```
@@ -33,11 +37,13 @@ npm run build
 ### Role-Based Access Control
 
 #### Director (Mr. Orban)
+
 - View aggregated sales across all branches
 - See total revenue, cash sales, and credit sales
 - View branch-wise performance breakdown
 
 #### Manager
+
 - Full access to branch operations
 - Record procurement
 - Record sales (cash and credit)
@@ -45,6 +51,7 @@ npm run build
 - Branch-specific dashboard
 
 #### Sales Agent
+
 - Record sales transactions
 - Record credit sales
 - View inventory
@@ -112,9 +119,6 @@ JWT tokens are stored in localStorage and automatically attached to API requests
 - Axios interceptors add JWT tokens to requests
 - Form validation matches backend requirements
 
-
-
-
 Here’s a concise evaluation checklist tailored to your project, aligned with the criteria you provided.
 
 Functionality
@@ -141,7 +145,3 @@ Problem-Solving
 Missing requirement gaps closed (manager limit, name validation, out‑of‑stock alert).
 Errors resolved with proper backend fixes (credit repayment validation).
 UI adjusted based on real workflow (record pages separated, buyer handling, confirmation modals).
-
-
-
-

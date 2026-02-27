@@ -3,7 +3,9 @@
     <div class="price-page-header">
       <div>
         <h2 class="page-title">Price Management</h2>
-        <p class="page-subtitle mb-0">Manage branch-level prices by produce type (create, update, delete).</p>
+        <p class="page-subtitle mb-0">
+          Manage branch-level prices by produce type (create, update, delete).
+        </p>
       </div>
       <button class="btn btn-outline-primary refresh-btn" @click="loadPrices" :disabled="loading">
         <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
@@ -72,7 +74,9 @@
                     />
                   </div>
                   <small v-if="row.error" class="text-danger d-block mt-1">{{ row.error }}</small>
-                  <small v-if="row.success" class="text-success d-block mt-1">{{ row.success }}</small>
+                  <small v-if="row.success" class="text-success d-block mt-1">{{
+                    row.success
+                  }}</small>
                 </td>
                 <td class="text-end">
                   <div class="action-wrap">
@@ -90,7 +94,10 @@
                       @click="deletePrice(row)"
                       :disabled="!row._id || row.saving || row.deleting"
                     >
-                      <span v-if="row.deleting" class="spinner-border spinner-border-sm me-2"></span>
+                      <span
+                        v-if="row.deleting"
+                        class="spinner-border spinner-border-sm me-2"
+                      ></span>
                       Delete
                     </button>
                   </div>
@@ -107,8 +114,10 @@
 <script>
 import { priceAPI } from '../services/api';
 
+// Configure produce types.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
 
+// Create row.
 const createRow = (type) => ({
   _id: null,
   type,
@@ -131,6 +140,7 @@ export default {
     };
   },
   computed: {
+    // Handle managed count.
     managedCount() {
       return this.rows.filter((row) => row.source === 'managed').length;
     },
@@ -145,6 +155,7 @@ export default {
     await this.loadPrices();
   },
   methods: {
+    // Handle status label.
     statusLabel(source) {
       if (source === 'managed') return 'Managed';
       if (source === 'inferred') return 'Inferred';
@@ -209,6 +220,7 @@ export default {
       row.saving = true;
       try {
         const wasManaged = Boolean(row._id);
+        // Configure payload.
         const payload = {
           produceType: row.type,
           priceUgx: price
@@ -254,6 +266,7 @@ export default {
 </script>
 
 <style scoped>
+/* Component styles */
 .price-page {
   display: flex;
   flex-direction: column;

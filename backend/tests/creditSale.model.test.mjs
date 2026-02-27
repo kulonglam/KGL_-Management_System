@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 import CreditSale from '../models/CreditSale.js';
 
+// Handle base payload.
 const basePayload = () => ({
   buyerName: 'Trusted Buyer',
   nationalId: 'CM1234567890AB',

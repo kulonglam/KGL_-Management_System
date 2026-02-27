@@ -7,6 +7,7 @@ import Sale from './models/Sale.js';
 import CreditSale from './models/CreditSale.js';
 import TrustedBuyer from './models/TrustedBuyer.js';
 
+// Handle connect db.
 const connectDB = async () => {
   dotenv.config();
   try {
@@ -18,6 +19,7 @@ const connectDB = async () => {
   }
 };
 
+// Handle seed data.
 const seedData = async () => {
   try {
     await connectDB();
@@ -90,13 +92,13 @@ const seedData = async () => {
     console.log('Users created');
 
     // Create sample procurement
-    const managerA = users.find(u => u.username === 'managerA');
-    const managerB = users.find(u => u.username === 'managerB');
+    const managerA = users.find((u) => u.username === 'managerA');
+    const managerB = users.find((u) => u.username === 'managerB');
 
     await Procurement.create([
       {
-        name: 'Red Beans',
-        type: 'Beans',
+        produceName: 'Red Beans',
+        produceType: 'Beans',
         sourceType: 'company',
         dateReceived: new Date('2026-02-10'),
         timeReceived: '09:00',
@@ -109,8 +111,8 @@ const seedData = async () => {
         recordedBy: managerA._id
       },
       {
-        name: 'White Maize',
-        type: 'Grain Maize',
+        produceName: 'White Maize',
+        produceType: 'Grain Maize',
         sourceType: 'company',
         dateReceived: new Date('2026-02-12'),
         timeReceived: '10:30',
@@ -123,8 +125,8 @@ const seedData = async () => {
         recordedBy: managerB._id
       },
       {
-        name: 'Brown Beans',
-        type: 'Beans',
+        produceName: 'Brown Beans',
+        produceType: 'Beans',
         sourceType: 'individual',
         dateReceived: new Date('2026-02-14'),
         timeReceived: '11:00',
@@ -137,9 +139,9 @@ const seedData = async () => {
         recordedBy: managerB._id
       },
       {
-        name: 'Groundnuts',
-        type: 'G-nuts',
-        sourceType: 'own_farm',
+        produceName: 'Groundnuts',
+        produceType: 'G-nuts',
+        sourceType: 'kgl_farm',
         dateReceived: new Date('2026-02-15'),
         timeReceived: '14:00',
         tonnageKg: 2000,
@@ -155,8 +157,8 @@ const seedData = async () => {
     console.log('Procurement created');
 
     // Create sample sales
-    const agent1A = users.find(u => u.username === 'agent1A');
-    const agent2B = users.find(u => u.username === 'agent2B');
+    const agent1A = users.find((u) => u.username === 'agent1A');
+    const agent2B = users.find((u) => u.username === 'agent2B');
 
     await Sale.create([
       {

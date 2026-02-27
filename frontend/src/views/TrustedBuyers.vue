@@ -9,7 +9,11 @@
           <button class="btn btn-primary btn-sm" @click="toggleForm">
             {{ showForm ? (editingId ? 'Close Edit' : 'Hide Form') : 'Add Buyer' }}
           </button>
-          <button class="btn btn-outline-primary btn-sm" @click="loadBuyers" :disabled="loadingList">
+          <button
+            class="btn btn-outline-primary btn-sm"
+            @click="loadBuyers"
+            :disabled="loadingList"
+          >
             <span v-if="loadingList" class="spinner-border spinner-border-sm me-2"></span>
             Refresh
           </button>
@@ -138,7 +142,7 @@
 </template>
 
 <script>
-import { trustedBuyersAPI } from '../services/api'
+import { trustedBuyersAPI } from '../services/api';
 
 export default {
   name: 'TrustedBuyers',
@@ -158,104 +162,108 @@ export default {
       loading: false,
       error: '',
       success: ''
-    }
+    };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}')
-    await this.loadBuyers()
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    await this.loadBuyers();
   },
   methods: {
+    // Handle load buyers.
     async loadBuyers() {
-      this.loadingList = true
+      this.loadingList = true;
       try {
-        const response = await trustedBuyersAPI.getAll()
-        this.buyers = response.data
+        const response = await trustedBuyersAPI.getAll();
+        this.buyers = response.data;
       } catch (error) {
-        console.error('Failed to load trusted buyers:', error)
+        console.error('Failed to load trusted buyers:', error);
       } finally {
-        this.loadingList = false
+        this.loadingList = false;
       }
     },
     async handleSubmit() {
-      this.loading = true
-      this.error = ''
-      this.success = ''
+      this.loading = true;
+      this.error = '';
+      this.success = '';
 
       try {
+        // Configure payload.
         const payload = {
           name: this.normalizeText(this.form.name),
           nationalId: this.form.nationalId.toUpperCase(),
           location: this.normalizeText(this.form.location),
           contact: this.form.contact.trim()
-        }
+        };
 
         if (this.editingId) {
-          await trustedBuyersAPI.update(this.editingId, payload)
-          this.success = 'Trusted buyer updated successfully!'
+          await trustedBuyersAPI.update(this.editingId, payload);
+          this.success = 'Trusted buyer updated successfully!';
         } else {
-          await trustedBuyersAPI.create(payload)
-          this.success = 'Trusted buyer added successfully!'
+          await trustedBuyersAPI.create(payload);
+          this.success = 'Trusted buyer added successfully!';
         }
 
-        this.resetForm()
-        await this.loadBuyers()
+        this.resetForm();
+        await this.loadBuyers();
       } catch (error) {
         this.error =
           error.response?.data?.message ||
-          (this.editingId ? 'Failed to update trusted buyer' : 'Failed to add trusted buyer')
+          (this.editingId ? 'Failed to update trusted buyer' : 'Failed to add trusted buyer');
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     startEdit(item) {
-      this.editingId = item._id
-      this.showForm = true
+      this.editingId = item._id;
+      this.showForm = true;
       this.form = {
         name: item.name,
         nationalId: item.nationalId,
         location: item.location,
         contact: item.contact
-      }
-      this.error = ''
-      this.success = ''
+      };
+      this.error = '';
+      this.success = '';
     },
     cancelEdit() {
-      this.resetForm()
+      this.resetForm();
     },
     async deleteBuyer(item) {
-      if (!confirm(`Delete trusted buyer ${item.name}?`)) return
+      if (!confirm(`Delete trusted buyer ${item.name}?`)) return;
       try {
-        await trustedBuyersAPI.delete(item._id)
+        await trustedBuyersAPI.delete(item._id);
         if (this.editingId === item._id) {
-          this.resetForm()
+          this.resetForm();
         }
-        await this.loadBuyers()
+        await this.loadBuyers();
       } catch (error) {
-        this.error = error.response?.data?.message || 'Failed to delete trusted buyer'
+        this.error = error.response?.data?.message || 'Failed to delete trusted buyer';
       }
     },
     resetForm() {
-      this.editingId = null
-      this.showForm = false
+      this.editingId = null;
+      this.showForm = false;
       this.form = {
         name: '',
         nationalId: '',
         location: '',
         contact: ''
-      }
+      };
     },
     toggleForm() {
       if (this.showForm && this.editingId) {
-        this.resetForm()
+        this.resetForm();
       } else {
-        this.showForm = !this.showForm
+        this.showForm = !this.showForm;
       }
-      this.error = ''
-      this.success = ''
+      this.error = '';
+      this.success = '';
     },
     normalizeText(value) {
-      return String(value || '').trim().replace(/\s+/g, ' ')
+      return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ');
     }
   }
-}
+};
 </script>

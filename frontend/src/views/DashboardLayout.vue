@@ -11,8 +11,10 @@
           >
             <i class="bi bi-list"></i>
           </button>
-          <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
-               style="width: 40px; height: 40px;">
+          <div
+            class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+            style="width: 40px; height: 40px"
+          >
             <i class="bi bi-box-seam text-white"></i>
           </div>
           <div>
@@ -49,11 +51,7 @@
             <div class="sidebar-title">Navigation</div>
 
             <template v-if="user.role === 'manager'">
-              <div
-                v-for="section in managerNavSections"
-                :key="section.key"
-                class="sidebar-group"
-              >
+              <div v-for="section in managerNavSections" :key="section.key" class="sidebar-group">
                 <button
                   type="button"
                   class="sidebar-group-toggle btn btn-link text-start w-100"
@@ -113,7 +111,11 @@
           </div>
         </nav>
 
-        <div v-if="mobileSidebarOpen" class="sidebar-backdrop d-md-none" @click="closeMobileSidebar"></div>
+        <div
+          v-if="mobileSidebarOpen"
+          class="sidebar-backdrop d-md-none"
+          @click="closeMobileSidebar"
+        ></div>
 
         <!-- Main Content -->
         <main class="main-content px-md-4 py-4">
@@ -132,7 +134,9 @@
                   >
                     <span>{{ notification.message }}</span>
                     <div class="d-flex align-items-center gap-2">
-                      <small class="text-muted">{{ formatNotificationTime(notification.createdAt) }}</small>
+                      <small class="text-muted">{{
+                        formatNotificationTime(notification.createdAt)
+                      }}</small>
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-secondary"
@@ -144,7 +148,11 @@
                   </div>
                 </div>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-dark" @click="markAllNotificationsRead">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-dark"
+                @click="markAllNotificationsRead"
+              >
                 Acknowledge All
               </button>
             </div>
@@ -191,9 +199,7 @@
             <button type="button" class="btn btn-outline-secondary" @click="closeLogoutModal">
               Cancel
             </button>
-            <button type="button" class="btn btn-danger" @click="confirmLogout">
-              Logout
-            </button>
+            <button type="button" class="btn btn-danger" @click="confirmLogout">Logout</button>
           </div>
         </div>
       </div>
@@ -202,7 +208,7 @@
 </template>
 
 <script>
-import { inventoryAPI, notificationsAPI } from '../services/api'
+import { inventoryAPI, notificationsAPI } from '../services/api';
 
 export default {
   name: 'DashboardLayout',
@@ -220,61 +226,80 @@ export default {
         records: false,
         administration: false
       }
-    }
+    };
   },
   computed: {
+    // Handle current year.
     currentYear() {
-      return new Date().getFullYear()
+      return new Date().getFullYear();
     },
     roleLabel() {
+      // Configure roles.
       const roles = {
         director: 'Director',
         manager: 'Manager',
         sales_agent: 'Sales Agent'
-      }
-      return roles[this.user.role] || ''
+      };
+      return roles[this.user.role] || '';
     },
     navItems() {
-      const items = []
+      const items = [];
 
       if (this.user.role === 'director') {
         items.push(
-          { path: '/dashboard/director', icon: 'bi bi-graph-up', label: 'Dashboard' },
+          { path: '/dashboard/director', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
-        )
+        );
       } else if (this.user.role === 'manager') {
         items.push(
-          { path: '/dashboard/manager', icon: 'bi bi-graph-up', label: 'Dashboard' },
+          { path: '/dashboard/manager', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
-          { path: '/dashboard/credit-sales-records', icon: 'bi bi-journal-text', label: 'Credit Sales Records' },
+          {
+            path: '/dashboard/credit-sales-records',
+            icon: 'bi bi-journal-text',
+            label: 'Credit Sales Records'
+          },
           { path: '/dashboard/price-management', icon: 'bi bi-tags', label: 'Price Management' },
-          { path: '/dashboard/procurement-records', icon: 'bi bi-card-list', label: 'Procurement Records' },
-          { path: '/dashboard/trusted-buyers', icon: 'bi bi-person-check', label: 'Trusted Buyers' },
+          {
+            path: '/dashboard/procurement-records',
+            icon: 'bi bi-card-list',
+            label: 'Procurement Records'
+          },
+          {
+            path: '/dashboard/trusted-buyers',
+            icon: 'bi bi-person-check',
+            label: 'Trusted Buyers'
+          },
           { path: '/dashboard/users', icon: 'bi bi-people', label: 'Users' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
-        )
+        );
       } else if (this.user.role === 'sales_agent') {
         items.push(
           { path: '/dashboard/sales-agent', icon: 'bi bi-graph-up', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
-          { path: '/dashboard/credit-sales-records', icon: 'bi bi-journal-text', label: 'Credit Sales Records' },
+          {
+            path: '/dashboard/credit-sales-records',
+            icon: 'bi bi-journal-text',
+            label: 'Credit Sales Records'
+          },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
-        )
+        );
       }
 
-      return items
+      return items;
     },
     mainNavItems() {
-      return this.navItems.filter(item => item.path)
+      return this.navItems.filter((item) => item.path);
     },
     managerNavSections() {
-      const itemMap = new Map(this.mainNavItems.map(item => [item.path, item]))
-      const pick = (paths) => paths.map(path => itemMap.get(path)).filter(Boolean)
+      const itemMap = new Map(this.mainNavItems.map((item) => [item.path, item]));
+      // Handle pick.
+      const pick = (paths) => paths.map((path) => itemMap.get(path)).filter(Boolean);
 
       return [
         {
@@ -291,10 +316,7 @@ export default {
         {
           key: 'records',
           label: 'Records',
-          items: pick([
-            '/dashboard/credit-sales-records',
-            '/dashboard/procurement-records'
-          ])
+          items: pick(['/dashboard/credit-sales-records', '/dashboard/procurement-records'])
         },
         {
           key: 'administration',
@@ -306,152 +328,154 @@ export default {
             '/dashboard/profile'
           ])
         }
-      ].filter(section => section.items.length > 0)
+      ].filter((section) => section.items.length > 0);
     }
   },
   watch: {
     '$route.path'() {
-      this.ensureActiveManagerSectionOpen()
+      this.ensureActiveManagerSectionOpen();
     }
   },
   created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}')
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
     if (this.user.role === 'manager') {
-      this.loadStockAlert()
-      this.loadStockNotifications()
-      this.ensureActiveManagerSectionOpen()
+      this.loadStockAlert();
+      this.loadStockNotifications();
+      this.ensureActiveManagerSectionOpen();
     }
   },
   mounted() {
-    window.addEventListener('resize', this.handleViewportResize)
-    window.addEventListener('user-updated', this.syncUserFromStorage)
+    window.addEventListener('resize', this.handleViewportResize);
+    window.addEventListener('user-updated', this.syncUserFromStorage);
     if (this.user.role === 'manager') {
-      this.startStockMonitor()
+      this.startStockMonitor();
     }
   },
   beforeUnmount() {
-    window.removeEventListener('resize', this.handleViewportResize)
-    window.removeEventListener('user-updated', this.syncUserFromStorage)
-    this.stopStockMonitor()
+    window.removeEventListener('resize', this.handleViewportResize);
+    window.removeEventListener('user-updated', this.syncUserFromStorage);
+    this.stopStockMonitor();
   },
   methods: {
+    // Handle sync user from storage.
     syncUserFromStorage() {
-      const previousRole = this.user.role
-      this.user = JSON.parse(localStorage.getItem('user') || '{}')
+      const previousRole = this.user.role;
+      this.user = JSON.parse(localStorage.getItem('user') || '{}');
       if (this.user.role === 'manager' && previousRole !== 'manager') {
-        this.loadStockAlert()
-        this.loadStockNotifications()
-        this.startStockMonitor()
+        this.loadStockAlert();
+        this.loadStockNotifications();
+        this.startStockMonitor();
       }
       if (this.user.role !== 'manager' && previousRole === 'manager') {
-        this.stopStockMonitor()
-        this.stockNotifications = []
+        this.stopStockMonitor();
+        this.stockNotifications = [];
       }
     },
     openLogoutModal() {
-      this.showLogoutModal = true
+      this.showLogoutModal = true;
     },
     closeLogoutModal() {
-      this.showLogoutModal = false
+      this.showLogoutModal = false;
     },
     confirmLogout() {
-      this.closeMobileSidebar()
-      this.closeLogoutModal()
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      this.$router.push('/')
+      this.closeMobileSidebar();
+      this.closeLogoutModal();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/');
     },
     toggleMobileSidebar() {
-      this.mobileSidebarOpen = !this.mobileSidebarOpen
+      this.mobileSidebarOpen = !this.mobileSidebarOpen;
     },
     closeMobileSidebar() {
-      this.mobileSidebarOpen = false
+      this.mobileSidebarOpen = false;
     },
     handleViewportResize() {
       if (window.innerWidth >= 768 && this.mobileSidebarOpen) {
-        this.mobileSidebarOpen = false
+        this.mobileSidebarOpen = false;
       }
     },
     isManagerSectionOpen(sectionKey) {
-      return this.managerSectionOpen[sectionKey] === true
+      return this.managerSectionOpen[sectionKey] === true;
     },
     toggleManagerSection(sectionKey) {
-      this.managerSectionOpen[sectionKey] = !this.isManagerSectionOpen(sectionKey)
+      this.managerSectionOpen[sectionKey] = !this.isManagerSectionOpen(sectionKey);
     },
     ensureActiveManagerSectionOpen() {
-      if (this.user.role !== 'manager') return
-      const activeSection = this.managerNavSections.find(section =>
-        section.items.some(item => this.$route.path === item.path)
-      )
+      if (this.user.role !== 'manager') return;
+      const activeSection = this.managerNavSections.find((section) =>
+        section.items.some((item) => this.$route.path === item.path)
+      );
       if (activeSection) {
-        this.managerSectionOpen[activeSection.key] = true
+        this.managerSectionOpen[activeSection.key] = true;
       }
     },
     async loadStockAlert() {
       try {
-        const response = await inventoryAPI.get()
-        const outOfStockItems = response.data.outOfStockItems || []
-        this.outOfStockCount = outOfStockItems.length
+        const response = await inventoryAPI.get();
+        const outOfStockItems = response.data.outOfStockItems || [];
+        this.outOfStockCount = outOfStockItems.length;
       } catch (error) {
-        console.error('Failed to load stock alert:', error)
+        console.error('Failed to load stock alert:', error);
       }
     },
     dismissStockAlert() {
-      this.stockAlertDismissed = true
+      this.stockAlertDismissed = true;
     },
     startStockMonitor() {
-      this.stopStockMonitor()
+      this.stopStockMonitor();
       this.stockMonitorIntervalId = window.setInterval(() => {
-        this.loadStockAlert()
-        this.loadStockNotifications()
-      }, 60000)
+        this.loadStockAlert();
+        this.loadStockNotifications();
+      }, 60000);
     },
     stopStockMonitor() {
       if (this.stockMonitorIntervalId) {
-        window.clearInterval(this.stockMonitorIntervalId)
-        this.stockMonitorIntervalId = null
+        window.clearInterval(this.stockMonitorIntervalId);
+        this.stockMonitorIntervalId = null;
       }
     },
     async loadStockNotifications() {
       try {
-        const response = await notificationsAPI.getAll({ unread: true })
-        this.stockNotifications = response.data || []
+        const response = await notificationsAPI.getAll({ unread: true });
+        this.stockNotifications = response.data || [];
       } catch (error) {
-        console.error('Failed to load stock notifications:', error)
+        console.error('Failed to load stock notifications:', error);
       }
     },
     async markNotificationRead(notificationId) {
       try {
-        await notificationsAPI.markAsRead(notificationId)
+        await notificationsAPI.markAsRead(notificationId);
         this.stockNotifications = this.stockNotifications.filter(
           (notification) => notification._id !== notificationId
-        )
+        );
       } catch (error) {
-        console.error('Failed to acknowledge notification:', error)
+        console.error('Failed to acknowledge notification:', error);
       }
     },
     async markAllNotificationsRead() {
-      const notificationIds = this.stockNotifications.map((notification) => notification._id)
+      const notificationIds = this.stockNotifications.map((notification) => notification._id);
       for (let i = 0; i < notificationIds.length; i += 1) {
-        await this.markNotificationRead(notificationIds[i])
+        await this.markNotificationRead(notificationIds[i]);
       }
     },
     formatNotificationTime(value) {
-      if (!value) return ''
-      const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return ''
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
       return date.toLocaleString('en-UG', {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-      })
+      });
     }
   }
-}
+};
 </script>
 
 <style scoped>
+/* Component styles */
 .sidebar-avatar {
   width: 100%;
   height: 100%;

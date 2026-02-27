@@ -16,7 +16,7 @@
       <div class="col-md-4">
         <div class="card stats-card">
           <div class="card-body text-center">
-            <i class="bi bi-cash-coin text-success" style="font-size: 2rem;"></i>
+            <i class="bi bi-cash-coin text-success" style="font-size: 2rem"></i>
             <h6 class="text-muted mt-2">Cash Sales Today</h6>
             <h3 class="stats-value">{{ formatStatCurrency(stats.cashSales) }}</h3>
             <small class="text-muted">{{ stats.cashCount }} transactions</small>
@@ -26,7 +26,7 @@
       <div class="col-md-4">
         <div class="card stats-card">
           <div class="card-body text-center">
-            <i class="bi bi-credit-card text-warning" style="font-size: 2rem;"></i>
+            <i class="bi bi-credit-card text-warning" style="font-size: 2rem"></i>
             <h6 class="text-muted mt-2">Credit Sales Today</h6>
             <h3 class="stats-value">{{ formatStatCurrency(stats.creditSales) }}</h3>
             <small class="text-muted">{{ stats.creditCount }} transactions</small>
@@ -36,7 +36,7 @@
       <div class="col-md-4">
         <div class="card stats-card">
           <div class="card-body text-center">
-            <i class="bi bi-box text-info" style="font-size: 2rem;"></i>
+            <i class="bi bi-box text-info" style="font-size: 2rem"></i>
             <h6 class="text-muted mt-2">Total Produce Today</h6>
             <h3 class="stats-value">{{ formatCompactNumber(stats.totalKg) }} kg</h3>
             <small class="text-muted">Cash + Credit</small>
@@ -48,8 +48,8 @@
 </template>
 
 <script>
-import { salesAPI, creditSalesAPI } from '../services/api'
-import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat'
+import { salesAPI, creditSalesAPI } from '../services/api';
+import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 
 export default {
   name: 'SalesAgentDashboard',
@@ -66,57 +66,59 @@ export default {
         creditCount: 0,
         totalKg: 0
       }
-    }
+    };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user'))
-    this.setTodayLabel()
-    await this.loadData()
-    this.scheduleMidnightRefresh()
+    this.user = JSON.parse(localStorage.getItem('user'));
+    this.setTodayLabel();
+    await this.loadData();
+    this.scheduleMidnightRefresh();
   },
   beforeUnmount() {
     if (this.midnightTimeout) {
-      clearTimeout(this.midnightTimeout)
-      this.midnightTimeout = null
+      clearTimeout(this.midnightTimeout);
+      this.midnightTimeout = null;
     }
     if (this.midnightInterval) {
-      clearInterval(this.midnightInterval)
-      this.midnightInterval = null
+      clearInterval(this.midnightInterval);
+      this.midnightInterval = null;
     }
   },
   methods: {
+    // Handle load data.
     async loadData() {
       try {
         const [salesRes, creditRes] = await Promise.all([
           salesAPI.getAll(),
           creditSalesAPI.getAll()
-        ])
+        ]);
 
-        const { startOfDay, endOfDay } = this.getTodayRange()
+        const { startOfDay, endOfDay } = this.getTodayRange();
 
         // Filter by current user and today's date
-        const mySales = salesRes.data.filter(s => {
-          if (s.salesAgentName !== this.user.name) return false
-          const saleDate = new Date(s.date)
-          return saleDate >= startOfDay && saleDate < endOfDay
-        })
+        const mySales = salesRes.data.filter((s) => {
+          if (s.salesAgentName !== this.user.name) return false;
+          const saleDate = new Date(s.date);
+          return saleDate >= startOfDay && saleDate < endOfDay;
+        });
 
-        const myCreditSales = creditRes.data.filter(c => {
-          if (c.salesAgentName !== this.user.name) return false
-          const dispatchDate = new Date(c.dateOfDispatch)
-          return dispatchDate >= startOfDay && dispatchDate < endOfDay
-        })
+        const myCreditSales = creditRes.data.filter((c) => {
+          if (c.salesAgentName !== this.user.name) return false;
+          const dispatchDate = new Date(c.dateOfDispatch);
+          return dispatchDate >= startOfDay && dispatchDate < endOfDay;
+        });
 
-        this.stats.cashSales = mySales.reduce((sum, s) => sum + s.amountPaidUgx, 0)
-        this.stats.cashCount = mySales.length
-        
-        this.stats.creditSales = myCreditSales.reduce((sum, c) => sum + c.amountDueUgx, 0)
-        this.stats.creditCount = myCreditSales.length
+        this.stats.cashSales = mySales.reduce((sum, s) => sum + s.amountPaidUgx, 0);
+        this.stats.cashCount = mySales.length;
 
-        this.stats.totalKg = mySales.reduce((sum, s) => sum + s.tonnageKg, 0) +
-                            myCreditSales.reduce((sum, c) => sum + c.tonnageKg, 0)
+        this.stats.creditSales = myCreditSales.reduce((sum, c) => sum + c.amountDueUgx, 0);
+        this.stats.creditCount = myCreditSales.length;
+
+        this.stats.totalKg =
+          mySales.reduce((sum, s) => sum + s.tonnageKg, 0) +
+          myCreditSales.reduce((sum, c) => sum + c.tonnageKg, 0);
       } catch (error) {
-        console.error('Error loading data:', error)
+        console.error('Error loading data:', error);
       }
     },
     setTodayLabel() {
@@ -124,37 +126,41 @@ export default {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
-      })
+      });
     },
     scheduleMidnightRefresh() {
-      const now = new Date()
-      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-      const msUntilMidnight = nextMidnight.getTime() - now.getTime()
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const msUntilMidnight = nextMidnight.getTime() - now.getTime();
 
       this.midnightTimeout = setTimeout(() => {
-        this.setTodayLabel()
-        this.loadData()
-        this.midnightInterval = setInterval(() => {
-          this.setTodayLabel()
-          this.loadData()
-        }, 24 * 60 * 60 * 1000)
-      }, msUntilMidnight)
+        this.setTodayLabel();
+        this.loadData();
+        this.midnightInterval = setInterval(
+          () => {
+            this.setTodayLabel();
+            this.loadData();
+          },
+          24 * 60 * 60 * 1000
+        );
+      }, msUntilMidnight);
     },
     getTodayRange() {
-      const now = new Date()
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-      return { startOfDay, endOfDay }
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return { startOfDay, endOfDay };
     },
     formatStatCurrency(amount) {
-      return formatCompactCurrency(amount)
+      return formatCompactCurrency(amount);
     },
     formatCompactNumber
   }
-}
+};
 </script>
 
 <style scoped>
+/* Component styles */
 .stats-value {
   white-space: nowrap;
   overflow: hidden;

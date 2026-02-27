@@ -7,7 +7,6 @@ import { notFound, errorHandler } from './middleware/errorHandler.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 import { requestContext, accessLogger } from './middleware/observability.js';
-import { auditTrail } from './middleware/auditTrail.js';
 import swaggerSpec from './docs/swagger.js';
 
 import authRoutes from './routes/authRoutes.js';
@@ -19,8 +18,8 @@ import trustedBuyerRoutes from './routes/trustedBuyerRoutes.js';
 import priceRoutes from './routes/priceRoutes.js';
 import stockNotificationRoutes from './routes/stockNotificationRoutes.js';
 import opsRoutes from './routes/opsRoutes.js';
-import auditLogRoutes from './routes/auditLogRoutes.js';
 
+// Parse allowed origins.
 const parseAllowedOrigins = () => {
   const fallbackOrigins = ['http://localhost:5173'];
   const raw = process.env.ALLOWED_ORIGINS;
@@ -34,6 +33,7 @@ const parseAllowedOrigins = () => {
   return origins.length > 0 ? origins : fallbackOrigins;
 };
 
+// Create app.
 const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
@@ -55,7 +55,6 @@ const createApp = () => {
   app.use(apiLimiter);
   app.use(accessLogger);
   app.use(responseFormatter);
-  app.use(auditTrail);
 
   // Swagger
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -70,7 +69,6 @@ const createApp = () => {
   app.use('/api/trusted-buyers', trustedBuyerRoutes);
   app.use('/api/prices', priceRoutes);
   app.use('/api/notifications', stockNotificationRoutes);
-  app.use('/api/audit-logs', auditLogRoutes);
 
   app.get('/', (req, res) => {
     res.json({ message: 'Karibu Groceries LTD API' });

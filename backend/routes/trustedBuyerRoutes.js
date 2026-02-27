@@ -1,4 +1,5 @@
 import express from 'express';
+// Configure router.
 const router = express.Router();
 import {
   getTrustedBuyers,
@@ -18,12 +19,39 @@ import {
 
 router
   .route('/')
-  .get(protect, authorize('manager', 'sales_agent'), paginationValidation, validateRequest, getTrustedBuyers)
-  .post(protect, authorize('manager'), writeLimiter, trustedBuyerCreateValidation, validateRequest, createTrustedBuyer);
+  .get(
+    protect,
+    authorize('manager', 'sales_agent'),
+    paginationValidation,
+    validateRequest,
+    getTrustedBuyers
+  )
+  .post(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    trustedBuyerCreateValidation,
+    validateRequest,
+    createTrustedBuyer
+  );
 
 router
   .route('/:id')
-  .put(protect, authorize('manager'), writeLimiter, trustedBuyerUpdateValidation, validateRequest, updateTrustedBuyer)
-  .delete(protect, authorize('manager'), writeLimiter, mongoIdParamValidation, validateRequest, deleteTrustedBuyer);
+  .put(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    trustedBuyerUpdateValidation,
+    validateRequest,
+    updateTrustedBuyer
+  )
+  .delete(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    mongoIdParamValidation,
+    validateRequest,
+    deleteTrustedBuyer
+  );
 
 export default router;

@@ -1,6 +1,6 @@
 # Production Hardening Guide
 
-This document captures production-hardening controls implemented across six pillars.
+This document captures production-hardening controls implemented across five pillars.
 
 ## 1. Security
 - Security headers middleware enabled (`backend/middleware/securityHeaders.js`).
@@ -36,8 +36,6 @@ This document captures production-hardening controls implemented across six pill
 - Request correlation IDs (`X-Request-Id`) added to all requests.
 - Structured JSON access logs with request timing.
 - Error logs include request context and request ID.
-- Basic API metrics endpoint:
-  - `GET /metrics` (optional token via `X-Metrics-Token`)
 
 ## 5. Delivery / Operations
 - CI pipeline (`.github/workflows/ci.yml`) for:
@@ -50,19 +48,10 @@ This document captures production-hardening controls implemented across six pill
   - `backend/.env.example`
   - `frontend/.env.example`
 
-## 6. Governance / Compliance
-- Audit trail persisted for mutating API operations:
-  - Model: `backend/models/AuditLog.js`
-  - Middleware: `backend/middleware/auditTrail.js`
-- Audit retrieval endpoint for managers/director:
-  - `GET /api/audit-logs`
-
 ## Environment Variables
 Use `backend/.env.example` and `frontend/.env.example` as baseline.
 
 ## Operational Checklist
-1. Set secure `JWT_SECRET`, CORS origins, and metrics token in production.
+1. Set secure `JWT_SECRET` and CORS origins in production.
 2. Run `npm run lint` and `npm test` in backend before deployment.
 3. Deploy with health checks wired to `/healthz` and `/readyz`.
-4. Restrict metrics endpoint access with `METRICS_TOKEN`.
-5. Periodically review `audit_logs` records and retention policy.

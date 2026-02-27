@@ -1,12 +1,13 @@
 import Procurement from '../models/Procurement.js';
-import PriceSetting from '../models/PriceSetting.js';
 import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';
+import { resolveSellingPrice, canManagerAccessBranch } from '../services/procurementService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
+// Retrieve all procurement.
 const getAllProcurement = async (req, res) => {
   try {
     const filter = {};
-    
+
     // If user is manager, filter by branch
     if (req.user.role === 'manager') {
       filter.branch = req.user.branch;
@@ -42,33 +43,29 @@ const getAllProcurement = async (req, res) => {
   }
 };
 
+// Create procurement.
 const createProcurement = async (req, res) => {
   try {
     const {
-      name,
-      type,
+      produceName,
+      produceType,
       sourceType,
       dateReceived,
       timeReceived,
       tonnageKg,
       costUgx,
       dealerName,
-      dealerContact,
-      sellingPrice
+      dealerContact
     } = req.body;
 
-    let finalPrice = sellingPrice;
-    const priceSetting = await PriceSetting.findOne({
+    const finalPrice = await resolveSellingPrice({
       branch: req.user.branch,
-      produceType: type
+      produceType
     });
-    if (priceSetting) {
-      finalPrice = priceSetting.priceUgx;
-    }
 
     const procurement = await Procurement.create({
-      name,
-      type,
+      produceName,
+      produceType,
       sourceType,
       dateReceived,
       timeReceived,
@@ -83,8 +80,8 @@ const createProcurement = async (req, res) => {
 
     await resolveOutOfStockNotification({
       branch: req.user.branch,
-      produceName: name,
-      produceType: type
+      produceName,
+      produceType
     });
 
     res.status(201).json(procurement);
@@ -93,17 +90,17 @@ const createProcurement = async (req, res) => {
   }
 };
 
+// Retrieve procurement by id.
 const getProcurementById = async (req, res) => {
   try {
-    const procurement = await Procurement.findById(req.params.id)
-      .populate('recordedBy', 'name');
+    const procurement = await Procurement.findById(req.params.id).populate('recordedBy', 'name');
 
     if (!procurement) {
       return res.status(404).json({ message: 'Procurement record not found' });
     }
 
     // Check if user has access to this branch
-    if (req.user.role === 'manager' && procurement.branch !== req.user.branch) {
+    if (!canManagerAccessBranch(req.user, procurement.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
@@ -113,6 +110,7 @@ const getProcurementById = async (req, res) => {
   }
 };
 
+// Update procurement.
 const updateProcurement = async (req, res) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
@@ -122,19 +120,15 @@ const updateProcurement = async (req, res) => {
     }
 
     // Check if user has access to this branch
-    if (req.user.role === 'manager' && procurement.branch !== req.user.branch) {
+    if (!canManagerAccessBranch(req.user, procurement.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
-    const nextType = req.body.type || procurement.type;
-    let finalPrice = req.body.sellingPrice || procurement.sellingPrice;
-    const priceSetting = await PriceSetting.findOne({
+    const nextProduceType = req.body.produceType || procurement.produceType;
+    const finalPrice = await resolveSellingPrice({
       branch: procurement.branch,
-      produceType: nextType
+      produceType: nextProduceType
     });
-    if (priceSetting) {
-      finalPrice = priceSetting.priceUgx;
-    }
 
     const updatedProcurement = await Procurement.findByIdAndUpdate(
       req.params.id,
@@ -144,8 +138,8 @@ const updateProcurement = async (req, res) => {
 
     await resolveOutOfStockNotification({
       branch: procurement.branch,
-      produceName: updatedProcurement.name,
-      produceType: updatedProcurement.type
+      produceName: updatedProcurement.produceName,
+      produceType: updatedProcurement.produceType
     });
 
     res.json(updatedProcurement);
@@ -154,6 +148,7 @@ const updateProcurement = async (req, res) => {
   }
 };
 
+// Delete procurement.
 const deleteProcurement = async (req, res) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
@@ -163,7 +158,7 @@ const deleteProcurement = async (req, res) => {
     }
 
     // Check if user has access to this branch
-    if (req.user.role === 'manager' && procurement.branch !== req.user.branch) {
+    if (!canManagerAccessBranch(req.user, procurement.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 

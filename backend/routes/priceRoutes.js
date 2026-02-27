@@ -1,4 +1,5 @@
 import express from 'express';
+// Configure router.
 const router = express.Router();
 import {
   getPrices,
@@ -16,13 +17,36 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router.route('/')
+router
+  .route('/')
   .get(protect, authorize('manager'), getPrices)
-  .post(protect, authorize('manager'), writeLimiter, priceCreateValidation, validateRequest, createPrice);
+  .post(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    priceCreateValidation,
+    validateRequest,
+    createPrice
+  );
 
-router.route('/:id')
+router
+  .route('/:id')
   .get(protect, authorize('manager'), mongoIdParamValidation, validateRequest, getPriceById)
-  .put(protect, authorize('manager'), writeLimiter, priceUpdateValidation, validateRequest, updatePrice)
-  .delete(protect, authorize('manager'), writeLimiter, mongoIdParamValidation, validateRequest, deletePrice);
+  .put(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    priceUpdateValidation,
+    validateRequest,
+    updatePrice
+  )
+  .delete(
+    protect,
+    authorize('manager'),
+    writeLimiter,
+    mongoIdParamValidation,
+    validateRequest,
+    deletePrice
+  );
 
 export default router;

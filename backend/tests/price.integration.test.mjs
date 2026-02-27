@@ -10,8 +10,10 @@ import Procurement from '../models/Procurement.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
+// Initialize app.
 const app = createApp();
 
+// Configure originals.
 const originals = {
   userFindById: User.findById,
   priceFind: PriceSetting.find,
@@ -32,12 +34,14 @@ afterEach(() => {
   Procurement.updateMany = originals.procurementUpdateMany;
 });
 
+// Set authenticated user.
 const setAuthenticatedUser = (user) => {
   User.findById = () => ({
     select: async () => user
   });
 };
 
+// Handle auth header for.
 const authHeaderFor = (userId = 'u1') => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
   return `Bearer ${token}`;
@@ -55,7 +59,7 @@ test('manager can get price list', async () => {
     sort: async () => [{ _id: 'p1', produceType: 'Beans', priceUgx: 37000 }]
   });
   Procurement.find = () => ({
-    sort: async () => [{ type: 'Grain Maize', sellingPrice: 28000 }]
+    sort: async () => [{ produceType: 'Grain Maize', sellingPrice: 28000 }]
   });
 
   const response = await request(app)
@@ -107,6 +111,7 @@ test('manager can update price', async () => {
     name: 'ManagerA'
   });
 
+  // Set ting.
   const setting = {
     _id: '65f44c553f02d6f0bbad3f8f',
     branch: 'Maganjo',
@@ -143,6 +148,7 @@ test('manager can get and delete price by id', async () => {
   });
 
   let deleted = false;
+  // Set ting.
   const setting = {
     _id: '65f44c553f02d6f0bbad3f90',
     branch: 'Maganjo',

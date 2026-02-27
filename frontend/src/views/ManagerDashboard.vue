@@ -9,7 +9,11 @@
         <div class="dashboard-filters">
           <div class="filter-group">
             <label class="form-label mb-1">Period</label>
-            <select v-model="filters.period" class="form-select form-select-sm" @change="buildDashboardData">
+            <select
+              v-model="filters.period"
+              class="form-select form-select-sm"
+              @change="buildDashboardData"
+            >
               <option v-for="option in periodOptions" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
@@ -17,13 +21,28 @@
           </div>
         </div>
         <div class="export-actions btn-group btn-group-sm" role="group" aria-label="Export report">
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportCsv">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportCsv"
+          >
             Export CSV
           </button>
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportExcel">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportExcel"
+          >
             Export Excel
           </button>
-          <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportPdf">
+          <button
+            class="btn btn-outline-primary"
+            type="button"
+            :disabled="loading"
+            @click="exportPdf"
+          >
             Export PDF
           </button>
         </div>
@@ -53,13 +72,21 @@
       </div>
     </div>
 
-    <div v-if="lowStockItems.length > 0" class="alert alert-warning alert-dismissible fade show" role="alert">
+    <div
+      v-if="lowStockItems.length > 0"
+      class="alert alert-warning alert-dismissible fade show"
+      role="alert"
+    >
       <i class="bi bi-exclamation-triangle me-2"></i>
       <strong>Low Stock Alert!</strong> {{ lowStockAlertMessage }}
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <div v-if="outOfStockItems.length > 0" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div
+      v-if="outOfStockItems.length > 0"
+      class="alert alert-danger alert-dismissible fade show"
+      role="alert"
+    >
       <i class="bi bi-x-octagon me-2"></i>
       <strong>Out of Stock!</strong> {{ outOfStockItems.length }} item(s) are out of stock.
       <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -89,7 +116,7 @@
           <div class="card-body">
             <h6 class="text-muted">Credit Sales</h6>
             <h3 class="stats-value">{{ formatStatCurrency(stats.creditSales) }}</h3>
-            <small class="text-muted">{{ stats.creditCount }} pending</small>
+            <small class="text-muted">{{ stats.creditCount }} transactions</small>
           </div>
         </div>
       </div>
@@ -106,7 +133,9 @@
         <div class="card stats-card h-100">
           <div class="card-body">
             <h6 class="text-muted">Total Revenue</h6>
-            <h3 class="stats-value">{{ formatStatCurrency(stats.cashSales + stats.creditSales) }}</h3>
+            <h3 class="stats-value">
+              {{ formatStatCurrency(stats.cashSales + stats.creditSales) }}
+            </h3>
             <small class="text-muted">{{ totalTransactions }} transaction(s)</small>
           </div>
         </div>
@@ -134,9 +163,14 @@
             <h5 class="mb-0">Payments Collected vs Outstanding</h5>
           </div>
           <div class="card-body">
-            <div v-if="!hasCreditCollectionData" class="chart-empty">No credit sales recorded yet</div>
+            <div v-if="!hasCreditCollectionData" class="chart-empty">
+              No credit sales recorded yet
+            </div>
             <div v-else class="chart-panel chart-panel-sm">
-              <Doughnut :data="creditCollectionChartData" :options="chartOptions.doughnutCurrency" />
+              <Doughnut
+                :data="creditCollectionChartData"
+                :options="chartOptions.doughnutCurrency"
+              />
             </div>
           </div>
         </div>
@@ -162,9 +196,14 @@
             <h5 class="mb-0">Sales Agent Performance</h5>
           </div>
           <div class="card-body">
-            <div v-if="agentPerformance.length === 0" class="chart-empty">No sales recorded yet</div>
+            <div v-if="agentPerformance.length === 0" class="chart-empty">
+              No sales recorded yet
+            </div>
             <div v-else class="chart-panel">
-              <Bar :data="agentPerformanceChartData" :options="chartOptions.horizontalBarCurrency" />
+              <Bar
+                :data="agentPerformanceChartData"
+                :options="chartOptions.horizontalBarCurrency"
+              />
             </div>
           </div>
         </div>
@@ -204,7 +243,9 @@
             <h5 class="mb-0">Top Dealers by Procurement Cost</h5>
           </div>
           <div class="card-body">
-            <div v-if="dealerPerformance.length === 0" class="chart-empty">No procurement recorded yet</div>
+            <div v-if="dealerPerformance.length === 0" class="chart-empty">
+              No procurement recorded yet
+            </div>
             <div v-else class="chart-panel">
               <Bar :data="dealerPerformanceChartData" :options="chartOptions.barCurrency" />
             </div>
@@ -216,9 +257,9 @@
 </template>
 
 <script>
-import { inventoryAPI, salesAPI, creditSalesAPI, procurementAPI } from '../services/api'
-import { formatCompactCurrency } from '../utils/numberFormat'
-import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs'
+import { inventoryAPI, salesAPI, creditSalesAPI, procurementAPI } from '../services/api';
+import { formatCompactCurrency } from '../utils/numberFormat';
+import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs';
 import {
   Chart as ChartJS,
   Title,
@@ -231,7 +272,7 @@ import {
   CategoryScale,
   LinearScale,
   Filler
-} from 'chart.js'
+} from 'chart.js';
 
 ChartJS.register(
   Title,
@@ -244,57 +285,70 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   Filler
-)
+);
 
+// Configure period options.
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' }
-]
+];
 
-const BASE_CHART_COLORS = ['#1d4ed8', '#0f766e', '#d97706', '#7c3aed', '#dc2626', '#0891b2']
+// Configure base chart colors.
+const BASE_CHART_COLORS = ['#1d4ed8', '#0f766e', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 
-const toNumber = (value) => Number(value || 0)
+// Handle to number.
+const toNumber = (value) => Number(value || 0);
+// Format compact.
 const formatCompact = (value) =>
-  new Intl.NumberFormat('en-UG', { notation: 'compact', maximumFractionDigits: 1 }).format(toNumber(value))
+  new Intl.NumberFormat('en-UG', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    toNumber(value)
+  );
+// Format currency value.
 const formatCurrencyValue = (value) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',
     currency: 'UGX',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(toNumber(value))
+  }).format(toNumber(value));
 
+// Handle escape csv value.
 const escapeCsvValue = (value) => {
-  const text = value === undefined || value === null ? '' : String(value)
+  const text = value === undefined || value === null ? '' : String(value);
   if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`
+    return `"${text.replace(/"/g, '""')}"`;
   }
-  return text
-}
+  return text;
+};
 
+// Handle escape html.
 const escapeHtml = (value) =>
   String(value === undefined || value === null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+    .replace(/'/g, '&#39;');
 
+// Handle sanitize file segment.
 const sanitizeFileSegment = (value) => {
   const cleaned = String(value || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return cleaned || 'all'
-}
+    .replace(/^_+|_+$/g, '');
+  return cleaned || 'all';
+};
 
-const buildPalette = (count) => Array.from({ length: count }, (_, index) => BASE_CHART_COLORS[index % BASE_CHART_COLORS.length])
+// Handle build palette.
+const buildPalette = (count) =>
+  Array.from({ length: count }, (_, index) => BASE_CHART_COLORS[index % BASE_CHART_COLORS.length]);
 
+// Handle base scale options.
 const baseScaleOptions = (tickCallback) => ({
   grid: { color: 'rgba(148, 163, 184, 0.2)' },
   ticks: { callback: tickCallback }
-})
+});
 
 export default {
   name: 'ManagerDashboard',
@@ -353,8 +407,9 @@ export default {
             },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `${context.label}: ${formatCurrencyValue(context.raw)}`
+                  return `${context.label}: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -368,8 +423,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Sales: ${formatCurrencyValue(context.raw)}`
+                  return `Sales: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -391,8 +447,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Amount: ${formatCurrencyValue(context.raw)}`
+                  return `Amount: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -414,8 +471,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Tonnage: ${toNumber(context.raw).toLocaleString('en-UG')} kg`
+                  return `Tonnage: ${toNumber(context.raw).toLocaleString('en-UG')} kg`;
                 }
               }
             }
@@ -438,8 +496,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Amount: ${formatCurrencyValue(context.raw)}`
+                  return `Amount: ${formatCurrencyValue(context.raw)}`;
                 }
               }
             }
@@ -462,8 +521,9 @@ export default {
             legend: { display: false },
             tooltip: {
               callbacks: {
+                // Handle label.
                 label(context) {
-                  return `Stock: ${toNumber(context.raw).toLocaleString('en-UG')} kg`
+                  return `Stock: ${toNumber(context.raw).toLocaleString('en-UG')} kg`;
                 }
               }
             }
@@ -479,48 +539,53 @@ export default {
           }
         }
       }
-    }
+    };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}')
-    await this.loadData()
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    await this.loadData();
   },
   computed: {
+    // Handle selected period label.
     selectedPeriodLabel() {
-      return this.periodOptions.find((option) => option.value === this.filters.period)?.label || 'Weekly'
+      return (
+        this.periodOptions.find((option) => option.value === this.filters.period)?.label || 'Weekly'
+      );
     },
     formattedReportRange() {
-      if (!this.reportRange.from || !this.reportRange.to) return '-'
-      const from = new Date(this.reportRange.from)
-      const to = new Date(this.reportRange.to)
-      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '-'
-      const options = { month: 'short', day: 'numeric', year: 'numeric' }
-      return `${from.toLocaleDateString('en-UG', options)} - ${to.toLocaleDateString('en-UG', options)}`
+      if (!this.reportRange.from || !this.reportRange.to) return '-';
+      const from = new Date(this.reportRange.from);
+      const to = new Date(this.reportRange.to);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '-';
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      return `${from.toLocaleDateString('en-UG', options)} - ${to.toLocaleDateString('en-UG', options)}`;
     },
     totalTransactions() {
-      return this.stats.cashCount + this.stats.creditCount
+      return this.stats.cashCount + this.stats.creditCount;
     },
     lowStockAlertMessage() {
       const labels = this.lowStockItems
-        .map((item) => `${item.produceName} (${Number(item.totalTonnageKg || 0).toLocaleString('en-UG')} kg)`)
-        .slice(0, 4)
+        .map(
+          (item) =>
+            `${item.produceName} (${Number(item.totalTonnageKg || 0).toLocaleString('en-UG')} kg)`
+        )
+        .slice(0, 4);
 
-      if (labels.length === 0) return ''
+      if (labels.length === 0) return '';
 
-      const suffix = this.lowStockItems.length > 4
-        ? `, and ${this.lowStockItems.length - 4} more`
-        : ''
+      const suffix =
+        this.lowStockItems.length > 4 ? `, and ${this.lowStockItems.length - 4} more` : '';
 
-      return `${labels.join(', ')}${suffix} running low on stock.`
+      return `${labels.join(', ')}${suffix} running low on stock.`;
     },
     hasRevenueSplitData() {
-      return (this.stats.cashSales + this.stats.creditSales) > 0
+      return this.stats.cashSales + this.stats.creditSales > 0;
     },
     hasCreditCollectionData() {
-      return (this.creditCollection.collected + this.creditCollection.outstanding) > 0
+      return this.creditCollection.collected + this.creditCollection.outstanding > 0;
     },
     hasSalesTrendData() {
-      return this.salesOverTime.some((item) => item.amount > 0)
+      return this.salesOverTime.some((item) => item.amount > 0);
     },
     revenueSplitChartData() {
       return {
@@ -534,7 +599,7 @@ export default {
             hoverOffset: 8
           }
         ]
-      }
+      };
     },
     creditCollectionChartData() {
       return {
@@ -548,7 +613,7 @@ export default {
             hoverOffset: 8
           }
         ]
-      }
+      };
     },
     salesOverTimeChartData() {
       return {
@@ -565,7 +630,7 @@ export default {
             pointHoverRadius: 5
           }
         ]
-      }
+      };
     },
     agentPerformanceChartData() {
       return {
@@ -579,7 +644,7 @@ export default {
             barThickness: 18
           }
         ]
-      }
+      };
     },
     topProductsChartData() {
       return {
@@ -593,7 +658,7 @@ export default {
             maxBarThickness: 44
           }
         ]
-      }
+      };
     },
     stockByProductChartData() {
       return {
@@ -607,7 +672,7 @@ export default {
             barThickness: 18
           }
         ]
-      }
+      };
     },
     dealerPerformanceChartData() {
       return {
@@ -621,217 +686,241 @@ export default {
             maxBarThickness: 44
           }
         ]
-      }
+      };
     }
   },
   methods: {
+    // Handle load data.
     async loadData() {
-      this.loading = true
+      this.loading = true;
       try {
         const [invRes, salesRes, creditRes, procurementRes] = await Promise.all([
           inventoryAPI.get(),
           salesAPI.getAll(),
           creditSalesAPI.getAll(),
           procurementAPI.getAll()
-        ])
+        ]);
 
-        this.inventory = invRes.data.inventory || []
-        this.salesRecords = salesRes.data || []
-        this.creditSalesRecords = creditRes.data || []
-        this.procurementRecords = procurementRes.data || []
+        this.inventory = invRes.data.inventory || [];
+        this.salesRecords = salesRes.data || [];
+        this.creditSalesRecords = creditRes.data || [];
+        this.procurementRecords = procurementRes.data || [];
 
-        this.stats.inventoryValue = invRes.data.statistics?.totalValue || 0
-        this.stats.inventoryItems = invRes.data.statistics?.totalItems || 0
-        this.outOfStockItems = invRes.data.outOfStockItems || []
-        this.lowStockItems = this.inventory.filter((item) => item.totalTonnageKg < 500)
+        this.stats.inventoryValue = invRes.data.statistics?.totalValue || 0;
+        this.stats.inventoryItems = invRes.data.statistics?.totalItems || 0;
+        this.outOfStockItems = invRes.data.outOfStockItems || [];
+        this.lowStockItems = this.inventory.filter((item) => item.totalTonnageKg < 500);
 
-        this.buildDashboardData()
+        this.buildDashboardData();
       } catch (error) {
-        console.error('Error loading data:', error)
+        console.error('Error loading data:', error);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     buildDashboardData() {
-      const range = this.getDateRangeByPeriod(this.filters.period)
-      this.reportRange = range
+      const range = this.getDateRangeByPeriod(this.filters.period);
+      this.reportRange = range;
 
-      const filteredSales = this.filterRecordsByDate(this.salesRecords, 'date', range)
-      const filteredCreditSales = this.filterRecordsByDate(this.creditSalesRecords, 'dateOfDispatch', range)
-      const filteredProcurements = this.filterRecordsByDate(this.procurementRecords, 'dateReceived', range)
+      const filteredSales = this.filterRecordsByDate(this.salesRecords, 'date', range);
+      const filteredCreditSales = this.filterRecordsByDate(
+        this.creditSalesRecords,
+        'dateOfDispatch',
+        range
+      );
+      const filteredProcurements = this.filterRecordsByDate(
+        this.procurementRecords,
+        'dateReceived',
+        range
+      );
 
-      this.stats.cashSales = filteredSales.reduce((sum, sale) => sum + (sale.amountPaidUgx || 0), 0)
-      this.stats.cashCount = filteredSales.length
+      this.stats.cashSales = filteredSales.reduce(
+        (sum, sale) => sum + (sale.amountPaidUgx || 0),
+        0
+      );
+      this.stats.cashCount = filteredSales.length;
 
-      this.stats.creditSales = filteredCreditSales.reduce((sum, sale) => sum + (sale.amountDueUgx || 0), 0)
-      this.stats.creditCount = filteredCreditSales.length
-      this.stats.procurementTotal = filteredProcurements.reduce((sum, record) => sum + (record.costUgx || 0), 0)
-      this.stats.procurementCount = filteredProcurements.length
+      this.stats.creditSales = filteredCreditSales.reduce(
+        (sum, sale) => sum + (sale.amountDueUgx || 0),
+        0
+      );
+      this.stats.creditCount = filteredCreditSales.length;
+      this.stats.procurementTotal = filteredProcurements.reduce(
+        (sum, record) => sum + (record.costUgx || 0),
+        0
+      );
+      this.stats.procurementCount = filteredProcurements.length;
 
-      this.buildCharts(filteredSales, filteredCreditSales, filteredProcurements)
+      this.buildCharts(filteredSales, filteredCreditSales, filteredProcurements);
     },
     getDateRangeByPeriod(period) {
-      const end = new Date()
+      const end = new Date();
       if (period === 'yearly') {
-        const start = new Date(end.getFullYear(), end.getMonth() - 11, 1)
-        return { from: start.toISOString(), to: end.toISOString() }
+        const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+        return { from: start.toISOString(), to: end.toISOString() };
       }
 
-      const days = period === 'monthly' ? 30 : 7
-      const start = new Date(end)
-      start.setHours(0, 0, 0, 0)
-      start.setDate(start.getDate() - (days - 1))
-      return { from: start.toISOString(), to: end.toISOString() }
+      const days = period === 'monthly' ? 30 : 7;
+      const start = new Date(end);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - (days - 1));
+      return { from: start.toISOString(), to: end.toISOString() };
     },
     filterRecordsByDate(records, dateField, range) {
-      const start = new Date(range.from)
-      const end = new Date(range.to)
+      const start = new Date(range.from);
+      const end = new Date(range.to);
       return (records || []).filter((record) => {
-        const recordDate = new Date(record?.[dateField])
-        return !Number.isNaN(recordDate.getTime()) && recordDate >= start && recordDate <= end
-      })
+        const recordDate = new Date(record?.[dateField]);
+        return !Number.isNaN(recordDate.getTime()) && recordDate >= start && recordDate <= end;
+      });
     },
     buildTrendBuckets(period) {
-      const now = new Date()
-      const buckets = []
+      const now = new Date();
+      const buckets = [];
 
       if (period === 'yearly') {
         for (let i = 11; i >= 0; i -= 1) {
-          const start = new Date(now.getFullYear(), now.getMonth() - i, 1)
-          const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1)
+          const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
           buckets.push({
             start,
             end,
             label: start.toLocaleDateString('en-UG', { month: 'short', year: '2-digit' }),
             amount: 0
-          })
+          });
         }
-        return buckets
+        return buckets;
       }
 
-      const days = period === 'monthly' ? 30 : 7
-      const today = new Date(now)
-      today.setHours(0, 0, 0, 0)
+      const days = period === 'monthly' ? 30 : 7;
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
 
       for (let i = days - 1; i >= 0; i -= 1) {
-        const start = new Date(today)
-        start.setDate(today.getDate() - i)
-        const end = new Date(start)
-        end.setDate(start.getDate() + 1)
+        const start = new Date(today);
+        start.setDate(today.getDate() - i);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 1);
         buckets.push({
           start,
           end,
-          label: period === 'weekly'
-            ? start.toLocaleDateString('en-UG', { weekday: 'short' })
-            : start.toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
+          label:
+            period === 'weekly'
+              ? start.toLocaleDateString('en-UG', { weekday: 'short' })
+              : start.toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
           amount: 0
-        })
+        });
       }
 
-      return buckets
+      return buckets;
     },
     addAmountToBuckets(buckets, dateValue, amount) {
-      const date = new Date(dateValue)
-      if (Number.isNaN(date.getTime())) return
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return;
 
       for (let i = 0; i < buckets.length; i += 1) {
-        const bucket = buckets[i]
+        const bucket = buckets[i];
         if (date >= bucket.start && date < bucket.end) {
-          bucket.amount += Number(amount || 0)
-          return
+          bucket.amount += Number(amount || 0);
+          return;
         }
       }
     },
     buildCharts(sales, creditSales, procurements) {
-      const productMap = {}
+      const productMap = {};
       sales.forEach((sale) => {
-        productMap[sale.produceName] = (productMap[sale.produceName] || 0) + (sale.tonnageKg || 0)
-      })
+        productMap[sale.produceName] = (productMap[sale.produceName] || 0) + (sale.tonnageKg || 0);
+      });
       creditSales.forEach((sale) => {
-        productMap[sale.produceName] = (productMap[sale.produceName] || 0) + (sale.tonnageKg || 0)
-      })
+        productMap[sale.produceName] = (productMap[sale.produceName] || 0) + (sale.tonnageKg || 0);
+      });
       const productList = Object.keys(productMap).map((name) => ({
         name,
         totalKg: productMap[name]
-      }))
-      productList.sort((a, b) => b.totalKg - a.totalKg)
-      this.topProducts = productList.slice(0, 5)
+      }));
+      productList.sort((a, b) => b.totalKg - a.totalKg);
+      this.topProducts = productList.slice(0, 5);
 
       const stockList = this.inventory
         .map((item) => ({ name: item.produceName, totalKg: item.totalTonnageKg }))
         .sort((a, b) => b.totalKg - a.totalKg)
-        .slice(0, 5)
-      this.stockByProduct = stockList
+        .slice(0, 5);
+      this.stockByProduct = stockList;
 
-      const creditCollected = creditSales.reduce((sum, sale) => sum + (sale.amountPaidUgx || 0), 0)
+      const creditCollected = creditSales.reduce((sum, sale) => sum + (sale.amountPaidUgx || 0), 0);
       const creditOutstanding = creditSales.reduce((sum, sale) => {
         const balance =
           sale.balanceUgx !== undefined && sale.balanceUgx !== null
             ? sale.balanceUgx
-            : Math.max((sale.amountDueUgx || 0) - (sale.amountPaidUgx || 0), 0)
-        return sum + balance
-      }, 0)
-      this.creditCollection.collected = creditCollected
-      this.creditCollection.outstanding = creditOutstanding
+            : Math.max((sale.amountDueUgx || 0) - (sale.amountPaidUgx || 0), 0);
+        return sum + balance;
+      }, 0);
+      this.creditCollection.collected = creditCollected;
+      this.creditCollection.outstanding = creditOutstanding;
 
-      const agentMap = {}
+      const agentMap = {};
       sales.forEach((sale) => {
-        agentMap[sale.salesAgentName] = (agentMap[sale.salesAgentName] || 0) + (sale.amountPaidUgx || 0)
-      })
+        agentMap[sale.salesAgentName] =
+          (agentMap[sale.salesAgentName] || 0) + (sale.amountPaidUgx || 0);
+      });
       creditSales.forEach((sale) => {
-        agentMap[sale.salesAgentName] = (agentMap[sale.salesAgentName] || 0) + (sale.amountDueUgx || 0)
-      })
+        agentMap[sale.salesAgentName] =
+          (agentMap[sale.salesAgentName] || 0) + (sale.amountDueUgx || 0);
+      });
       const agentList = Object.keys(agentMap).map((name) => ({
         name,
         amount: agentMap[name]
-      }))
-      agentList.sort((a, b) => b.amount - a.amount)
-      this.agentPerformance = agentList.slice(0, 5)
+      }));
+      agentList.sort((a, b) => b.amount - a.amount);
+      this.agentPerformance = agentList.slice(0, 5);
 
-      const dealerMap = {}
+      const dealerMap = {};
       procurements.forEach((procurement) => {
-        dealerMap[procurement.dealerName] = (dealerMap[procurement.dealerName] || 0) + (procurement.costUgx || 0)
-      })
+        dealerMap[procurement.dealerName] =
+          (dealerMap[procurement.dealerName] || 0) + (procurement.costUgx || 0);
+      });
       const dealerList = Object.keys(dealerMap).map((name) => ({
         name,
         amount: dealerMap[name]
-      }))
-      dealerList.sort((a, b) => b.amount - a.amount)
-      this.dealerPerformance = dealerList.slice(0, 5)
+      }));
+      dealerList.sort((a, b) => b.amount - a.amount);
+      this.dealerPerformance = dealerList.slice(0, 5);
 
-      const trendBuckets = this.buildTrendBuckets(this.filters.period)
+      const trendBuckets = this.buildTrendBuckets(this.filters.period);
       sales.forEach((sale) => {
-        this.addAmountToBuckets(trendBuckets, sale.date, sale.amountPaidUgx || 0)
-      })
+        this.addAmountToBuckets(trendBuckets, sale.date, sale.amountPaidUgx || 0);
+      });
       creditSales.forEach((sale) => {
-        this.addAmountToBuckets(trendBuckets, sale.dateOfDispatch, sale.amountDueUgx || 0)
-      })
+        this.addAmountToBuckets(trendBuckets, sale.dateOfDispatch, sale.amountDueUgx || 0);
+      });
       this.salesOverTime = trendBuckets.map((bucket) => ({
         label: bucket.label,
         amount: bucket.amount
-      }))
+      }));
     },
     buildFileName(extension) {
-      const period = sanitizeFileSegment(this.selectedPeriodLabel)
-      const branch = sanitizeFileSegment(this.user?.branch || 'branch')
-      const stamp = new Date().toISOString().slice(0, 10)
-      return `manager_report_${branch}_${period}_${stamp}.${extension}`
+      const period = sanitizeFileSegment(this.selectedPeriodLabel);
+      const branch = sanitizeFileSegment(this.user?.branch || 'branch');
+      const stamp = new Date().toISOString().slice(0, 10);
+      return `manager_report_${branch}_${period}_${stamp}.${extension}`;
     },
     downloadFile(filename, content, type) {
-      const blob = new Blob([content], { type })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     },
     getSummaryRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      // Format number.
       const formatNumber = (value) =>
-        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value)
+        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
 
       return [
         ['Branch', this.user?.branch || '-'],
@@ -848,60 +937,75 @@ export default {
         ['Low Stock Items', formatNumber(this.lowStockItems.length)],
         ['Credit Collected (UGX)', formatCurrency(this.creditCollection.collected)],
         ['Credit Outstanding (UGX)', formatCurrency(this.creditCollection.outstanding)]
-      ]
+      ];
     },
     getSalesTrendRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
-      return this.salesOverTime.map((item) => [item.label, formatCurrency(item.amount)])
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      return this.salesOverTime.map((item) => [item.label, formatCurrency(item.amount)]);
     },
     getTopProductsRows(formatted = false) {
+      // Format number.
       const formatNumber = (value) =>
-        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value)
-      return this.topProducts.map((item) => [item.name, formatNumber(item.totalKg)])
+        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
+      return this.topProducts.map((item) => [item.name, formatNumber(item.totalKg)]);
     },
     getStockRows(formatted = false) {
+      // Format number.
       const formatNumber = (value) =>
-        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value)
-      return this.stockByProduct.map((item) => [item.name, formatNumber(item.totalKg)])
+        formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
+      return this.stockByProduct.map((item) => [item.name, formatNumber(item.totalKg)]);
     },
     getAgentRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
-      return this.agentPerformance.map((item) => [item.name, formatCurrency(item.amount)])
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      return this.agentPerformance.map((item) => [item.name, formatCurrency(item.amount)]);
     },
     getDealerRows(formatted = false) {
-      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value))
-      return this.dealerPerformance.map((item) => [item.name, formatCurrency(item.amount)])
+      // Format currency.
+      const formatCurrency = (value) => (formatted ? formatCurrencyValue(value) : toNumber(value));
+      return this.dealerPerformance.map((item) => [item.name, formatCurrency(item.amount)]);
     },
     buildCsvContent() {
-      const lines = []
+      const lines = [];
+      // Handle add section.
       const addSection = (title, headers, rows) => {
-        lines.push([title])
+        lines.push([title]);
         if (headers?.length) {
-          lines.push(headers)
+          lines.push(headers);
         }
-        rows.forEach((row) => lines.push(row))
-        lines.push([])
-      }
+        rows.forEach((row) => lines.push(row));
+        lines.push([]);
+      };
 
-      addSection('Summary', ['Metric', 'Value'], this.getSummaryRows(false))
-      addSection('Sales Trend', ['Period', 'Total Sales (UGX)'], this.getSalesTrendRows(false))
-      addSection('Top Products', ['Product', 'Kilograms Sold'], this.getTopProductsRows(false))
-      addSection('Stock By Product', ['Product', 'Available Stock (kg)'], this.getStockRows(false))
-      addSection('Sales Agent Performance', ['Sales Agent', 'Amount (UGX)'], this.getAgentRows(false))
-      addSection('Dealer Performance', ['Dealer', 'Procurement Cost (UGX)'], this.getDealerRows(false))
+      addSection('Summary', ['Metric', 'Value'], this.getSummaryRows(false));
+      addSection('Sales Trend', ['Period', 'Total Sales (UGX)'], this.getSalesTrendRows(false));
+      addSection('Top Products', ['Product', 'Kilograms Sold'], this.getTopProductsRows(false));
+      addSection('Stock By Product', ['Product', 'Available Stock (kg)'], this.getStockRows(false));
+      addSection(
+        'Sales Agent Performance',
+        ['Sales Agent', 'Amount (UGX)'],
+        this.getAgentRows(false)
+      );
+      addSection(
+        'Dealer Performance',
+        ['Dealer', 'Procurement Cost (UGX)'],
+        this.getDealerRows(false)
+      );
 
-      const content = lines.map((row) => row.map(escapeCsvValue).join(',')).join('\r\n')
-      return `\ufeff${content}`
+      const content = lines.map((row) => row.map(escapeCsvValue).join(',')).join('\r\n');
+      return `\ufeff${content}`;
     },
     buildExcelContent() {
+      // Handle build table.
       const buildTable = (title, headers, rows) => {
-        const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1)
+        const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
         const headerRow = headers.length
           ? `<tr>${headers.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr>`
-          : ''
+          : '';
         const bodyRows = rows
           .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
-          .join('')
+          .join('');
 
         return `
           <table border="1">
@@ -910,8 +1014,8 @@ export default {
             ${bodyRows}
           </table>
           <br />
-        `
-      }
+        `;
+      };
 
       return `
         <html>
@@ -927,31 +1031,38 @@ export default {
             ${buildTable('Dealer Performance', ['Dealer', 'Procurement Cost (UGX)'], this.getDealerRows(false))}
           </body>
         </html>
-      `
+      `;
     },
     buildReportHtml() {
-      const summaryRows = this.getSummaryRows(true)
-      const trendRows = this.getSalesTrendRows(true)
-      const productRows = this.getTopProductsRows(true)
-      const stockRows = this.getStockRows(true)
-      const agentRows = this.getAgentRows(true)
-      const dealerRows = this.getDealerRows(true)
-      const generatedAt = new Date().toLocaleString('en-UG')
+      const summaryRows = this.getSummaryRows(true);
+      const trendRows = this.getSalesTrendRows(true);
+      const productRows = this.getTopProductsRows(true);
+      const stockRows = this.getStockRows(true);
+      const agentRows = this.getAgentRows(true);
+      const dealerRows = this.getDealerRows(true);
+      const generatedAt = new Date().toLocaleString('en-UG');
 
       const summaryBody = summaryRows
-        .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
-        .join('')
+        .map(
+          ([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+        )
+        .join('');
 
+      // Handle build body rows.
       const buildBodyRows = (rows, columnCount) =>
         rows.length
-          ? rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')
-          : `<tr><td colspan="${columnCount}">No data</td></tr>`
+          ? rows
+              .map(
+                (row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`
+              )
+              .join('')
+          : `<tr><td colspan="${columnCount}">No data</td></tr>`;
 
-      const trendBody = buildBodyRows(trendRows, 2)
-      const productBody = buildBodyRows(productRows, 2)
-      const stockBody = buildBodyRows(stockRows, 2)
-      const agentBody = buildBodyRows(agentRows, 2)
-      const dealerBody = buildBodyRows(dealerRows, 2)
+      const trendBody = buildBodyRows(trendRows, 2);
+      const productBody = buildBodyRows(productRows, 2);
+      const stockBody = buildBodyRows(stockRows, 2);
+      const agentBody = buildBodyRows(agentRows, 2);
+      const dealerBody = buildBodyRows(dealerRows, 2);
 
       return `
         <html>
@@ -959,6 +1070,7 @@ export default {
             <meta charset="UTF-8" />
             <title>Manager Report</title>
             <style>
+/* Component styles */
               body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; margin: 24px; }
               h1 { margin: 0 0 6px; font-size: 22px; }
               h2 { margin: 24px 0 10px; font-size: 16px; color: #1e293b; }
@@ -1031,38 +1143,39 @@ export default {
             </table>
           </body>
         </html>
-      `
+      `;
     },
     exportCsv() {
-      const content = this.buildCsvContent()
-      this.downloadFile(this.buildFileName('csv'), content, 'text/csv;charset=utf-8')
+      const content = this.buildCsvContent();
+      this.downloadFile(this.buildFileName('csv'), content, 'text/csv;charset=utf-8');
     },
     exportExcel() {
-      const content = this.buildExcelContent()
-      this.downloadFile(this.buildFileName('xls'), content, 'application/vnd.ms-excel')
+      const content = this.buildExcelContent();
+      this.downloadFile(this.buildFileName('xls'), content, 'application/vnd.ms-excel');
     },
     exportPdf() {
-      const reportHtml = this.buildReportHtml()
-      const printWindow = window.open('', '_blank')
+      const reportHtml = this.buildReportHtml();
+      const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        alert('Please allow pop-ups to export the PDF report.')
-        return
+        alert('Please allow pop-ups to export the PDF report.');
+        return;
       }
-      printWindow.document.open()
-      printWindow.document.write(reportHtml)
-      printWindow.document.close()
-      printWindow.focus()
-      printWindow.onafterprint = () => printWindow.close()
-      setTimeout(() => printWindow.print(), 300)
+      printWindow.document.open();
+      printWindow.document.write(reportHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.onafterprint = () => printWindow.close();
+      setTimeout(() => printWindow.print(), 300);
     },
     formatStatCurrency(amount) {
-      return formatCompactCurrency(amount)
+      return formatCompactCurrency(amount);
     }
   }
-}
+};
 </script>
 
 <style scoped>
+/* Component styles */
 .dashboard-filters {
   display: flex;
   gap: 0.75rem;

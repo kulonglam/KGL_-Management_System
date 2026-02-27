@@ -1,4 +1,5 @@
 import express from 'express';
+// Configure router.
 const router = express.Router();
 import {
   getAllCreditSales,
@@ -18,12 +19,50 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router.route('/')
-  .get(protect, authorize('manager', 'sales_agent'), paginationValidation, validateRequest, getAllCreditSales)
-  .post(protect, authorize('manager', 'sales_agent'), writeLimiter, creditSaleCreateValidation, validateRequest, createCreditSale);
+router
+  .route('/')
+  .get(
+    protect,
+    authorize('manager', 'sales_agent'),
+    paginationValidation,
+    validateRequest,
+    getAllCreditSales
+  )
+  .post(
+    protect,
+    authorize('manager', 'sales_agent'),
+    writeLimiter,
+    creditSaleCreateValidation,
+    validateRequest,
+    createCreditSale
+  );
 
-router.put('/:id/payment', protect, authorize('manager'), writeLimiter, creditPaymentStatusValidation, validateRequest, updatePaymentStatus);
-router.post('/:id/repay', protect, authorize('manager'), writeLimiter, creditRepaymentValidation, validateRequest, repayCreditSale);
-router.delete('/:id', protect, authorize('manager'), writeLimiter, mongoIdParamValidation, validateRequest, deleteCreditSale);
+router.put(
+  '/:id/payment',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  creditPaymentStatusValidation,
+  validateRequest,
+  updatePaymentStatus
+);
+router.post(
+  '/:id/repay',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  creditRepaymentValidation,
+  validateRequest,
+  repayCreditSale
+);
+router.delete(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  deleteCreditSale
+);
 
 export default router;

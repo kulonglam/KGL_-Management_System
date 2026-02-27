@@ -1,12 +1,9 @@
 import { getInventoryOverview, getStockForProduce } from '../services/inventoryService.js';
 
-// @desc    Get inventory
-// @route   GET /api/inventory
-// @access  Private
 const getInventory = async (req, res) => {
   try {
     const filter = {};
-    
+
     // Filter by branch for manager and sales agent
     if (req.user.role !== 'director') {
       filter.branch = req.user.branch;
@@ -19,9 +16,7 @@ const getInventory = async (req, res) => {
   }
 };
 
-// @desc    Check stock availability
-// @route   POST /api/inventory/check-stock
-// @access  Private
+// Check stock availability
 const checkStock = async (req, res) => {
   try {
     const { produceName, tonnage } = req.body;

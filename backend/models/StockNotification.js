@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+// Define stock notification schema.
 const stockNotificationSchema = new mongoose.Schema(
   {
     branch: {

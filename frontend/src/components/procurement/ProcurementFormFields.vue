@@ -2,28 +2,33 @@
   <div class="procurement-form">
     <fieldset class="procurement-section mb-3">
       <legend class="section-legend">
-        <i class="bi bi-basket2"></i>
+        
         <span>Produce Details</span>
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Produce Name *</label>
+          <label class="form-label">Produce Name </label>
           <input
             type="text"
             class="form-control"
-            v-model="form.name"
+            v-model="form.produceName"
             minlength="2"
             pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
             placeholder="e.g. White Maize"
-            @blur="normalizeText('name')"
+            @blur="normalizeText('produceName')"
             required
           />
           <small class="text-muted">Letters, numbers and spaces are allowed.</small>
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Produce Type *</label>
-          <select class="form-select" v-model="form.type" @change="$emit('type-change')" required>
+          <label class="form-label">Produce Type </label>
+          <select
+            class="form-select"
+            v-model="form.produceType"
+            @change="$emit('type-change')"
+            required
+          >
             <option value="">Select type</option>
             <option value="Beans">Beans</option>
             <option value="Grain Maize">Grain Maize</option>
@@ -34,17 +39,17 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Source Type *</label>
+          <label class="form-label">Source Type </label>
           <select class="form-select" v-model="form.sourceType" required>
             <option value="">Select source</option>
             <option value="individual">Individual Dealer</option>
             <option value="company">Company</option>
-            <option value="own_farm">Own Farm</option>
+            <option value="kgl_farm">KGL Farm</option>
           </select>
         </div>
 
         <div class="col-md-3">
-          <label class="form-label">Date *</label>
+          <label class="form-label">Date </label>
           <input type="date" class="form-control" v-model="form.dateReceived" required />
         </div>
 
@@ -57,12 +62,12 @@
 
     <fieldset class="procurement-section mb-3">
       <legend class="section-legend">
-        <i class="bi bi-cash-coin"></i>
+        
         <span>Quantity & Pricing</span>
       </legend>
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label">Tonnage (kg) *</label>
+          <label class="form-label">Tonnage (kg) </label>
           <input
             type="number"
             class="form-control"
@@ -71,17 +76,27 @@
             required
           />
           <small class="text-muted">
-            {{ form.sourceType === 'individual' ? 'Minimum 1000 kg for individual dealers.' : 'Enter quantity in kg.' }}
+            {{
+              form.sourceType === 'individual'
+                ? 'Minimum 1000 kg for individual dealers.'
+                : 'Minimum 100 kg for non-individual sources.'
+            }}
           </small>
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Cost (UGX) *</label>
-          <input type="number" class="form-control" v-model.number="form.costUgx" min="10000" required />
+          <label class="form-label">Cost (UGX) </label>
+          <input
+            type="number"
+            class="form-control"
+            v-model.number="form.costUgx"
+            min="10000"
+            required
+          />
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Selling Price per kg (UGX) *</label>
+          <label class="form-label">Selling Price per kg (UGX) </label>
           <input
             type="number"
             class="form-control"
@@ -90,19 +105,22 @@
             required
             :readonly="priceLocked"
           />
-          <small v-if="priceLocked" class="text-muted">{{ priceLockHint }}</small>
+          <small v-if="!hasManagedPrice && form.produceType" class="text-danger">
+            Set a manager price in Price Management before saving procurement.
+          </small>
+          <small v-else-if="priceLocked" class="text-muted">{{ priceLockHint }}</small>
         </div>
       </div>
     </fieldset>
 
     <fieldset class="procurement-section">
       <legend class="section-legend">
-        <i class="bi bi-person-badge"></i>
+        
         <span>Dealer Information</span>
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Dealer Name *</label>
+          <label class="form-label">Dealer Name</label>
           <input
             type="text"
             class="form-control"
@@ -116,7 +134,7 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Dealer Contact *</label>
+          <label class="form-label">Dealer Contact </label>
           <input
             type="text"
             class="form-control"
@@ -139,19 +157,25 @@
 <script setup>
 import { computed } from 'vue';
 
+// Handle normalize text value.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
 
+// Configure form.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
+// Handle normalize text.
 const normalizeText = (field) => {
   if (typeof form.value[field] !== 'string') return;
   form.value[field] = normalizeTextValue(form.value[field]);
 };
 
-const minimumTonnage = computed(() => (form.value.sourceType === 'individual' ? 1000 : 1));
+// Configure minimum tonnage.
+const minimumTonnage = computed(() => (form.value.sourceType === 'individual' ? 1000 : 100));
+// Configure has managed price.
+const hasManagedPrice = computed(() => Number(form.value.sellingPrice) >= 10000);
 
 defineProps({
   user: {
@@ -172,6 +196,7 @@ defineEmits(['type-change']);
 </script>
 
 <style scoped>
+/* Component styles */
 .procurement-section {
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;

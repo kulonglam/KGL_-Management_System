@@ -1,87 +1,20 @@
 import PriceSetting from '../models/PriceSetting.js';
-import Procurement from '../models/Procurement.js';
-
-const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
-
-const parseAndValidatePriceInput = (produceType, priceUgx) => {
-  if (!produceType) {
-    return { error: 'Produce type is required' };
-  }
-
-  if (!PRODUCE_TYPES.includes(produceType)) {
-    return { error: 'Invalid produce type' };
-  }
-
-  const price = Number(priceUgx);
-  if (!price || Number.isNaN(price) || price < 10000) {
-    return { error: 'Price must be at least 10000 UGX' };
-  }
-
-  return { price };
-};
-
-const syncProcurementPrices = async (branch, produceType, priceUgx) => {
-  const result = await Procurement.updateMany(
-    { branch, type: produceType },
-    { $set: { sellingPrice: priceUgx } }
-  );
-
-  return result.modifiedCount || 0;
-};
-
-// @desc    Get price settings for branch
-// @route   GET /api/prices
-// @access  Private (Manager only)
+import {
+  parseAndValidatePriceInput,
+  getBranchPriceRows,
+  syncProcurementPrices
+} from '../services/priceService.js';
+// Get price settings for branch
 const getPrices = async (req, res) => {
   try {
-    const settings = await PriceSetting.find({ branch: req.user.branch })
-      .sort({ produceType: 1 });
-
-    const priceMap = {};
-    settings.forEach(s => {
-      priceMap[s.produceType] = {
-        _id: s._id,
-        produceType: s.produceType,
-        priceUgx: s.priceUgx,
-        source: 'managed'
-      };
-    });
-
-    const procurements = await Procurement.find({ branch: req.user.branch })
-      .sort({ createdAt: -1 });
-    procurements.forEach(p => {
-      if (priceMap[p.type] === undefined) {
-        priceMap[p.type] = {
-          _id: null,
-          produceType: p.type,
-          priceUgx: p.sellingPrice,
-          source: 'inferred'
-        };
-      }
-    });
-
-    PRODUCE_TYPES.forEach((type) => {
-      if (!priceMap[type]) {
-        priceMap[type] = {
-          _id: null,
-          produceType: type,
-          priceUgx: null,
-          source: 'unset'
-        };
-      }
-    });
-
-    const prices = PRODUCE_TYPES.map((type) => priceMap[type]);
-
+    const prices = await getBranchPriceRows(req.user.branch);
     res.json(prices);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get single price setting
-// @route   GET /api/prices/:id
-// @access  Private (Manager only)
+// Get single price setting
 const getPriceById = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -98,9 +31,7 @@ const getPriceById = async (req, res) => {
   }
 };
 
-// @desc    Create price for produce type (applies globally to branch)
-// @route   POST /api/prices
-// @access  Private (Manager only)
+// Create price for produce type (applies globally to branch)
 const createPrice = async (req, res) => {
   try {
     const { produceType, priceUgx } = req.body;
@@ -137,9 +68,7 @@ const createPrice = async (req, res) => {
   }
 };
 
-// @desc    Update existing price setting
-// @route   PUT /api/prices/:id
-// @access  Private (Manager only)
+// Update existing price setting, manager only
 const updatePrice = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -167,7 +96,6 @@ const updatePrice = async (req, res) => {
         return res.status(409).json({ message: 'Another price exists for this produce type' });
       }
     }
-
     setting.produceType = nextProduceType;
     setting.priceUgx = validation.price;
     const saved = await setting.save();
@@ -187,9 +115,7 @@ const updatePrice = async (req, res) => {
   }
 };
 
-// @desc    Delete existing price setting
-// @route   DELETE /api/prices/:id
-// @access  Private (Manager only)
+// Delete existing price setting, manager only.
 const deletePrice = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -207,10 +133,4 @@ const deletePrice = async (req, res) => {
   }
 };
 
-export {
-  getPrices,
-  getPriceById,
-  createPrice,
-  updatePrice,
-  deletePrice
-};
+export { getPrices, getPriceById, createPrice, updatePrice, deletePrice };

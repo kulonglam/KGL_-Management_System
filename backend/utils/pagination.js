@@ -1,3 +1,4 @@
+// Parse pagination.
 const parsePagination = (query = {}) => {
   const hasPaginationInput = query.page !== undefined || query.limit !== undefined;
   if (!hasPaginationInput) {
@@ -20,6 +21,7 @@ const parsePagination = (query = {}) => {
   };
 };
 
+// Handle build pagination meta.
 const buildPaginationMeta = ({ page, limit, total }) => ({
   page,
   limit,

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import createApp from '../app.js';
 
+// Initialize app.
 const app = createApp();
 
 test('GET / responds with API message', async () => {

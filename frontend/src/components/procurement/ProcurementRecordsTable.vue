@@ -6,7 +6,11 @@
         <router-link to="/dashboard/procurement" class="btn btn-primary btn-sm">
           Record Procurement
         </router-link>
-        <button class="btn btn-outline-primary btn-sm" @click="$emit('refresh')" :disabled="loading">
+        <button
+          class="btn btn-outline-primary btn-sm"
+          @click="$emit('refresh')"
+          :disabled="loading"
+        >
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Refresh
         </button>
@@ -22,52 +26,30 @@
         <table class="table table-hover procurement-table align-middle">
           <thead>
             <tr>
-              <th>Produce</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th>Received</th>
-              <th class="text-end">Quantity (kg)</th>
-              <th class="text-end">Value (UGX)</th>
+              <th>Produce Name</th>
+              <th>Produce Type</th>
+              <th class="text-end">Cost (UGX)</th>
+              <th class="text-end">Tonnage (kg)</th>
+              <th>Branch</th>
               <th>Dealer</th>
-              <th class="text-end">Actions</th>
+              <th class="text-end">Price (UGX)</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in procurements" :key="item._id">
               <td class="produce-cell">
-                <div class="fw-semibold text-dark">{{ item.name }}</div>
+                <div class="fw-semibold text-dark">{{ item.produceName }}</div>
               </td>
               <td class="type-cell">
-                <span class="badge text-bg-light border">{{ item.type }}</span>
+                <span class="badge text-bg-light border">{{ item.produceType }}</span>
               </td>
-              <td>
-                <span class="badge source-badge" :class="sourceBadgeClass(item.sourceType)">
-                  {{ formatSource(item.sourceType) }}
-                </span>
-              </td>
-              <td class="received-cell">
-                <div class="fw-semibold">{{ formatDate(item.dateReceived) }}</div>
-                <small class="text-muted">{{ formatTime(item.timeReceived) }}</small>
-              </td>
+              <td class="text-end fw-semibold text-nowrap">{{ formatNumber(item.costUgx) }}</td>
               <td class="text-end fw-semibold text-nowrap">{{ formatNumber(item.tonnageKg) }}</td>
-              <td class="text-end text-nowrap">
-                <div class="fw-semibold">{{ formatNumber(item.costUgx) }}</div>
-                <small class="text-muted">Price/kg: {{ formatNumber(item.sellingPrice) }}</small>
-              </td>
+              <td>{{ item.branch || '-' }}</td>
               <td>
-                <div class="fw-semibold">{{ item.dealerName }}</div>
-                <small class="text-muted">Recorded by {{ item.recordedBy?.name || '-' }}</small>
+                <div class="fw-semibold">{{ item.dealerName || '-' }}</div>
               </td>
-              <td class="text-end">
-                <div class="btn-group btn-group-sm action-group" role="group" aria-label="Row actions">
-                  <button class="btn btn-outline-primary" title="Edit" aria-label="Edit" @click="$emit('edit', item)">
-                    <i class="bi bi-pencil-square"></i>
-                  </button>
-                  <button class="btn btn-outline-danger" title="Delete" aria-label="Delete" @click="$emit('delete', item._id)">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-              </td>
+              <td class="text-end fw-semibold text-nowrap">{{ formatNumber(item.sellingPrice) }}</td>
             </tr>
           </tbody>
         </table>
@@ -77,8 +59,6 @@
 </template>
 
 <script setup>
-import { formatSource } from '../../composables/useProcurementForm';
-
 defineProps({
   procurements: {
     type: Array,
@@ -90,35 +70,9 @@ defineProps({
   }
 });
 
-defineEmits(['refresh', 'edit', 'delete']);
+defineEmits(['refresh']);
 
-const formatDate = (value) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString();
-};
-
-const formatTime = (value) => {
-  if (!value) return '-';
-  const trimmed = String(value).trim();
-  if (!trimmed) return '-';
-
-  const date = new Date(`1970-01-01T${trimmed}`);
-  if (!Number.isNaN(date.getTime())) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  return trimmed;
-};
-
-const sourceBadgeClass = (sourceType) => {
-  const source = String(sourceType || '').toLowerCase();
-  if (source === 'own_farm') return 'source-farm';
-  if (source === 'company') return 'source-company';
-  return 'source-individual';
-};
-
+// Format number.
 const formatNumber = (value) => {
   if (value === undefined || value === null) return '-';
   return Number(value).toLocaleString();
@@ -126,6 +80,7 @@ const formatNumber = (value) => {
 </script>
 
 <style scoped>
+/* Component styles */
 .procurement-card .card-header {
   border-bottom: 1px solid #e5e7eb;
   background-color: #f8fafc;
@@ -164,41 +119,4 @@ const formatNumber = (value) => {
   min-width: 95px;
 }
 
-.received-cell {
-  min-width: 115px;
-  white-space: normal;
-}
-
-.source-badge {
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.source-individual {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-}
-
-.source-company {
-  background-color: #ecfdf5;
-  color: #047857;
-  border-color: #a7f3d0;
-}
-
-.source-farm {
-  background-color: #fefce8;
-  color: #a16207;
-  border-color: #fde68a;
-}
-
-.action-group .btn {
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
 </style>

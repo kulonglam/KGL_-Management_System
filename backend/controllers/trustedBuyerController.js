@@ -1,11 +1,13 @@
 import TrustedBuyer from '../models/TrustedBuyer.js';
+import {
+  normalizeText,
+  normalizeNationalId,
+  findDuplicateTrustedBuyer
+} from '../services/trustedBuyerService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-const normalizeText = (value) => String(value ?? '').trim().replace(/\s+/g, ' ');
 
-// @desc    Get all trusted buyers
-// @route   GET /api/trusted-buyers
-// @access  Private (Manager, Sales Agent)
+// Private (Manager, Sales Agent)
 const getTrustedBuyers = async (req, res) => {
   try {
     const filter = {};
@@ -14,9 +16,7 @@ const getTrustedBuyers = async (req, res) => {
     }
 
     const pagination = parsePagination(req.query);
-    const buyersQuery = TrustedBuyer.find(filter)
-      .sort({ createdAt: -1 })
-      .lean();
+    const buyersQuery = TrustedBuyer.find(filter).sort({ createdAt: -1 }).lean();
 
     if (pagination.enabled) {
       buyersQuery.skip(pagination.skip).limit(pagination.limit);
@@ -42,16 +42,18 @@ const getTrustedBuyers = async (req, res) => {
   }
 };
 
+// Create trusted buyer.
 const createTrustedBuyer = async (req, res) => {
   try {
     const { name, nationalId, location, contact } = req.body;
     const sanitizedName = normalizeText(name);
     const sanitizedLocation = normalizeText(location);
     const sanitizedContact = normalizeText(contact);
+    const normalizedNationalId = normalizeNationalId(nationalId);
 
-    const existing = await TrustedBuyer.findOne({
-      nationalId: nationalId.toUpperCase(),
-      branch: req.user.branch
+    const existing = await findDuplicateTrustedBuyer({
+      branch: req.user.branch,
+      nationalId: normalizedNationalId
     });
 
     if (existing) {
@@ -60,7 +62,7 @@ const createTrustedBuyer = async (req, res) => {
 
     const buyer = await TrustedBuyer.create({
       name: sanitizedName,
-      nationalId: nationalId.toUpperCase(),
+      nationalId: normalizedNationalId,
       location: sanitizedLocation,
       contact: sanitizedContact,
       branch: req.user.branch,
@@ -73,31 +75,28 @@ const createTrustedBuyer = async (req, res) => {
   }
 };
 
+// Update trusted buyer.
 const updateTrustedBuyer = async (req, res) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
-
     if (!buyer) {
       return res.status(404).json({ message: 'Trusted buyer not found' });
     }
-
     if (buyer.branch !== req.user.branch) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
-
     const { name, nationalId, location, contact } = req.body;
-
-    if (nationalId && nationalId.toUpperCase() !== buyer.nationalId) {
-      const existing = await TrustedBuyer.findOne({
-        nationalId: nationalId.toUpperCase(),
-        branch: req.user.branch
+    if (nationalId && normalizeNationalId(nationalId) !== buyer.nationalId) {
+      const existing = await findDuplicateTrustedBuyer({
+        branch: req.user.branch,
+        nationalId,
+        excludeId: buyer._id
       });
       if (existing) {
         return res.status(400).json({ message: 'Trusted buyer already exists for this branch' });
       }
-      buyer.nationalId = nationalId.toUpperCase();
+      buyer.nationalId = normalizeNationalId(nationalId);
     }
-
     if (name !== undefined) buyer.name = normalizeText(name);
     if (location !== undefined) buyer.location = normalizeText(location);
     if (contact !== undefined) buyer.contact = normalizeText(contact);
@@ -109,31 +108,20 @@ const updateTrustedBuyer = async (req, res) => {
   }
 };
 
-// @desc    Delete trusted buyer
-// @route   DELETE /api/trusted-buyers/:id
-// @access  Private (Manager only)
+// Delete trusted buyer by manager only
 const deleteTrustedBuyer = async (req, res) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
-
     if (!buyer) {
       return res.status(404).json({ message: 'Trusted buyer not found' });
     }
-
     if (buyer.branch !== req.user.branch) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
-
     await buyer.deleteOne();
     res.json({ message: 'Trusted buyer deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-export {
-  getTrustedBuyers,
-  createTrustedBuyer,
-  updateTrustedBuyer,
-  deleteTrustedBuyer
-};
+export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer };

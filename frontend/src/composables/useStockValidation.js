@@ -1,8 +1,10 @@
 import { ref } from 'vue';
 
+// Handle use stock validation.
 const useStockValidation = () => {
   const stockWarning = ref('');
 
+  // Handle evaluate stock.
   const evaluateStock = (inventory, produceName, tonnageKg, produceType = '') => {
     const tonnage = Number(tonnageKg);
     if (!produceName || !tonnage || Number.isNaN(tonnage)) {
@@ -10,10 +12,10 @@ const useStockValidation = () => {
       return { item: null, amount: '' };
     }
 
-    const item = inventory.find((entry) => (
-      entry.produceName === produceName &&
-      (!produceType || entry.produceType === produceType)
-    ));
+    const item = inventory.find(
+      (entry) =>
+        entry.produceName === produceName && (!produceType || entry.produceType === produceType)
+    );
     if (!item) {
       stockWarning.value = '';
       return { item: null, amount: '' };

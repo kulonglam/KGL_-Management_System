@@ -23,7 +23,12 @@
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Update Procurement
             </button>
-            <button type="button" class="btn btn-outline-secondary ms-2" :disabled="loading" @click="cancelEdit">
+            <button
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              :disabled="loading"
+              @click="cancelEdit"
+            >
               Cancel Edit
             </button>
           </div>
@@ -54,25 +59,33 @@ import {
 } from '../composables/useProcurementForm';
 import { procurementAPI } from '../services/api';
 
+// Configure user.
 const user = ref({});
+// Configure procurements.
 const procurements = ref([]);
+// Configure loading list.
 const loadingList = ref(false);
+// Configure editing id.
 const editingId = ref(null);
+// Configure form.
 const form = ref(createInitialProcurementForm());
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
 const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
 
+// Handle type change.
 const handleTypeChange = () => {
   applyPriceSetting(form.value);
 };
 
+// Handle reset form.
 const resetForm = () => {
   form.value = createInitialProcurementForm();
   clearPriceLock();
 };
 
+// Handle load procurements.
 const loadProcurements = async () => {
   loadingList.value = true;
   try {
@@ -85,11 +98,12 @@ const loadProcurements = async () => {
   }
 };
 
+// Handle start edit.
 const startEdit = (item) => {
   editingId.value = item._id;
   form.value = {
-    name: item.name || '',
-    type: item.type || '',
+    produceName: item.produceName || '',
+    produceType: item.produceType || '',
     sourceType: item.sourceType || '',
     dateReceived: toDateInput(item.dateReceived),
     timeReceived: item.timeReceived || '',
@@ -103,12 +117,14 @@ const startEdit = (item) => {
   resetFeedback();
 };
 
+// Handle cancel edit.
 const cancelEdit = () => {
   editingId.value = null;
   resetForm();
   resetFeedback();
 };
 
+// Handle update.
 const handleUpdate = async () => {
   if (!editingId.value) return;
   beginSubmit();
@@ -125,6 +141,7 @@ const handleUpdate = async () => {
   }
 };
 
+// Delete procurement.
 const deleteProcurement = async (id) => {
   if (!confirm('Delete this procurement record?')) return;
   resetFeedback();

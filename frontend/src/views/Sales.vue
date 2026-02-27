@@ -23,7 +23,12 @@
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Record Sale
             </button>
-            <button type="button" class="btn btn-danger ms-2" :disabled="loading" @click="resetForm">
+            <button
+              type="button"
+              class="btn btn-danger ms-2"
+              :disabled="loading"
+              @click="resetForm"
+            >
               Clear Form
             </button>
           </div>
@@ -35,7 +40,12 @@
       <div class="modal-card sale-review-modal">
         <div class="modal-header">
           <h5 class="mb-0">Review Cash Sale</h5>
-          <button type="button" class="btn-close" :disabled="loading" @click="closeReviewModal"></button>
+          <button
+            type="button"
+            class="btn-close"
+            :disabled="loading"
+            @click="closeReviewModal"
+          ></button>
         </div>
         <div class="modal-body">
           <div class="sale-summary card border-0 mb-3">
@@ -62,14 +72,63 @@
           </div>
 
           <div class="mt-4 d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-outline-secondary" :disabled="loading" @click="closeReviewModal">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="loading"
+              @click="closeReviewModal"
+            >
               Back
             </button>
-            <button type="button" class="btn btn-primary" :disabled="loading" @click="confirmSaveSale">
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="loading"
+              @click="confirmSaveSale"
+            >
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Save Cash Sale
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Sales Records</h5>
+        <button class="btn btn-outline-primary btn-sm" :disabled="loadingSalesList" @click="loadSalesRecords">
+          <span v-if="loadingSalesList" class="spinner-border spinner-border-sm me-2"></span>
+          Refresh
+        </button>
+      </div>
+      <div class="card-body">
+        <div v-if="salesRecords.length === 0" class="text-center py-5 text-muted">
+          No sales records found.
+        </div>
+        <div v-else class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Produce</th>
+                <th class="text-end">Quantity (kg)</th>
+                <th class="text-end">Amount Paid (UGX)</th>
+                <th>Buyer</th>
+                <th>Sales Agent</th>
+                <th>Date/Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in salesRecords" :key="item._id">
+                <td>{{ item.produceName }} ({{ item.produceType }})</td>
+                <td class="text-end">{{ Number(item.tonnageKg || 0).toLocaleString() }}</td>
+                <td class="text-end">{{ formatCurrency(item.amountPaidUgx) }}</td>
+                <td>{{ item.buyerName }}</td>
+                <td>{{ item.salesAgentName || '-' }}</td>
+                <td>{{ formatDateTime(item.date, item.time) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -84,14 +143,23 @@ import { useStockValidation } from '../composables/useStockValidation';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
 
+// Configure user.
 const user = ref({});
+// Configure inventory.
 const inventory = ref([]);
+// Configure form.
 const form = ref(createInitialForm());
+// Configure show review modal.
 const showReviewModal = ref(false);
+// Configure sales records.
+const salesRecords = ref([]);
+// Configure loading sales list.
+const loadingSalesList = ref(false);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
 
+// Create initial form.
 function createInitialForm() {
   return {
     produceName: '',
@@ -104,6 +172,7 @@ function createInitialForm() {
   };
 }
 
+// Handle load inventory.
 const loadInventory = async () => {
   try {
     const response = await inventoryAPI.get();
@@ -113,6 +182,20 @@ const loadInventory = async () => {
   }
 };
 
+// Handle load sales records.
+const loadSalesRecords = async () => {
+  loadingSalesList.value = true;
+  try {
+    const response = await salesAPI.getAll();
+    salesRecords.value = response.data;
+  } catch (fetchError) {
+    console.error('Error loading sales records:', fetchError);
+  } finally {
+    loadingSalesList.value = false;
+  }
+};
+
+// Update price.
 const updatePrice = () => {
   let result = evaluateStock(
     inventory.value,
@@ -121,22 +204,20 @@ const updatePrice = () => {
     form.value.produceType
   );
   if (!result.item && form.value.produceType) {
-    result = evaluateStock(
-      inventory.value,
-      form.value.produceName,
-      form.value.tonnageKg
-    );
+    result = evaluateStock(inventory.value, form.value.produceName, form.value.tonnageKg);
   }
 
   form.value.produceType = result.item?.produceType || '';
   form.value.amountPaidUgx = result.amount || '';
 };
 
+// Handle reset form.
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
 };
 
+// Handle open review modal.
 const openReviewModal = () => {
   if (stockWarning.value) {
     setError(stockWarning.value);
@@ -151,11 +232,13 @@ const openReviewModal = () => {
   showReviewModal.value = true;
 };
 
+// Handle close review modal.
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
 };
 
+// Handle confirm save sale.
 const confirmSaveSale = async () => {
   if (stockWarning.value) {
     setError(stockWarning.value);
@@ -169,7 +252,7 @@ const confirmSaveSale = async () => {
     setSuccess('Sale recorded successfully!');
     showReviewModal.value = false;
     resetForm();
-    await loadInventory();
+    await Promise.all([loadInventory(), loadSalesRecords()]);
   } catch (submitError) {
     setError(submitError.response?.data?.message || 'Failed to record sale');
   } finally {
@@ -177,19 +260,34 @@ const confirmSaveSale = async () => {
   }
 };
 
-const formatCurrency = (amount) => new Intl.NumberFormat('en-UG', {
-  style: 'currency',
-  currency: 'UGX',
-  minimumFractionDigits: 0
-}).format(Number(amount || 0));
+// Format currency.
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat('en-UG', {
+    style: 'currency',
+    currency: 'UGX',
+    minimumFractionDigits: 0
+  }).format(Number(amount || 0));
+
+// Format combined date and time.
+const formatDateTime = (dateValue, timeValue) => {
+  if (!dateValue && !timeValue) return '-';
+
+  const date = dateValue ? new Date(dateValue) : null;
+  const formattedDate =
+    date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : String(dateValue || '-');
+  const formattedTime = timeValue ? String(timeValue) : '-';
+
+  return `${formattedDate} ${formattedTime}`;
+};
 
 onMounted(async () => {
   user.value = JSON.parse(localStorage.getItem('user') || '{}');
-  await loadInventory();
+  await Promise.all([loadInventory(), loadSalesRecords()]);
 });
 </script>
 
 <style scoped>
+/* Component styles */
 .sale-review-modal {
   max-width: 760px;
 }

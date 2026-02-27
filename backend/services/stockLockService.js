@@ -1,96 +1,100 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from 'crypto';
 import StockLock from '../models/StockLock.js';
 
-const LOCK_TTL_MS = Number(process.env.STOCK_LOCK_TTL_MS || 5000);
-const LOCK_WAIT_TIMEOUT_MS = Number(process.env.STOCK_LOCK_WAIT_TIMEOUT_MS || 10000);
-const LOCK_RETRY_MS = Number(process.env.STOCK_LOCK_RETRY_MS || 120);
+// Configure stock lock defaults.
+const DEFAULT_LOCK_TTL_MS = 8000;
+const DEFAULT_LOCK_WAIT_MS = 5000;
+const DEFAULT_RETRY_INTERVAL_MS = 75;
 
-const sleep = (ms) => new Promise((resolve) => {
-  setTimeout(resolve, ms);
-});
+// Wait helper for retry loops.
+const delay = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
-const lockUnavailableError = () => {
-  const error = new Error('Stock is currently being updated. Please retry.');
-  error.statusCode = 423;
-  return error;
+// Normalize text fragments used in lock keys.
+const normalizeLockPart = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+// Build a deterministic lock key for a stock bucket.
+const buildStockLockKey = ({ branch, produceName, produceType }) => {
+  return `${normalizeLockPart(branch)}::${normalizeLockPart(produceName)}::${normalizeLockPart(
+    produceType
+  )}`;
 };
 
-const ensureLockDocument = async (key) => {
-  await StockLock.updateOne(
-    {
-      branch: key.branch,
-      produceName: key.produceName,
-      produceType: key.produceType
-    },
-    {
-      $setOnInsert: {
-        owner: null,
-        lockUntil: new Date(0)
-      }
-    },
-    { upsert: true }
-  );
-};
+// Acquire a lock for a stock bucket with retry and stale-lock takeover.
+const acquireStockLock = async (
+  key,
+  {
+    ttlMs = DEFAULT_LOCK_TTL_MS,
+    waitMs = DEFAULT_LOCK_WAIT_MS,
+    retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS
+  } = {}
+) => {
+  const ownerId = randomUUID();
+  const start = Date.now();
 
-const acquireStockLock = async (key, owner) => {
-  const startedAt = Date.now();
-  await ensureLockDocument(key);
-
-  while (Date.now() - startedAt <= LOCK_WAIT_TIMEOUT_MS) {
+  while (Date.now() - start <= waitMs) {
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + LOCK_TTL_MS);
+    const expiresAt = new Date(now.getTime() + ttlMs);
 
-    const lock = await StockLock.findOneAndUpdate(
-      {
-        branch: key.branch,
-        produceName: key.produceName,
-        produceType: key.produceType,
-        $or: [{ lockUntil: { $lte: now } }, { owner }]
-      },
-      {
-        $set: {
-          owner,
-          lockUntil: expiresAt
+    try {
+      const lock = await StockLock.findOneAndUpdate(
+        {
+          key,
+          $or: [{ expiresAt: { $lte: now } }, { ownerId }]
+        },
+        {
+          $set: {
+            key,
+            ownerId,
+            expiresAt
+          }
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true
         }
-      },
-      { new: true }
-    );
+      );
 
-    if (lock && lock.owner === owner) {
-      return;
-    }
-
-    await sleep(LOCK_RETRY_MS);
-  }
-
-  throw lockUnavailableError();
-};
-
-const releaseStockLock = async (key, owner) => {
-  await StockLock.updateOne(
-    {
-      branch: key.branch,
-      produceName: key.produceName,
-      produceType: key.produceType,
-      owner
-    },
-    {
-      $set: {
-        owner: null,
-        lockUntil: new Date(0)
+      if (lock?.ownerId === ownerId) {
+        return { key, ownerId };
+      }
+    } catch (error) {
+      if (error?.code !== 11000) {
+        throw error;
       }
     }
+
+    await delay(retryIntervalMs);
+  }
+
+  const lockTimeoutError = new Error(
+    'Stock is currently being updated by another request. Please retry.'
   );
+  lockTimeoutError.statusCode = 409;
+  throw lockTimeoutError;
 };
 
-const withStockLock = async (key, work) => {
-  const owner = randomUUID();
-  await acquireStockLock(key, owner);
+// Release a previously acquired stock lock.
+const releaseStockLock = async ({ key, ownerId }) => {
+  await StockLock.deleteOne({ key, ownerId });
+};
+
+// Execute a task while holding a stock lock.
+const withStockLock = async (input, task, options) => {
+  const key = buildStockLockKey(input);
+  const lock = await acquireStockLock(key, options);
   try {
-    return await work();
+    return await task();
   } finally {
-    await releaseStockLock(key, owner);
+    await releaseStockLock(lock);
   }
 };
 
-export { withStockLock };
+export { buildStockLockKey, acquireStockLock, releaseStockLock, withStockLock };

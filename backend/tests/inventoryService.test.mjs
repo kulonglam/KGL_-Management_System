@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildInventorySnapshot } from '../services/inventoryService.js';
 
+// Handle sort snapshot.
 const sortSnapshot = (rows) =>
   [...rows].sort((a, b) =>
     `${a.produceName}|${a.produceType}|${a.branch}`.localeCompare(
@@ -10,17 +11,38 @@ const sortSnapshot = (rows) =>
   );
 
 test('buildInventorySnapshot aggregates procurement and subtracts sales and credit sales', () => {
+  // Configure procurements.
   const procurements = [
-    { name: 'Red Beans', type: 'Beans', branch: 'Maganjo', tonnageKg: 1000, sellingPrice: 35000 },
-    { name: 'Red Beans', type: 'Beans', branch: 'Maganjo', tonnageKg: 500, sellingPrice: 35000 },
-    { name: 'Soy Mix', type: 'Soybeans', branch: 'Matugga', tonnageKg: 700, sellingPrice: 25000 }
+    {
+      produceName: 'Red Beans',
+      produceType: 'Beans',
+      branch: 'Maganjo',
+      tonnageKg: 1000,
+      sellingPrice: 35000
+    },
+    {
+      produceName: 'Red Beans',
+      produceType: 'Beans',
+      branch: 'Maganjo',
+      tonnageKg: 500,
+      sellingPrice: 35000
+    },
+    {
+      produceName: 'Soy Mix',
+      produceType: 'Soybeans',
+      branch: 'Matugga',
+      tonnageKg: 700,
+      sellingPrice: 25000
+    }
   ];
 
+  // Configure sales.
   const sales = [
     { produceName: 'Red Beans', produceType: 'Beans', branch: 'Maganjo', tonnageKg: 200 },
     { produceName: 'Soy Mix', produceType: 'Soybeans', branch: 'Matugga', tonnageKg: 50 }
   ];
 
+  // Configure credit sales.
   const creditSales = [
     { produceName: 'Red Beans', produceType: 'Beans', branch: 'Maganjo', tonnageKg: 100 }
   ];
@@ -45,8 +67,15 @@ test('buildInventorySnapshot aggregates procurement and subtracts sales and cred
 });
 
 test('buildInventorySnapshot keeps zero and negative balances for out-of-stock reporting', () => {
+  // Configure procurements.
   const procurements = [
-    { name: 'White Maize', type: 'Grain Maize', branch: 'Matugga', tonnageKg: 1000, sellingPrice: 28000 }
+    {
+      produceName: 'White Maize',
+      produceType: 'Grain Maize',
+      branch: 'Matugga',
+      tonnageKg: 1000,
+      sellingPrice: 28000
+    }
   ];
   const sales = [{ produceName: 'White Maize', branch: 'Matugga', tonnageKg: 700 }];
   const creditSales = [{ produceName: 'White Maize', branch: 'Matugga', tonnageKg: 300 }];
@@ -57,8 +86,15 @@ test('buildInventorySnapshot keeps zero and negative balances for out-of-stock r
 });
 
 test('buildInventorySnapshot supports legacy sales without produceType', () => {
+  // Configure procurements.
   const procurements = [
-    { name: 'Yellow Maize', type: 'Grain Maize', branch: 'Matugga', tonnageKg: 1200, sellingPrice: 20000 }
+    {
+      produceName: 'Yellow Maize',
+      produceType: 'Grain Maize',
+      branch: 'Matugga',
+      tonnageKg: 1200,
+      sellingPrice: 20000
+    }
   ];
   const sales = [{ produceName: 'Yellow Maize', branch: 'Matugga', tonnageKg: 200 }];
   const creditSales = [];

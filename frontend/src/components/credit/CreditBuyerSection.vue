@@ -6,8 +6,13 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Trusted Buyer *</label>
-        <select class="form-select" v-model="form.trustedBuyerId" @change="$emit('buyer-change')" required>
+        <label class="form-label">Trusted Buyer </label>
+        <select
+          class="form-select"
+          v-model="form.trustedBuyerId"
+          @change="$emit('buyer-change')"
+          required
+        >
           <option value="">Select trusted buyer</option>
           <option v-for="buyer in trustedBuyers" :key="buyer._id" :value="buyer._id">
             {{ buyer.name }} ({{ buyer.nationalId }})
@@ -37,6 +42,7 @@
 </template>
 
 <script setup>
+// Configure form.
 const form = defineModel('form', {
   type: Object,
   required: true
@@ -57,6 +63,7 @@ defineEmits(['buyer-change']);
 </script>
 
 <style scoped>
+/* Component styles */
 .credit-section {
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;

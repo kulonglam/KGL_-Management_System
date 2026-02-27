@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { authorize, authorizeDirectorOrban } from '../middleware/auth.js';
 
+// Create res.
 const createRes = () => {
+  // Configure response.
   const response = {
     statusCode: 200,
     body: null,
@@ -63,10 +65,12 @@ test('authorize returns 401 when req.user is missing', () => {
 });
 
 test('authorizeDirectorOrban allows director with cross-branch permission', () => {
+  // Configure req.
   const req = {
     user: {
       username: 'orban',
       name: 'Mr. Orban',
+      role: 'director',
       canViewCrossBranchTotals: true
     }
   };
@@ -82,7 +86,7 @@ test('authorizeDirectorOrban allows director with cross-branch permission', () =
 });
 
 test('authorizeDirectorOrban rejects non-Orban users', () => {
-  const req = { user: { username: 'director1', name: 'Director One' } };
+  const req = { user: { username: 'director1', name: 'Director One', role: 'director' } };
   const res = createRes();
   let nextCalled = false;
 

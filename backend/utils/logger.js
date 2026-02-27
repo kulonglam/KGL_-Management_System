@@ -1,14 +1,25 @@
+// Handle mask sensitive value.
 const maskSensitiveValue = (key, value) => {
   if (value === undefined || value === null) return value;
 
-  const sensitiveKeys = ['password', 'token', 'authorization', 'nationalId', 'contact', 'dealerContact'];
-  if (sensitiveKeys.some((sensitiveKey) => key.toLowerCase().includes(sensitiveKey.toLowerCase()))) {
+  const sensitiveKeys = [
+    'password',
+    'token',
+    'authorization',
+    'nationalId',
+    'contact',
+    'dealerContact'
+  ];
+  if (
+    sensitiveKeys.some((sensitiveKey) => key.toLowerCase().includes(sensitiveKey.toLowerCase()))
+  ) {
     return '[REDACTED]';
   }
 
   return value;
 };
 
+// Handle sanitize object.
 const sanitizeObject = (value) => {
   if (Array.isArray(value)) {
     return value.map((entry) => sanitizeObject(entry));
@@ -29,7 +40,9 @@ const sanitizeObject = (value) => {
   return value;
 };
 
+// Handle write log.
 const writeLog = (level, message, metadata = {}) => {
+  // Configure payload.
   const payload = {
     timestamp: new Date().toISOString(),
     level,
@@ -45,7 +58,9 @@ const writeLog = (level, message, metadata = {}) => {
   console.log(serialized);
 };
 
+// Configure logger.
 const logger = {
+  // Handle info.
   info(message, metadata = {}) {
     writeLog('info', message, metadata);
   },
