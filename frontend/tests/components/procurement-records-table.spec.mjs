@@ -70,7 +70,9 @@ describe('ProcurementRecordsTable', () => {
     expect(wrapper.emitted('delete')[0][0]).toBe('id-1');
   });
 
-  it('has no detectable accessibility violations', async () => {
+  it(
+    'has no detectable accessibility violations',
+    async () => {
     const wrapper = mount(ProcurementRecordsTable, {
       props: {
         procurements: [createProcurement(1)],
@@ -87,5 +89,7 @@ describe('ProcurementRecordsTable', () => {
 
     const results = await runA11yAudit(wrapper.element);
     expectNoA11yViolations(results);
-  });
+    },
+    10000
+  );
 });

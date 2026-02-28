@@ -55,6 +55,7 @@
                   v-model="credentials.username"
                   required
                   placeholder="Enter your username"
+                  autocomplete="username"
                 />
               </div>
             </div>
@@ -74,9 +75,10 @@
                   v-model="credentials.password"
                   required
                   placeholder="Enter your password"
+                  autocomplete="current-password"
                 />
                 <button
-                  class="btn btn-outline-secondary border-start-0 border-start-0 bg-white login-password-toggle"
+                  class="btn btn-outline-secondary border-start-0 bg-white login-password-toggle"
                   type="button"
                   :aria-label="showPassword ? 'Hide password' : 'Show password'"
                   @click="showPassword = !showPassword"
@@ -107,13 +109,14 @@
               </button>
             </div>
 
-            <div v-if="error" class="alert alert-danger py-2 small shadow-sm border-0" role="alert">
+            <div v-if="error" class="alert alert-danger py-2 small shadow-sm border-0" role="alert" aria-live="assertive">
               <i class="bi bi-exclamation-circle-fill me-2"></i> {{ error }}
             </div>
             <div
               v-if="helpMessage"
               class="alert alert-info py-2 small shadow-sm border-0"
               role="status"
+              aria-live="polite"
             >
               <i class="bi bi-info-circle-fill me-2"></i> {{ helpMessage }}
             </div>

@@ -100,6 +100,13 @@
       </div>
     </div>
 
+    <QuickActionsPanel
+      class="mb-4"
+      title="Quick Actions"
+      subtitle="Jump directly to your most frequent branch operations."
+      :items="quickActions"
+    />
+
     <div
       v-if="showLowStockAlert && lowStockItems.length > 0"
       class="alert alert-warning d-flex align-items-start justify-content-between gap-2"
@@ -225,6 +232,7 @@ import {
   downloadReportFile
 } from '../utils/reports/managerReportExport.mjs';
 import ManagerDashboardCharts from '../components/dashboards/ManagerDashboardCharts.vue';
+import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
@@ -239,7 +247,8 @@ const buildPalette = (count) =>
 export default {
   name: 'ManagerDashboard',
   components: {
-    ManagerDashboardCharts
+    ManagerDashboardCharts,
+    QuickActionsPanel
   },
   data() {
     return {
@@ -338,6 +347,52 @@ export default {
     },
     hasSalesTrendData() {
       return this.salesOverTime.some((item) => item.amount > 0);
+    },
+    quickActions() {
+      return [
+        {
+          key: 'record-procurement',
+          to: '/dashboard/procurement',
+          icon: 'bi bi-bag-plus',
+          label: 'Record Procurement',
+          meta: 'Capture incoming stock'
+        },
+        {
+          key: 'record-cash-sale',
+          to: '/dashboard/sales',
+          icon: 'bi bi-cash-stack',
+          label: 'Record Cash Sale',
+          meta: 'Create immediate payment sale'
+        },
+        {
+          key: 'record-credit-sale',
+          to: '/dashboard/credit-sales',
+          icon: 'bi bi-journal-plus',
+          label: 'Record Credit Sale',
+          meta: 'Dispatch with deferred payment'
+        },
+        {
+          key: 'inventory',
+          to: '/dashboard/inventory',
+          icon: 'bi bi-box-seam',
+          label: 'Review Inventory',
+          meta: 'Monitor stock and status'
+        },
+        {
+          key: 'buyers',
+          to: '/dashboard/trusted-buyers',
+          icon: 'bi bi-person-check',
+          label: 'Trusted Buyers',
+          meta: 'Manage approved credit buyers'
+        },
+        {
+          key: 'prices',
+          to: '/dashboard/price-management',
+          icon: 'bi bi-tags',
+          label: 'Price Management',
+          meta: 'Update produce selling prices'
+        }
+      ];
     },
     revenueSplitChartData() {
       return {

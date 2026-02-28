@@ -10,8 +10,8 @@
     "migrate:procurement-legacy": "node scripts/migrateLegacyProcurementFields.js",
     "migrate:produce-canonical": "node scripts/migrateCanonicalProduceData.js",
     "test": "node --test tests/*.test.mjs",
-    "lint": "eslint . --ext .js,.mjs",
-    "lint:fix": "eslint . --ext .js,.mjs --fix",
+    "lint": "eslint . --config eslint.config.mjs",
+    "lint:fix": "eslint . --config eslint.config.mjs --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

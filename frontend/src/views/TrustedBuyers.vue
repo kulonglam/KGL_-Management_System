@@ -5,6 +5,22 @@
       <p class="page-subtitle">Manage approved buyers for credit sales at your branch.</p>
     </div>
 
+    <div
+      v-if="loadError"
+      class="alert alert-danger d-flex align-items-start justify-content-between gap-3"
+      role="alert"
+    >
+      <span>{{ loadError }}</span>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-danger"
+        :disabled="loadingList"
+        @click="loadBuyers"
+      >
+        Retry
+      </button>
+    </div>
+
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Trusted Buyers List</h5>
@@ -23,11 +39,46 @@
         </div>
       </div>
       <div class="card-body">
-        <div v-if="buyers.length === 0" class="text-center py-5 text-muted">
+        <div class="data-toolbar">
+          <div class="data-toolbar-group">
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="buyers-search">Search</label>
+              <input
+                id="buyers-search"
+                v-model.trim="searchQuery"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Name, NIN, location, contact..."
+              />
+            </div>
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="buyers-sort">Sort By</label>
+              <select id="buyers-sort" v-model="sortBy" class="form-select form-select-sm">
+                <option value="name_asc">Name A-Z</option>
+                <option value="name_desc">Name Z-A</option>
+                <option value="recent">Recently added</option>
+              </select>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="!searchQuery && sortBy === 'name_asc'"
+            @click="resetTableFilters"
+          >
+            Reset Filters
+          </button>
+        </div>
+
+        <div v-if="loadingList" class="text-center py-5 text-muted">Loading trusted buyers...</div>
+        <div v-else-if="buyers.length === 0" class="empty-state">
           No trusted buyers found for this branch.
         </div>
+        <div v-else-if="displayedBuyers.length === 0" class="empty-state">
+          No trusted buyers match your current filters.
+        </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle">
+          <table class="table align-middle table-sticky table-row-hover">
             <thead>
               <tr>
                 <th>Name</th>
@@ -39,7 +90,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in buyers" :key="item._id">
+              <tr v-for="item in paginatedBuyers" :key="item._id">
                 <td>{{ item.name }}</td>
                 <td>{{ item.nationalId }}</td>
                 <td>{{ item.location }}</td>
@@ -57,6 +108,16 @@
             </tbody>
           </table>
         </div>
+        <TablePagination
+          :current-page="currentPage"
+          :total-pages="totalBuyerPages"
+          :total-items="displayedBuyers.length"
+          :page-size="pageSize"
+          :page-size-options="pageSizeOptions"
+          id-prefix="trusted-buyers-table"
+          @update:currentPage="goToPage"
+          @update:pageSize="handlePageSizeUpdate"
+        />
       </div>
     </div>
 
@@ -171,19 +232,27 @@
 <script>
 import { trustedBuyersAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import TablePagination from '../components/common/TablePagination.vue';
 import { trustedBuyerValidationSchema } from '../utils/formSchemas.mjs';
 import { validateValues } from '../utils/formValidation.mjs';
 
 export default {
   name: 'TrustedBuyers',
   components: {
-    ConfirmDialog
+    ConfirmDialog,
+    TablePagination
   },
   data() {
     return {
       user: {},
       buyers: [],
       loadingList: false,
+      loadError: '',
+      searchQuery: '',
+      sortBy: 'name_asc',
+      currentPage: 1,
+      pageSize: 20,
+      pageSizeOptions: [10, 20, 50, 100],
       showForm: false,
       editingId: null,
       form: {
@@ -204,6 +273,53 @@ export default {
       }
     };
   },
+  computed: {
+    displayedBuyers() {
+      const query = this.searchQuery.trim().toLowerCase();
+      const filtered = this.buyers.filter((item) => {
+        if (!query) return true;
+        const haystack = [item.name, item.nationalId, item.location, item.contact, item.branch]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+
+      const sorted = [...filtered];
+      if (this.sortBy === 'name_desc') {
+        sorted.sort((a, b) => String(b.name || '').localeCompare(String(a.name || '')));
+      } else if (this.sortBy === 'recent') {
+        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      } else {
+        sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      }
+
+      return sorted;
+    },
+    totalBuyerPages() {
+      return Math.max(1, Math.ceil(this.displayedBuyers.length / this.pageSize));
+    },
+    paginatedBuyers() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.displayedBuyers.slice(start, start + this.pageSize);
+    }
+  },
+  watch: {
+    pageSize() {
+      this.currentPage = 1;
+    },
+    buyers() {
+      if (this.currentPage > this.totalBuyerPages) {
+        this.currentPage = this.totalBuyerPages;
+      }
+    },
+    searchQuery() {
+      this.currentPage = 1;
+    },
+    sortBy() {
+      this.currentPage = 1;
+    }
+  },
   async created() {
     this.user = JSON.parse(localStorage.getItem('user') || '{}');
     await this.loadBuyers();
@@ -212,14 +328,27 @@ export default {
     // Handle load buyers.
     async loadBuyers() {
       this.loadingList = true;
+      this.loadError = '';
       try {
         const response = await trustedBuyersAPI.getAll();
         this.buyers = response.data;
       } catch (error) {
-        console.error('Failed to load trusted buyers:', error);
+        this.loadError = error.response?.data?.message || 'Failed to load trusted buyers.';
       } finally {
         this.loadingList = false;
       }
+    },
+    resetTableFilters() {
+      this.searchQuery = '';
+      this.sortBy = 'name_asc';
+      this.currentPage = 1;
+    },
+    goToPage(page) {
+      const nextPage = Math.max(1, Math.min(this.totalBuyerPages, Number(page || 1)));
+      this.currentPage = nextPage;
+    },
+    handlePageSizeUpdate(size) {
+      this.pageSize = Number(size || 20);
     },
     async handleSubmit() {
       this.error = '';

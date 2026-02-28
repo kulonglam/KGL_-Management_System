@@ -21,6 +21,13 @@
       </div>
     </div>
 
+    <QuickActionsPanel
+      class="mb-4"
+      title="Quick Actions"
+      subtitle="Open your day-to-day sales workflows in one click."
+      :items="quickActions"
+    />
+
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h5 class="mb-0">Today's Sales Summary</h5>
       <span class="badge bg-light text-muted">{{ todayLabel }}</span>
@@ -68,9 +75,13 @@
 <script>
 import { salesAPI, creditSalesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
+import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
 
 export default {
   name: 'SalesAgentDashboard',
+  components: {
+    QuickActionsPanel
+  },
   data() {
     return {
       user: {},
@@ -102,6 +113,54 @@ export default {
     if (this.midnightInterval) {
       clearInterval(this.midnightInterval);
       this.midnightInterval = null;
+    }
+  },
+  computed: {
+    quickActions() {
+      return [
+        {
+          key: 'cash-sale',
+          to: '/dashboard/sales',
+          icon: 'bi bi-cash-stack',
+          label: 'Record Cash Sale',
+          meta: 'Fast checkout for immediate payment'
+        },
+        {
+          key: 'credit-sale',
+          to: '/dashboard/credit-sales',
+          icon: 'bi bi-journal-plus',
+          label: 'Record Credit Sale',
+          meta: 'Create deferred payment order'
+        },
+        {
+          key: 'inventory',
+          to: '/dashboard/inventory',
+          icon: 'bi bi-box-seam',
+          label: 'View Inventory',
+          meta: 'Check stock before creating sale'
+        },
+        {
+          key: 'sales-records',
+          to: '/dashboard/sales-records',
+          icon: 'bi bi-receipt',
+          label: 'Sales Records',
+          meta: 'Review cash sale entries'
+        },
+        {
+          key: 'credit-records',
+          to: '/dashboard/credit-sales-records',
+          icon: 'bi bi-journal-text',
+          label: 'Credit Records',
+          meta: 'Review all credit dispatches'
+        },
+        {
+          key: 'profile',
+          to: '/dashboard/profile',
+          icon: 'bi bi-person-circle',
+          label: 'My Profile',
+          meta: 'Update personal account details'
+        }
+      ];
     }
   },
   methods: {

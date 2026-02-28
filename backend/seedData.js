@@ -75,7 +75,7 @@ const seedData = async () => {
       },
       {
         name: 'Agent1B',
-        username: 'agentB',
+        username: 'agent1B',
         password: hashedPassword,
         role: 'sales_agent',
         branch: 'Matugga'
@@ -239,11 +239,8 @@ const seedData = async () => {
     console.log('  Username: managerA (Maganjo)');
     console.log('  Username: managerB (Matugga)');
     console.log('\nSales Agents:');
-    console.log('  Username: agent1A, agent1B (Maganjo)');
-    console.log('  Username: agent2A, agent2B (Matugga)');
-    console.log('\nCredit Agents:');
-    console.log('  Username: agent1A, agent1b (Maganjo)');
-    console.log('  Username: agent2a, agent2b (Matugga)');
+    console.log('  Username: agent1A, agent2A (Maganjo)');
+    console.log('  Username: agent1B, agent2B (Matugga)');
     console.log('================================\n');
 
     process.exit(0);

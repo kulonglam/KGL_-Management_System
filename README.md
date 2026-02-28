@@ -1,0 +1,92 @@
+# Karibu Groceries LTD Management System
+
+Karibu Groceries LTD Management System is a full-stack web application for branch-level wholesale produce operations and executive reporting.
+
+## Core Features
+1. Procurement and inventory control
+2. Cash and credit sales management
+3. Role-based dashboards and governance controls
+
+## Tech Stack
+- Frontend: Vue 3, Vite, Bootstrap 5
+- Backend: Node.js, Express, MongoDB, Mongoose
+- Testing: Node test runner, Vitest, Supertest
+
+## Repository Structure
+- `frontend/` - Vue application
+- `backend/` - Express API and MongoDB models
+- `shared/` - shared assets/utilities
+- `USER_MANUAL.md` - end-user guide
+- `DATABASE_SCHEMA.md` - database schema and sample data reference
+- `DEMO_WALKTHROUGH.md` - live/recorded demo script
+
+## Quick Start
+### 1. Backend
+```bash
+cd backend
+npm install
+```
+
+Copy `backend/.env.example` to `backend/.env`, then update values if needed.
+
+```bash
+node seedData.js
+npm run dev
+```
+
+Backend default URL: `http://localhost:5000`
+
+### 2. Frontend
+```bash
+cd frontend
+npm install
+```
+
+Copy `frontend/.env.example` to `frontend/.env`.
+
+```bash
+npm run dev
+```
+
+Frontend default URL: `http://localhost:5173`
+
+## Seeded Login Credentials
+All seeded users use password `password123`.
+
+- Director: `orban`
+- Managers: `managerA` (Maganjo), `managerB` (Matugga)
+- Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
+
+## Quality Checks
+Run these before submission/deployment:
+
+```bash
+# backend
+cd backend
+npm run lint
+npm test
+
+# frontend
+cd frontend
+npm run lint
+npm test
+```
+
+## Required Deliverables Mapping
+- Fully functional web application with three core features:
+  - Implemented in `frontend/` and `backend/` with role-based workflows and tested endpoints/components.
+- Complete source code with comments/documentation:
+  - Source in `frontend/`, `backend/`, `shared/` plus technical docs in this repository.
+- Database schema and sample data:
+  - See `DATABASE_SCHEMA.md` and `backend/seedData.js`.
+- User guide or README:
+  - See `USER_MANUAL.md` (primary) and this `README.md`.
+- Live demonstration or recorded walkthrough:
+  - Use `DEMO_WALKTHROUGH.md` as the scripted demo flow and attach your final video/live-demo link there.
+
+## Additional Documentation
+- `USER_MANUAL.md`
+- `REQUIREMENTS_COMPLIANCE.md`
+- `PRODUCTION_HARDENING.md`
+- `QA_REHEARSAL_CHECKLIST.md`
+- `QA_REHEARSAL_CHECKLIST_TABLE.md`

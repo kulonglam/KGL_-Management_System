@@ -25,12 +25,58 @@
         </button>
       </div>
       <div class="card-body">
+        <div class="data-toolbar">
+          <div class="data-toolbar-group">
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="sales-search">Search</label>
+              <input
+                id="sales-search"
+                v-model.trim="searchQuery"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Produce, buyer, agent..."
+              />
+            </div>
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="sales-type-filter">Produce Type</label>
+              <select
+                id="sales-type-filter"
+                v-model="selectedProduceType"
+                class="form-select form-select-sm"
+              >
+                <option value="all">All types</option>
+                <option v-for="type in produceTypeOptions" :key="type" :value="type">
+                  {{ type }}
+                </option>
+              </select>
+            </div>
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="sales-sort">Sort By</label>
+              <select id="sales-sort" v-model="sortBy" class="form-select form-select-sm">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="amount_desc">Highest amount</option>
+                <option value="quantity_desc">Highest quantity</option>
+              </select>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="!searchQuery && selectedProduceType === 'all' && sortBy === 'newest'"
+            @click="resetFilters"
+          >
+            Reset Filters
+          </button>
+        </div>
+
         <div v-if="loading" class="text-center py-5 text-muted">Loading sales records...</div>
-        <div v-else-if="salesRecords.length === 0" class="text-center py-5 text-muted">
-          No sales records found.
+        <div v-else-if="salesRecords.length === 0" class="empty-state">No sales records found.</div>
+        <div v-else-if="filteredSalesRecords.length === 0" class="empty-state">
+          No sales records match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle">
+          <table class="table align-middle table-sticky table-row-hover">
             <thead>
               <tr>
                 <th>Produce</th>
@@ -53,38 +99,16 @@
             </tbody>
           </table>
         </div>
-        <div
-          v-if="salesRecords.length > 0"
-          class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
-        >
-          <small class="text-muted">
-            Showing {{ salesRowsStart }}-{{ salesRowsEnd }} of
-            {{ salesRecords.length.toLocaleString('en-UG') }} records
-          </small>
-          <div class="d-flex align-items-center gap-2">
-            <label class="small text-muted mb-0" for="sales-records-page-size">Rows</label>
-            <select id="sales-records-page-size" class="form-select form-select-sm" v-model.number="pageSize">
-              <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
-            </select>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              :disabled="currentPage <= 1"
-              @click="goToPage(currentPage - 1)"
-            >
-              Prev
-            </button>
-            <span class="small text-muted">Page {{ currentPage }} / {{ totalSalesPages }}</span>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              :disabled="currentPage >= totalSalesPages"
-              @click="goToPage(currentPage + 1)"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <TablePagination
+          :current-page="currentPage"
+          :total-pages="totalSalesPages"
+          :total-items="filteredSalesRecords.length"
+          :page-size="pageSize"
+          :page-size-options="pageSizeOptions"
+          id-prefix="sales-records"
+          @update:currentPage="goToPage"
+          @update:pageSize="handlePageSizeUpdate"
+        />
       </div>
     </div>
   </div>
@@ -92,6 +116,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import TablePagination from '../components/common/TablePagination.vue';
 import { salesAPI } from '../services/api';
 
 const salesRecords = ref([]);
@@ -100,6 +125,9 @@ const loadError = ref('');
 const currentPage = ref(1);
 const pageSize = ref(20);
 const pageSizeOptions = [10, 20, 50, 100];
+const searchQuery = ref('');
+const selectedProduceType = ref('all');
+const sortBy = ref('newest');
 
 const loadSalesRecords = async () => {
   loading.value = true;
@@ -114,27 +142,55 @@ const loadSalesRecords = async () => {
   }
 };
 
+const produceTypeOptions = computed(() =>
+  Array.from(new Set(salesRecords.value.map((item) => item.produceType).filter(Boolean))).sort()
+);
+
+const filteredSalesRecords = computed(() => {
+  const query = searchQuery.value.toLowerCase();
+  const searched = salesRecords.value.filter((item) => {
+    if (!query) return true;
+    const haystack = [item.produceName, item.produceType, item.buyerName, item.salesAgentName]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+
+  const filtered =
+    selectedProduceType.value === 'all'
+      ? searched
+      : searched.filter((item) => item.produceType === selectedProduceType.value);
+
+  const sorted = [...filtered];
+  if (sortBy.value === 'oldest') {
+    sorted.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+  } else if (sortBy.value === 'amount_desc') {
+    sorted.sort((a, b) => Number(b.amountPaidUgx || 0) - Number(a.amountPaidUgx || 0));
+  } else if (sortBy.value === 'quantity_desc') {
+    sorted.sort((a, b) => Number(b.tonnageKg || 0) - Number(a.tonnageKg || 0));
+  } else {
+    sorted.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  }
+  return sorted;
+});
+
 const totalSalesPages = computed(() =>
-  Math.max(1, Math.ceil(salesRecords.value.length / pageSize.value))
+  Math.max(1, Math.ceil(filteredSalesRecords.value.length / pageSize.value))
 );
 
 const paginatedSalesRecords = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
-  return salesRecords.value.slice(start, start + pageSize.value);
+  return filteredSalesRecords.value.slice(start, start + pageSize.value);
 });
-
-const salesRowsStart = computed(() => {
-  if (salesRecords.value.length === 0) return 0;
-  return (currentPage.value - 1) * pageSize.value + 1;
-});
-
-const salesRowsEnd = computed(() =>
-  Math.min(currentPage.value * pageSize.value, salesRecords.value.length)
-);
 
 const goToPage = (page) => {
   const nextPage = Math.max(1, Math.min(totalSalesPages.value, Number(page || 1)));
   currentPage.value = nextPage;
+};
+
+const handlePageSizeUpdate = (size) => {
+  pageSize.value = Number(size || 20);
 };
 
 const formatCurrency = (amount) =>
@@ -164,6 +220,16 @@ watch(salesRecords, () => {
     currentPage.value = totalSalesPages.value;
   }
 });
+
+watch([searchQuery, selectedProduceType, sortBy], () => {
+  currentPage.value = 1;
+});
+
+const resetFilters = () => {
+  searchQuery.value = '';
+  selectedProduceType.value = 'all';
+  sortBy.value = 'newest';
+};
 
 onMounted(async () => {
   await loadSalesRecords();

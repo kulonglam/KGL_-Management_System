@@ -1,10 +1,12 @@
 <template>
   <div>
+    <a href="#main-content-region" class="skip-link">Skip to main content</a>
     <!-- Header -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom app-header">
       <div class="container-fluid px-4">
         <div class="d-flex align-items-center">
           <button
+            ref="sidebarToggleButtonRef"
             type="button"
             class="btn btn-outline-secondary d-md-none me-3 sidebar-toggle-btn"
             :aria-expanded="mobileSidebarOpen ? 'true' : 'false'"
@@ -29,6 +31,7 @@
       <div class="layout">
         <!-- Sidebar -->
         <nav
+          ref="sidebarRef"
           id="app-sidebar-nav"
           class="sidebar"
           :class="{ 'is-open': mobileSidebarOpen }"
@@ -129,7 +132,7 @@
         ></div>
 
         <!-- Main Content -->
-        <main class="main-content px-md-4 py-4">
+        <main id="main-content-region" class="main-content px-md-4 py-4" tabindex="-1">
           <div class="main-content-body">
             <div
               v-if="user.role === 'manager' && stockNotifications.length > 0"
@@ -192,11 +195,11 @@
           </div>
           <footer class="dashboard-footer">
             <div class="dashboard-footer-inner">
+              <span>&copy; {{ currentYear }}</span>
+              <span class="footer-divider">|</span>
               <span class="footer-brand">Karibu Groceries LTD</span>
               <span class="footer-divider">|</span>
               <span>Wholesale Produce Management System</span>
-              <span class="footer-divider">|</span>
-              <span>&copy; {{ currentYear }}</span>
             </div>
           </footer>
         </main>
@@ -252,6 +255,7 @@ export default {
       mobileSidebarOpen: false,
       showLogoutModal: false,
       lastFocusedElement: null,
+      lastSidebarFocusedElement: null,
       managerSectionOpen: {
         operations: true,
         records: false,
@@ -380,6 +384,21 @@ export default {
     '$route.path'() {
       this.ensureActiveManagerSectionOpen();
     },
+    mobileSidebarOpen(isOpen) {
+      if (window.innerWidth >= 768) {
+        document.body.classList.remove('no-scroll');
+        return;
+      }
+
+      if (isOpen) {
+        document.body.classList.add('no-scroll');
+        this.focusSidebar();
+        return;
+      }
+
+      document.body.classList.remove('no-scroll');
+      this.restoreSidebarFocus();
+    },
     showLogoutModal(isOpen) {
       if (isOpen) {
         this.focusLogoutModal();
@@ -408,6 +427,7 @@ export default {
     window.removeEventListener('resize', this.handleViewportResize);
     window.removeEventListener('user-updated', this.syncUserFromStorage);
     window.removeEventListener('keydown', this.handleEscapeKey);
+    document.body.classList.remove('no-scroll');
     this.stopStockMonitor();
   },
   methods: {
@@ -450,9 +470,13 @@ export default {
       this.$router.push('/');
     },
     toggleMobileSidebar() {
+      if (!this.mobileSidebarOpen) {
+        this.lastSidebarFocusedElement = document.activeElement;
+      }
       this.mobileSidebarOpen = !this.mobileSidebarOpen;
     },
     closeMobileSidebar() {
+      if (!this.mobileSidebarOpen) return;
       this.mobileSidebarOpen = false;
     },
     getLogoutModalFocusableElements() {
@@ -487,6 +511,40 @@ export default {
         first.focus();
       }
     },
+    getSidebarFocusableElements() {
+      return Array.from(
+        this.$refs.sidebarRef?.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      );
+    },
+    focusSidebar() {
+      this.$nextTick(() => {
+        const firstFocusable = this.getSidebarFocusableElements()[0];
+        firstFocusable?.focus();
+      });
+    },
+    trapSidebarFocus(event) {
+      if (!this.mobileSidebarOpen || event.key !== 'Tab' || window.innerWidth >= 768) return;
+
+      const focusable = this.getSidebarFocusableElements();
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
     restoreLastFocus() {
       const element = this.lastFocusedElement;
       if (element && typeof element.focus === 'function') {
@@ -494,9 +552,23 @@ export default {
       }
       this.lastFocusedElement = null;
     },
+    restoreSidebarFocus() {
+      const element = this.lastSidebarFocusedElement;
+      if (element && typeof element.focus === 'function') {
+        element.focus();
+        this.lastSidebarFocusedElement = null;
+        return;
+      }
+      this.$refs.sidebarToggleButtonRef?.focus();
+      this.lastSidebarFocusedElement = null;
+    },
     handleEscapeKey(event) {
       if (this.showLogoutModal && event.key === 'Tab') {
         this.trapLogoutModalFocus(event);
+        return;
+      }
+      if (this.mobileSidebarOpen && event.key === 'Tab') {
+        this.trapSidebarFocus(event);
         return;
       }
       if (event.key !== 'Escape') return;
@@ -511,6 +583,11 @@ export default {
     handleViewportResize() {
       if (window.innerWidth >= 768 && this.mobileSidebarOpen) {
         this.mobileSidebarOpen = false;
+      }
+      if (window.innerWidth >= 768) {
+        document.body.classList.remove('no-scroll');
+      } else if (this.mobileSidebarOpen) {
+        document.body.classList.add('no-scroll');
       }
     },
     isManagerSectionOpen(sectionKey) {

@@ -5,6 +5,22 @@
       <p class="page-subtitle">Create and maintain branch user accounts.</p>
     </div>
 
+    <div
+      v-if="loadError"
+      class="alert alert-danger d-flex align-items-start justify-content-between gap-3"
+      role="alert"
+    >
+      <span>{{ loadError }}</span>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-danger"
+        :disabled="loadingList"
+        @click="loadUsers"
+      >
+        Retry
+      </button>
+    </div>
+
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Users</h5>
@@ -19,11 +35,54 @@
         </div>
       </div>
       <div class="card-body">
-        <div v-if="users.length === 0" class="text-center py-5 text-muted">
+        <div class="data-toolbar">
+          <div class="data-toolbar-group">
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="users-search">Search</label>
+              <input
+                id="users-search"
+                v-model.trim="searchQuery"
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Name, username, role..."
+              />
+            </div>
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="users-role-filter">Role</label>
+              <select id="users-role-filter" v-model="roleFilter" class="form-select form-select-sm">
+                <option value="all">All roles</option>
+                <option value="manager">Manager</option>
+                <option value="sales_agent">Sales Agent</option>
+              </select>
+            </div>
+            <div class="data-toolbar-field">
+              <label class="form-label mb-1" for="users-sort">Sort By</label>
+              <select id="users-sort" v-model="sortBy" class="form-select form-select-sm">
+                <option value="name_asc">Name A-Z</option>
+                <option value="name_desc">Name Z-A</option>
+                <option value="recent">Recently created</option>
+              </select>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="!searchQuery && roleFilter === 'all' && sortBy === 'name_asc'"
+            @click="resetTableFilters"
+          >
+            Reset Filters
+          </button>
+        </div>
+
+        <div v-if="loadingList" class="text-center py-5 text-muted">Loading users...</div>
+        <div v-else-if="users.length === 0" class="empty-state">
           No users found for this branch.
         </div>
+        <div v-else-if="displayedUsers.length === 0" class="empty-state">
+          No users match your current filters.
+        </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle">
+          <table class="table align-middle table-sticky table-row-hover">
             <thead>
               <tr>
                 <th>Name</th>
@@ -34,7 +93,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in users" :key="item._id">
+              <tr v-for="item in paginatedUsers" :key="item._id">
                 <td>{{ item.name }}</td>
                 <td>{{ item.username }}</td>
                 <td>{{ formatRole(item.role) }}</td>
@@ -51,6 +110,16 @@
             </tbody>
           </table>
         </div>
+        <TablePagination
+          :current-page="currentPage"
+          :total-pages="totalUserPages"
+          :total-items="displayedUsers.length"
+          :page-size="pageSize"
+          :page-size-options="pageSizeOptions"
+          id-prefix="users-table"
+          @update:currentPage="goToPage"
+          @update:pageSize="handlePageSizeUpdate"
+        />
       </div>
     </div>
 
@@ -139,17 +208,26 @@
 <script>
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import TablePagination from '../components/common/TablePagination.vue';
 
 export default {
   name: 'Users',
   components: {
-    ConfirmDialog
+    ConfirmDialog,
+    TablePagination
   },
   data() {
     return {
       user: {},
       users: [],
       loadingList: false,
+      loadError: '',
+      searchQuery: '',
+      roleFilter: 'all',
+      sortBy: 'name_asc',
+      currentPage: 1,
+      pageSize: 20,
+      pageSizeOptions: [10, 20, 50, 100],
       editingId: null,
       showForm: false,
       form: {
@@ -169,6 +247,60 @@ export default {
       }
     };
   },
+  computed: {
+    displayedUsers() {
+      const query = this.searchQuery.trim().toLowerCase();
+      const searched = this.users.filter((item) => {
+        if (!query) return true;
+        const haystack = [item.name, item.username, this.formatRole(item.role), item.branch]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+
+      const filteredByRole =
+        this.roleFilter === 'all'
+          ? searched
+          : searched.filter((item) => item.role === this.roleFilter);
+
+      const sorted = [...filteredByRole];
+      if (this.sortBy === 'name_desc') {
+        sorted.sort((a, b) => String(b.name || '').localeCompare(String(a.name || '')));
+      } else if (this.sortBy === 'recent') {
+        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      } else {
+        sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+      }
+      return sorted;
+    },
+    totalUserPages() {
+      return Math.max(1, Math.ceil(this.displayedUsers.length / this.pageSize));
+    },
+    paginatedUsers() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.displayedUsers.slice(start, start + this.pageSize);
+    }
+  },
+  watch: {
+    pageSize() {
+      this.currentPage = 1;
+    },
+    users() {
+      if (this.currentPage > this.totalUserPages) {
+        this.currentPage = this.totalUserPages;
+      }
+    },
+    searchQuery() {
+      this.currentPage = 1;
+    },
+    roleFilter() {
+      this.currentPage = 1;
+    },
+    sortBy() {
+      this.currentPage = 1;
+    }
+  },
   async created() {
     this.user = JSON.parse(localStorage.getItem('user') || '{}');
     await this.loadUsers();
@@ -177,14 +309,28 @@ export default {
     // Handle load users.
     async loadUsers() {
       this.loadingList = true;
+      this.loadError = '';
       try {
         const response = await authAPI.listUsers();
         this.users = response.data;
       } catch (error) {
-        console.error('Failed to load users:', error);
+        this.loadError = error.response?.data?.message || 'Failed to load users.';
       } finally {
         this.loadingList = false;
       }
+    },
+    resetTableFilters() {
+      this.searchQuery = '';
+      this.roleFilter = 'all';
+      this.sortBy = 'name_asc';
+      this.currentPage = 1;
+    },
+    goToPage(page) {
+      const nextPage = Math.max(1, Math.min(this.totalUserPages, Number(page || 1)));
+      this.currentPage = nextPage;
+    },
+    handlePageSizeUpdate(size) {
+      this.pageSize = Number(size || 20);
     },
     async handleSubmit() {
       this.loading = true;

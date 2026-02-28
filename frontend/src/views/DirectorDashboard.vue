@@ -125,6 +125,13 @@
       </div>
     </div>
 
+    <QuickActionsPanel
+      class="mb-4"
+      title="Quick Actions"
+      subtitle="Run the most common executive reporting actions without menu navigation."
+      :items="quickActions"
+    />
+
     <div class="row g-4 mb-4">
       <div class="col-md-3">
         <div class="card stats-card h-100">
@@ -207,6 +214,7 @@ import {
   downloadReportFile
 } from '../utils/reports/directorReportExport.mjs';
 import DirectorDashboardCharts from '../components/dashboards/DirectorDashboardCharts.vue';
+import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
@@ -241,7 +249,8 @@ const formatCurrencyValue = (value) =>
 export default {
   name: 'DirectorDashboard',
   components: {
-    DirectorDashboardCharts
+    DirectorDashboardCharts,
+    QuickActionsPanel
   },
   data() {
     return {
@@ -303,6 +312,67 @@ export default {
     },
     branchLabels() {
       return Object.keys(this.branchTotals);
+    },
+    quickActions() {
+      return [
+        {
+          key: 'scope-all',
+          icon: 'bi bi-diagram-3',
+          label: 'All Branches',
+          meta: 'Set view scope to all branches',
+          onClick: () => {
+            if (this.filters.branch !== 'all') {
+              this.filters.branch = 'all';
+              this.loadData();
+            }
+          }
+        },
+        {
+          key: 'scope-maganjo',
+          icon: 'bi bi-geo-alt',
+          label: 'Maganjo View',
+          meta: 'Focus reporting to Maganjo branch',
+          onClick: () => {
+            if (this.filters.branch !== 'Maganjo') {
+              this.filters.branch = 'Maganjo';
+              this.loadData();
+            }
+          }
+        },
+        {
+          key: 'scope-matugga',
+          icon: 'bi bi-geo-alt-fill',
+          label: 'Matugga View',
+          meta: 'Focus reporting to Matugga branch',
+          onClick: () => {
+            if (this.filters.branch !== 'Matugga') {
+              this.filters.branch = 'Matugga';
+              this.loadData();
+            }
+          }
+        },
+        {
+          key: 'export-csv',
+          icon: 'bi bi-filetype-csv',
+          label: 'Export CSV',
+          meta: 'Download current report',
+          onClick: () => this.exportCsv()
+        },
+        {
+          key: 'export-excel',
+          icon: 'bi bi-file-earmark-spreadsheet',
+          label: 'Export Excel',
+          meta: 'Download spreadsheet report',
+          onClick: () => this.exportExcel()
+        },
+        {
+          key: 'export-pdf',
+          icon: 'bi bi-file-earmark-pdf',
+          label: 'Export PDF',
+          meta: 'Print-ready executive report',
+          onClick: () => this.exportPdf()
+        }
+      ];
     },
     statusMessage() {
       if (this.loading) return 'Loading director dashboard data.';

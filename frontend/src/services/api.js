@@ -2,6 +2,7 @@ import axios from 'axios';
 
 // Configure api url.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const RETRY_DELAY_MS = 250;
 
 // Create axios instance
 const api = axios.create({
@@ -10,6 +11,9 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Handle delay helper.
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Add token to requests
 api.interceptors.request.use(
@@ -40,7 +44,18 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    const config = error.config || {};
+    const method = String(config.method || '').toLowerCase();
+    const statusCode = error.response?.status;
+    const isRetriableGet = method === 'get' && (!statusCode || statusCode >= 500);
+
+    if (isRetriableGet && !config.__retryAttempted) {
+      config.__retryAttempted = true;
+      await delay(RETRY_DELAY_MS);
+      return api(config);
+    }
+
     const payload = error.response?.data;
     if (
       payload &&

@@ -18,12 +18,68 @@
     </div>
 
     <div class="card-body">
-      <div v-if="procurements.length === 0" class="text-center py-5 text-muted">
+      <div class="data-toolbar">
+        <div class="data-toolbar-group">
+          <div class="data-toolbar-field">
+            <label class="form-label mb-1" for="procurement-search">Search</label>
+            <input
+              id="procurement-search"
+              v-model.trim="searchQuery"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="Produce, dealer, branch..."
+            />
+          </div>
+
+          <div class="data-toolbar-field">
+            <label class="form-label mb-1" for="procurement-type-filter">Produce Type</label>
+            <select
+              id="procurement-type-filter"
+              v-model="selectedProduceType"
+              class="form-select form-select-sm"
+            >
+              <option value="all">All types</option>
+              <option v-for="type in produceTypeOptions" :key="type" :value="type">
+                {{ type }}
+              </option>
+            </select>
+          </div>
+
+          <div class="data-toolbar-field">
+            <label class="form-label mb-1" for="procurement-sort">Sort By</label>
+            <select id="procurement-sort" v-model="sortBy" class="form-select form-select-sm">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="tonnage_desc">Highest tonnage</option>
+              <option value="cost_desc">Highest cost</option>
+              <option value="dealer_asc">Dealer A-Z</option>
+            </select>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="!searchQuery && selectedProduceType === 'all' && sortBy === 'newest'"
+          @click="resetFilters"
+        >
+          Reset Filters
+        </button>
+      </div>
+
+      <div v-if="procurements.length === 0" class="empty-state">
         No procurement records found.
       </div>
 
+      <div
+        v-else-if="filteredProcurements.length === 0"
+        class="empty-state"
+      >
+        No procurement records match your current filters.
+      </div>
+
       <div v-else class="table-responsive procurement-table-container">
-        <table class="table table-hover procurement-table align-middle">
+        <table class="table table-hover procurement-table align-middle table-sticky table-row-hover">
           <thead>
             <tr>
               <th>Produce Name</th>
@@ -75,48 +131,23 @@
           </tbody>
         </table>
       </div>
-      <div
-        v-if="procurements.length > 0"
-        class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
-      >
-        <small class="text-muted">
-          Showing {{ rowsStart }}-{{ rowsEnd }} of
-          {{ procurements.length.toLocaleString('en-UG') }} records
-        </small>
-        <div class="d-flex align-items-center gap-2">
-          <label class="small text-muted mb-0" for="procurement-page-size">Rows</label>
-          <select
-            id="procurement-page-size"
-            class="form-select form-select-sm"
-            v-model.number="pageSize"
-          >
-            <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
-          </select>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            :disabled="currentPage <= 1"
-            @click="goToPage(currentPage - 1)"
-          >
-            Prev
-          </button>
-          <span class="small text-muted">Page {{ currentPage }} / {{ totalPages }}</span>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            :disabled="currentPage >= totalPages"
-            @click="goToPage(currentPage + 1)"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <TablePagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :total-items="filteredProcurements.length"
+        :page-size="pageSize"
+        :page-size-options="pageSizeOptions"
+        id-prefix="procurement-records"
+        @update:currentPage="goToPage"
+        @update:pageSize="handlePageSizeUpdate"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import TablePagination from '../common/TablePagination.vue';
 
 const props = defineProps({
   procurements: {
@@ -134,24 +165,67 @@ defineEmits(['refresh', 'edit', 'delete']);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const pageSizeOptions = [10, 20, 50, 100];
+const searchQuery = ref('');
+const selectedProduceType = ref('all');
+const sortBy = ref('newest');
 
-const totalPages = computed(() => Math.max(1, Math.ceil(props.procurements.length / pageSize.value)));
+const produceTypeOptions = computed(() =>
+  Array.from(new Set(props.procurements.map((record) => record.produceType).filter(Boolean))).sort()
+);
+
+const filteredProcurements = computed(() => {
+  const query = searchQuery.value.toLowerCase();
+  const bySearch = props.procurements.filter((record) => {
+    if (!query) return true;
+    const haystack = [
+      record.produceName,
+      record.produceType,
+      record.dealerName,
+      record.branch
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+
+  const byType =
+    selectedProduceType.value === 'all'
+      ? bySearch
+      : bySearch.filter((record) => record.produceType === selectedProduceType.value);
+
+  const sorted = [...byType];
+  if (sortBy.value === 'oldest') {
+    sorted.sort((a, b) => new Date(a.dateReceived || 0) - new Date(b.dateReceived || 0));
+  } else if (sortBy.value === 'tonnage_desc') {
+    sorted.sort((a, b) => Number(b.tonnageKg || 0) - Number(a.tonnageKg || 0));
+  } else if (sortBy.value === 'cost_desc') {
+    sorted.sort((a, b) => Number(b.costUgx || 0) - Number(a.costUgx || 0));
+  } else if (sortBy.value === 'dealer_asc') {
+    sorted.sort((a, b) => String(a.dealerName || '').localeCompare(String(b.dealerName || '')));
+  } else {
+    sorted.sort((a, b) => new Date(b.dateReceived || 0) - new Date(a.dateReceived || 0));
+  }
+
+  return sorted;
+});
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredProcurements.value.length / pageSize.value))
+);
 
 const paginatedProcurements = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
-  return props.procurements.slice(start, start + pageSize.value);
+  return filteredProcurements.value.slice(start, start + pageSize.value);
 });
-
-const rowsStart = computed(() => {
-  if (props.procurements.length === 0) return 0;
-  return (currentPage.value - 1) * pageSize.value + 1;
-});
-
-const rowsEnd = computed(() => Math.min(currentPage.value * pageSize.value, props.procurements.length));
 
 const goToPage = (page) => {
   const nextPage = Math.max(1, Math.min(totalPages.value, Number(page || 1)));
   currentPage.value = nextPage;
+};
+
+const handlePageSizeUpdate = (size) => {
+  pageSize.value = Number(size || 20);
 };
 
 watch(pageSize, () => {
@@ -166,6 +240,16 @@ watch(
     }
   }
 );
+
+watch([searchQuery, selectedProduceType, sortBy], () => {
+  currentPage.value = 1;
+});
+
+const resetFilters = () => {
+  searchQuery.value = '';
+  selectedProduceType.value = 'all';
+  sortBy.value = 'newest';
+};
 
 // Format number.
 const formatNumber = (value) => {
