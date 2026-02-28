@@ -1,6 +1,9 @@
 <template>
-  <div>
-    <h2 class="page-title mb-4">Record Sale</h2>
+  <div class="view-shell">
+    <div class="view-heading">
+      <h2 class="page-title">Record Sale</h2>
+      <p class="page-subtitle">Capture cash sales and review before submission.</p>
+    </div>
 
     <div class="card">
       <div class="card-header">
@@ -12,6 +15,7 @@
             v-model:form="form"
             :inventory="inventory"
             :user="user"
+            :errors="fieldErrors"
             @produce-change="updatePrice"
             @tonnage-input="updatePrice"
           />
@@ -36,13 +40,21 @@
       </div>
     </div>
 
-    <div v-if="showReviewModal" class="modal-mask">
-      <div class="modal-card sale-review-modal">
+    <div v-if="showReviewModal" class="modal-mask" @click.self="closeReviewModal">
+      <div
+        ref="reviewModalRef"
+        class="modal-card sale-review-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cash-sale-review-title"
+        tabindex="-1"
+      >
         <div class="modal-header">
-          <h5 class="mb-0">Review Cash Sale</h5>
+          <h5 id="cash-sale-review-title" class="mb-0">Review Cash Sale</h5>
           <button
             type="button"
             class="btn-close"
+            aria-label="Close review modal"
             :disabled="loading"
             @click="closeReviewModal"
           ></button>
@@ -94,54 +106,18 @@
       </div>
     </div>
 
-    <div class="card mt-4">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Sales Records</h5>
-        <button class="btn btn-outline-primary btn-sm" :disabled="loadingSalesList" @click="loadSalesRecords">
-          <span v-if="loadingSalesList" class="spinner-border spinner-border-sm me-2"></span>
-          Refresh
-        </button>
-      </div>
-      <div class="card-body">
-        <div v-if="salesRecords.length === 0" class="text-center py-5 text-muted">
-          No sales records found.
-        </div>
-        <div v-else class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th>Produce</th>
-                <th class="text-end">Quantity (kg)</th>
-                <th class="text-end">Amount Paid (UGX)</th>
-                <th>Buyer</th>
-                <th>Sales Agent</th>
-                <th>Date/Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in salesRecords" :key="item._id">
-                <td>{{ item.produceName }} ({{ item.produceType }})</td>
-                <td class="text-end">{{ Number(item.tonnageKg || 0).toLocaleString() }}</td>
-                <td class="text-end">{{ formatCurrency(item.amountPaidUgx) }}</td>
-                <td>{{ item.buyerName }}</td>
-                <td>{{ item.salesAgentName || '-' }}</td>
-                <td>{{ formatDateTime(item.date, item.time) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { useFormFeedback } from '../composables/useFormFeedback';
+import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
+import { salesValidationSchema } from '../utils/formSchemas.mjs';
 
 // Configure user.
 const user = ref({});
@@ -151,13 +127,15 @@ const inventory = ref([]);
 const form = ref(createInitialForm());
 // Configure show review modal.
 const showReviewModal = ref(false);
-// Configure sales records.
-const salesRecords = ref([]);
-// Configure loading sales list.
-const loadingSalesList = ref(false);
+// Configure review modal ref.
+const reviewModalRef = ref(null);
+// Configure last focused element before opening review modal.
+const lastFocusedElement = ref(null);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
+const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
+  useFormValidation(salesValidationSchema);
 
 // Create initial form.
 function createInitialForm() {
@@ -182,19 +160,6 @@ const loadInventory = async () => {
   }
 };
 
-// Handle load sales records.
-const loadSalesRecords = async () => {
-  loadingSalesList.value = true;
-  try {
-    const response = await salesAPI.getAll();
-    salesRecords.value = response.data;
-  } catch (fetchError) {
-    console.error('Error loading sales records:', fetchError);
-  } finally {
-    loadingSalesList.value = false;
-  }
-};
-
 // Update price.
 const updatePrice = () => {
   let result = evaluateStock(
@@ -215,20 +180,23 @@ const updatePrice = () => {
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
+  resetErrors();
 };
 
 // Handle open review modal.
 const openReviewModal = () => {
+  const validation = validateForm(form.value);
+  if (!validation.valid) {
+    setError('Please fix highlighted fields before review.');
+    return;
+  }
+
   if (stockWarning.value) {
     setError(stockWarning.value);
     return;
   }
 
-  if (!form.value.produceName || !form.value.tonnageKg || !form.value.buyerName) {
-    setError('Please complete all required sale fields before review.');
-    return;
-  }
-
+  lastFocusedElement.value = document.activeElement;
   showReviewModal.value = true;
 };
 
@@ -238,8 +206,78 @@ const closeReviewModal = () => {
   showReviewModal.value = false;
 };
 
+// Focus review modal container when it opens.
+const focusReviewModal = async () => {
+  await nextTick();
+  const firstFocusable = getReviewModalFocusableElements()[0];
+  if (firstFocusable) {
+    firstFocusable.focus();
+    return;
+  }
+  reviewModalRef.value?.focus();
+};
+
+const getReviewModalFocusableElements = () =>
+  Array.from(
+    reviewModalRef.value?.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ) || []
+  );
+
+const trapReviewModalFocus = (event) => {
+  if (!showReviewModal.value || event.key !== 'Tab') return;
+
+  const focusable = getReviewModalFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    reviewModalRef.value?.focus();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+const restorePreviousFocus = () => {
+  const element = lastFocusedElement.value;
+  if (element && typeof element.focus === 'function') {
+    element.focus();
+  }
+};
+
+// Handle review modal key events.
+const handleReviewModalKeydown = (event) => {
+  if (!showReviewModal.value) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeReviewModal();
+    return;
+  }
+
+  trapReviewModalFocus(event);
+};
+
 // Handle confirm save sale.
 const confirmSaveSale = async () => {
+  const validation = validateForm(form.value);
+  if (!validation.valid) {
+    setError('Please fix highlighted fields before saving.');
+    return;
+  }
+
   if (stockWarning.value) {
     setError(stockWarning.value);
     return;
@@ -252,7 +290,7 @@ const confirmSaveSale = async () => {
     setSuccess('Sale recorded successfully!');
     showReviewModal.value = false;
     resetForm();
-    await Promise.all([loadInventory(), loadSalesRecords()]);
+    await loadInventory();
   } catch (submitError) {
     setError(submitError.response?.data?.message || 'Failed to record sale');
   } finally {
@@ -268,21 +306,35 @@ const formatCurrency = (amount) =>
     minimumFractionDigits: 0
   }).format(Number(amount || 0));
 
-// Format combined date and time.
-const formatDateTime = (dateValue, timeValue) => {
-  if (!dateValue && !timeValue) return '-';
+watch(showReviewModal, (isOpen) => {
+  if (isOpen) {
+    focusReviewModal();
+    window.addEventListener('keydown', handleReviewModalKeydown);
+    return;
+  }
+  window.removeEventListener('keydown', handleReviewModalKeydown);
+  restorePreviousFocus();
+});
 
-  const date = dateValue ? new Date(dateValue) : null;
-  const formattedDate =
-    date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : String(dateValue || '-');
-  const formattedTime = timeValue ? String(timeValue) : '-';
+watch(
+  form,
+  (next, previous) => {
+    Object.keys(next).forEach((fieldName) => {
+      if (next[fieldName] !== previous[fieldName]) {
+        clearFieldError(fieldName);
+      }
+    });
+  },
+  { deep: true }
+);
 
-  return `${formattedDate} ${formattedTime}`;
-};
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleReviewModalKeydown);
+});
 
 onMounted(async () => {
   user.value = JSON.parse(localStorage.getItem('user') || '{}');
-  await Promise.all([loadInventory(), loadSalesRecords()]);
+  await loadInventory();
 });
 </script>
 

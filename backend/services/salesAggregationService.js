@@ -1,17 +1,28 @@
+import {
+  normalizeProduceNameKey,
+  normalizeProduceType
+} from '../utils/produceNormalization.js';
+
 // Configure branches.
 const BRANCHES = ['Maganjo', 'Matugga'];
 // Configure supported aggregation periods.
 const PERIODS = new Set(['weekly', 'monthly', 'yearly']);
+// Configure specific date format pattern (YYYY-MM-DD).
+const SPECIFIC_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // Resolve produce type for sale creation from current inventory.
 const resolveProduceTypeForSale = (inventory, produceName, requestedProduceType) => {
-  const candidates = inventory.filter((entry) => entry.produceName === produceName);
+  const requestedNameKey = normalizeProduceNameKey(produceName);
+  const requestedType = normalizeProduceType(requestedProduceType || '');
+  const candidates = inventory.filter(
+    (entry) => normalizeProduceNameKey(entry.produceName) === requestedNameKey
+  );
   if (candidates.length === 0) {
     return { error: 'Product not available in inventory' };
   }
 
-  if (requestedProduceType) {
-    const match = candidates.find((entry) => entry.produceType === requestedProduceType);
+  if (requestedType) {
+    const match = candidates.find((entry) => normalizeProduceType(entry.produceType) === requestedType);
     if (!match) {
       return { error: 'Selected produce type is not available in inventory' };
     }
@@ -60,8 +71,44 @@ const addDays = (dateValue, days) => {
   return date;
 };
 
+// Parse and validate a specific date filter (YYYY-MM-DD).
+const parseSpecificDate = (value) => {
+  if (value === undefined || value === null || value === '') {
+    return { specificDate: null };
+  }
+
+  const dateText = String(value).trim();
+  if (!SPECIFIC_DATE_PATTERN.test(dateText)) {
+    return { error: 'specificDate must be in YYYY-MM-DD format' };
+  }
+
+  const parsed = new Date(`${dateText}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return { error: 'specificDate must be a valid date' };
+  }
+
+  return { specificDate: parsed };
+};
+
 // Build trend buckets for the selected period.
-const buildTrendBuckets = (period) => {
+const buildTrendBuckets = (period, specificDate = null) => {
+  if (specificDate) {
+    const start = new Date(specificDate);
+    const end = addDays(start, 1);
+    return [
+      {
+        start,
+        end,
+        label: start.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        total: 0
+      }
+    ];
+  }
+
   const now = new Date();
   const buckets = [];
 
@@ -115,22 +162,27 @@ const addAmountToTrend = (buckets, dateValue, amount) => {
 };
 
 // Build normalized aggregation context from query filters.
-const buildAggregationContext = ({ period, branch }) => {
+const buildAggregationContext = ({ period, branch, specificDate }) => {
   const normalizedPeriod = normalizePeriod(period);
   const normalizedBranch = normalizeBranch(branch);
+  const parsedSpecificDate = parseSpecificDate(specificDate);
 
   if (!normalizedBranch) {
     return { error: 'Invalid branch filter.' };
   }
+  if (parsedSpecificDate.error) {
+    return { error: parsedSpecificDate.error };
+  }
 
   const selectedBranches = normalizedBranch === 'all' ? BRANCHES : [normalizedBranch];
-  const trendBuckets = buildTrendBuckets(normalizedPeriod);
-  const rangeStart = trendBuckets[0].start;
-  const rangeEnd = trendBuckets[trendBuckets.length - 1].end;
+  const trendBuckets = buildTrendBuckets(normalizedPeriod, parsedSpecificDate.specificDate);
+  const rangeStart = new Date(trendBuckets[0].start);
+  const rangeEnd = new Date(trendBuckets[trendBuckets.length - 1].end);
 
   return {
-    period: normalizedPeriod,
+    period: parsedSpecificDate.specificDate ? 'specific_date' : normalizedPeriod,
     branch: normalizedBranch,
+    specificDate: parsedSpecificDate.specificDate,
     selectedBranches,
     trendBuckets,
     rangeStart,

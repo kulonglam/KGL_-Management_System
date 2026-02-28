@@ -1,12 +1,20 @@
 import mongoose from 'mongoose';
+import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define sale schema.
 const saleSchema = new mongoose.Schema(
   {
-    produceName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
+    produceName: {
+      type: String,
+      required: true,
+      minlength: 2,
+      set: normalizeProduceName,
+      match: /^[A-Za-z0-9\s]+$/
+    },
     produceType: {
       type: String,
       required: true,
+      set: normalizeProduceType,
       enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
     },
     tonnageKg: { type: Number, required: true, min: 1 },

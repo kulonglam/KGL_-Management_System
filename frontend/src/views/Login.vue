@@ -7,23 +7,20 @@
           class="col-md-6 d-none d-md-flex flex-column text-white p-5 login-sidebar position-relative"
         >
           <div class="d-flex align-items-center position-absolute top-0 start-0 p-5">
-            <div
-              class="bg-white bg-opacity-25 rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-              style="width: 48px; height: 48px"
-            >
-              <i class="bi bi-box-seam text-white" style="font-size: 1.5rem"></i>
+            <div class="brand-logo-wrap brand-logo-desktop me-3">
+              <img :src="brandLogo" alt="Karibu Groceries LTD logo" class="brand-logo-image" />
             </div>
-            <h2 class="fw-bold mb-0 h5">Karibu Groceries LTD</h2>
+            <p class="fw-bold mb-0 h5 login-sidebar-brand">Karibu Groceries LTD</p>
           </div>
           <div
             class="flex-grow-1 d-flex flex-column align-items-center justify-content-center text-center mt-5"
           >
-            <h1 class="display-4 fw-bold mb-3">Welcome Back!</h1>
-            <p class="lead mb-0 text-white-50">
-              Streamline your wholesale produce distribution with our advanced management system.
+            <h1 class="display-6 fw-bold mb-3 login-sidebar-title">Welcome to Karibu Groceries</h1>
+            <p class="lead mb-0 login-sidebar-copy">
+              Track procurement, inventory, cash and credit sales across branches in real time.
             </p>
           </div>
-          <div class="text-center text-white-50 small mt-auto">
+          <div class="text-center small mt-auto login-sidebar-footer">
             &copy; 2026 Karibu Groceries LTD
           </div>
         </div>
@@ -31,17 +28,14 @@
         <!-- Right Side -->
         <div class="col-md-6 bg-white p-5">
           <div class="d-flex align-items-center justify-content-center mb-4 d-md-none">
-            <div
-              class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center me-2"
-              style="width: 40px; height: 40px"
-            >
-              <i class="bi bi-box-seam text-white" style="font-size: 1.2rem"></i>
+            <div class="brand-logo-wrap brand-logo-mobile me-2">
+              <img :src="brandLogo" alt="Karibu Groceries LTD logo" class="brand-logo-image" />
             </div>
-            <h3 class="fw-bold text-success h4 mb-0">Karibu Groceries LTD</h3>
+            <p class="fw-bold text-success h4 mb-0">Karibu Groceries LTD</p>
           </div>
 
           <div class="text-center mb-5">
-            <h3 class="fw-bold text-dark">Sign In</h3>
+            <h2 class="fw-bold text-dark h3">Sign In</h2>
             <p class="text-muted">Access your dashboard</p>
           </div>
 
@@ -82,8 +76,9 @@
                   placeholder="Enter your password"
                 />
                 <button
-                  class="btn btn-outline-secondary border-start-0 border-start-0 bg-white"
+                  class="btn btn-outline-secondary border-start-0 border-start-0 bg-white login-password-toggle"
                   type="button"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
                   @click="showPassword = !showPassword"
                 >
                   <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
@@ -100,16 +95,27 @@
                   v-model="rememberMe"
                 />
                 <label class="form-check-label small text-muted" for="rememberMe">
-                  Remember me
+                  Remember username
                 </label>
               </div>
-              <a href="#" class="small text-decoration-none fw-bold text-success" @click.prevent
-                >Forgot Password?</a
+              <button
+                type="button"
+                class="btn btn-link p-0 small text-decoration-none fw-bold text-success"
+                @click="showResetHelp"
               >
+                Forgot Password?
+              </button>
             </div>
 
             <div v-if="error" class="alert alert-danger py-2 small shadow-sm border-0" role="alert">
               <i class="bi bi-exclamation-circle-fill me-2"></i> {{ error }}
+            </div>
+            <div
+              v-if="helpMessage"
+              class="alert alert-info py-2 small shadow-sm border-0"
+              role="status"
+            >
+              <i class="bi bi-info-circle-fill me-2"></i> {{ helpMessage }}
             </div>
 
             <button
@@ -129,11 +135,13 @@
 
 <script>
 import { authAPI } from '../services/api';
+import brandLogo from '../assets/images/logo.png';
 
 export default {
   name: 'Login',
   data() {
     return {
+      brandLogo,
       credentials: {
         username: '',
         password: ''
@@ -141,21 +149,42 @@ export default {
       rememberMe: false,
       showPassword: false,
       loading: false,
-      error: ''
+      error: '',
+      helpMessage: ''
     };
   },
+  created() {
+    const rememberedUsername = localStorage.getItem('rememberedUsername') || '';
+    if (rememberedUsername) {
+      this.credentials.username = rememberedUsername;
+      this.rememberMe = true;
+    }
+  },
   methods: {
+    showResetHelp() {
+      this.helpMessage = 'Please contact your manager or system administrator to reset your password.';
+    },
     // Handle login.
     async handleLogin() {
       this.loading = true;
       this.error = '';
+      this.helpMessage = '';
 
       try {
-        const response = await authAPI.login(this.credentials);
+        const payload = {
+          username: this.credentials.username.trim(),
+          password: this.credentials.password
+        };
+        const response = await authAPI.login(payload);
         const { token, ...user } = response.data;
 
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
+        if (this.rememberMe) {
+          localStorage.setItem('rememberedUsername', payload.username);
+        } else {
+          localStorage.removeItem('rememberedUsername');
+        }
 
         // Navigate based on role
         if (user.role === 'director') {
@@ -178,14 +207,66 @@ export default {
 <style scoped>
 /* Component styles */
 .login-container {
-  background-color: #f8f9fa;
+  background-image:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(30, 64, 175, 0.35)),
+    url('../assets/images/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .login-sidebar {
-  background: linear-gradient(135deg, rgba(9, 10, 10, 0.719) rgba(20, 108, 67, 0.8)), url('');
+  background-image:
+    linear-gradient(145deg, rgba(8, 15, 28, 0.62), rgba(17, 64, 52, 0.68)),
+    url('../assets/images/login.png');
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
+}
+
+.login-sidebar-brand {
+  color: #f8fafc;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.login-sidebar-title {
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.login-sidebar-copy {
+  color: rgba(241, 245, 249, 0.9);
+  max-width: 28ch;
+}
+
+.login-sidebar-footer {
+  color: rgba(226, 232, 240, 0.86);
+}
+
+.brand-logo-wrap {
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.brand-logo-desktop {
+  width: 48px;
+  height: 48px;
+}
+
+.brand-logo-mobile {
+  width: 40px;
+  height: 40px;
+}
+
+.brand-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Custom Input Styling */
@@ -212,6 +293,17 @@ export default {
 
 .input-group:focus-within button {
   border-color: #198754;
+}
+
+.login-password-toggle {
+  color: #6c757d;
+}
+
+.login-password-toggle:hover,
+.login-password-toggle:focus,
+.login-password-toggle:active {
+  color: #495057;
+  background-color: #ffffff !important;
 }
 
 .btn-success {

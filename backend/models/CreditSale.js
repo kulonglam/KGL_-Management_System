@@ -1,27 +1,5 @@
 import mongoose from 'mongoose';
-
-// Handle normalize produce type.
-const normalizeProduceType = (value) => {
-  if (typeof value !== 'string') return value;
-
-  // Configure canonical map.
-  const canonicalMap = {
-    beans: 'Beans',
-    'grain maize': 'Grain Maize',
-    'cow peas': 'Cow peas',
-    'g-nuts': 'G-nuts',
-    soybeans: 'Soybeans'
-  };
-
-  const normalized = value
-    // Normalize unicode dash variants to ASCII hyphen.
-    .replace(/[\u2010-\u2015\u2212]/g, '-')
-    .replace(/\s*-\s*/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  return canonicalMap[normalized.toLowerCase()] || normalized;
-};
+import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define credit sale schema.
 const creditSaleSchema = new mongoose.Schema(
@@ -41,7 +19,13 @@ const creditSaleSchema = new mongoose.Schema(
     },
     salesAgentName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
     dueDate: { type: Date, required: true },
-    produceName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
+    produceName: {
+      type: String,
+      required: true,
+      minlength: 2,
+      set: normalizeProduceName,
+      match: /^[A-Za-z0-9\s]+$/
+    },
     produceType: {
       type: String,
       required: true,

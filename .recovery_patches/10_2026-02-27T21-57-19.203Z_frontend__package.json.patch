@@ -1,0 +1,15 @@
+*** Begin Patch
+*** Update File: c:\Users\Makhol Jr\Documents\REFACTORY\KGL_ Management_System\frontend\package.json
+@@
+     "lint:fix": "eslint . --ext .js,.vue --fix",
+     "test:unit": "node --test ./tests/*.test.mjs",
+     "test:component": "vitest run",
+-    "test:e2e": "playwright test",
+-    "test:e2e:headed": "playwright test --headed",
+-    "test:e2e:ui": "playwright test --ui",
+-    "test:e2e:install": "playwright install chromium",
+     "test": "npm run test:unit && npm run test:component",
+@@
+-    "@playwright/test": "^1.58.2",
+     "@vitejs/plugin-vue": "^5.0.0",
+*** End Patch

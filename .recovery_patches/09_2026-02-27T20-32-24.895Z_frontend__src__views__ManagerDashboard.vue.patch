@@ -1,0 +1,127 @@
+*** Begin Patch
+*** Update File: c:\Users\Makhol Jr\Documents\REFACTORY\KGL_ Management_System\frontend\src\views\ManagerDashboard.vue
+@@
+         <div class="filter-group">
+           <label for="manager-period-filter" class="form-label mb-1">Period</label>
+           <select
+             id="manager-period-filter"
+@@
+             </option>
+           </select>
+         </div>
++        <div class="filter-group">
++          <label for="manager-date-filter" class="form-label mb-1">Specific Date</label>
++          <input
++            id="manager-date-filter"
++            v-model="filters.specificDate"
++            type="date"
++            class="form-control form-control-sm"
++            :disabled="loading"
++            :max="todayIsoDate"
++            @change="buildDashboardData"
++          />
++        </div>
+         </div>
++        <button
++          v-if="filters.specificDate"
++          class="btn btn-outline-secondary btn-sm"
++          type="button"
++          :disabled="loading"
++          @click="clearSpecificDate"
++        >
++          Clear Date
++        </button>
+         <div class="export-actions btn-group btn-group-sm" role="group" aria-label="Export report">
+           <button class="btn btn-outline-primary" type="button" :disabled="loading" @click="exportCsv">
+             Export CSV
+           </button>
+@@
+       filters: {
+-        period: 'weekly'
++        period: 'weekly',
++        specificDate: ''
+       },
++      todayIsoDate: new Date().toISOString().split('T')[0],
+       periodOptions: PERIOD_OPTIONS,
+       reportRange: {
+         from: '',
+@@
+     selectedPeriodLabel() {
++      if (this.filters.specificDate) return 'Specific Date';
+       return (
+         this.periodOptions.find((option) => option.value === this.filters.period)?.label || 'Weekly'
+       );
+@@
+     formattedReportRange() {
+       if (!this.reportRange.from || !this.reportRange.to) return '-';
+       const from = new Date(this.reportRange.from);
+       const to = new Date(this.reportRange.to);
+       if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '-';
+       const options = { month: 'short', day: 'numeric', year: 'numeric' };
++      if (from.toDateString() === to.toDateString()) {
++        return from.toLocaleDateString('en-UG', options);
++      }
+       return `${from.toLocaleDateString('en-UG', options)} - ${to.toLocaleDateString('en-UG', options)}`;
+     },
+@@
+     buildDashboardData() {
+-      const range = this.getDateRangeByPeriod(this.filters.period);
++      const range = this.getDateRangeByFilters(this.filters.period, this.filters.specificDate);
+       this.reportRange = range;
+@@
+       this.buildCharts(filteredSales, filteredCreditSales, filteredProcurements);
+     },
+-    getDateRangeByPeriod(period) {
++    getDateRangeByFilters(period, specificDate = '') {
++      if (specificDate) {
++        const start = new Date(`${specificDate}T00:00:00.000Z`);
++        if (!Number.isNaN(start.getTime())) {
++          const end = new Date(start);
++          end.setUTCDate(end.getUTCDate() + 1);
++          return { from: start.toISOString(), to: end.toISOString() };
++        }
++      }
++
+       const end = new Date();
+       if (period === 'yearly') {
+         const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+@@
+       });
+     },
+-    buildTrendBuckets(period) {
++    buildTrendBuckets(period, specificDate = '') {
++      if (specificDate) {
++        const start = new Date(`${specificDate}T00:00:00.000Z`);
++        if (!Number.isNaN(start.getTime())) {
++          const end = new Date(start);
++          end.setUTCDate(end.getUTCDate() + 1);
++          return [
++            {
++              start,
++              end,
++              label: start.toLocaleDateString('en-UG', {
++                month: 'short',
++                day: 'numeric',
++                year: 'numeric'
++              }),
++              amount: 0
++            }
++          ];
++        }
++      }
++
+       const now = new Date();
+       const buckets = [];
+@@
+       }
+       this.salesOverTime = trendBuckets.map((bucket) => ({
+         label: bucket.label,
+         amount: bucket.amount
+       }));
+     },
++    clearSpecificDate() {
++      if (!this.filters.specificDate) return;
++      this.filters.specificDate = '';
++      this.buildDashboardData();
++    },
+*** End Patch

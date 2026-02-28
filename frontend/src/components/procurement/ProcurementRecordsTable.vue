@@ -22,7 +22,7 @@
         No procurement records found.
       </div>
 
-      <div v-else class="table-responsive">
+      <div v-else class="table-responsive procurement-table-container">
         <table class="table table-hover procurement-table align-middle">
           <thead>
             <tr>
@@ -32,11 +32,13 @@
               <th class="text-end">Tonnage (kg)</th>
               <th>Branch</th>
               <th>Dealer</th>
+              <th>Date/Time</th>
               <th class="text-end">Price (UGX)</th>
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in procurements" :key="item._id">
+            <tr v-for="item in paginatedProcurements" :key="item._id">
               <td class="produce-cell">
                 <div class="fw-semibold text-dark">{{ item.produceName }}</div>
               </td>
@@ -49,17 +51,74 @@
               <td>
                 <div class="fw-semibold">{{ item.dealerName || '-' }}</div>
               </td>
+              <td class="text-nowrap">{{ formatDateTime(item.dateReceived, item.timeReceived) }}</td>
               <td class="text-end fw-semibold text-nowrap">{{ formatNumber(item.sellingPrice) }}</td>
+              <td class="text-end text-nowrap actions-cell">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary me-2"
+                  :disabled="loading"
+                  @click="$emit('edit', item)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-danger"
+                  :disabled="loading"
+                  @click="$emit('delete', item._id)"
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+      <div
+        v-if="procurements.length > 0"
+        class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3"
+      >
+        <small class="text-muted">
+          Showing {{ rowsStart }}-{{ rowsEnd }} of
+          {{ procurements.length.toLocaleString('en-UG') }} records
+        </small>
+        <div class="d-flex align-items-center gap-2">
+          <label class="small text-muted mb-0" for="procurement-page-size">Rows</label>
+          <select
+            id="procurement-page-size"
+            class="form-select form-select-sm"
+            v-model.number="pageSize"
+          >
+            <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+          </select>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="currentPage <= 1"
+            @click="goToPage(currentPage - 1)"
+          >
+            Prev
+          </button>
+          <span class="small text-muted">Page {{ currentPage }} / {{ totalPages }}</span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            :disabled="currentPage >= totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed, ref, watch } from 'vue';
+
+const props = defineProps({
   procurements: {
     type: Array,
     required: true
@@ -70,12 +129,64 @@ defineProps({
   }
 });
 
-defineEmits(['refresh']);
+defineEmits(['refresh', 'edit', 'delete']);
+
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pageSizeOptions = [10, 20, 50, 100];
+
+const totalPages = computed(() => Math.max(1, Math.ceil(props.procurements.length / pageSize.value)));
+
+const paginatedProcurements = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  return props.procurements.slice(start, start + pageSize.value);
+});
+
+const rowsStart = computed(() => {
+  if (props.procurements.length === 0) return 0;
+  return (currentPage.value - 1) * pageSize.value + 1;
+});
+
+const rowsEnd = computed(() => Math.min(currentPage.value * pageSize.value, props.procurements.length));
+
+const goToPage = (page) => {
+  const nextPage = Math.max(1, Math.min(totalPages.value, Number(page || 1)));
+  currentPage.value = nextPage;
+};
+
+watch(pageSize, () => {
+  currentPage.value = 1;
+});
+
+watch(
+  () => props.procurements,
+  () => {
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value;
+    }
+  }
+);
 
 // Format number.
 const formatNumber = (value) => {
   if (value === undefined || value === null) return '-';
   return Number(value).toLocaleString();
+};
+
+const formatDateTime = (dateValue, timeValue) => {
+  if (!dateValue && !timeValue) return '-';
+
+  const date = dateValue ? new Date(dateValue) : null;
+  const formattedDate =
+    date && !Number.isNaN(date.getTime())
+      ? date.toLocaleDateString('en-UG', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })
+      : String(dateValue || '-');
+
+  return `${formattedDate} ${timeValue || '-'}`;
 };
 </script>
 
@@ -86,37 +197,42 @@ const formatNumber = (value) => {
   background-color: #f8fafc;
 }
 
-.table-responsive {
+.procurement-table-container {
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable both-edges;
 }
 
 .procurement-table {
   width: 100%;
-  min-width: 840px;
+  min-width: 0;
+  table-layout: auto;
 }
 
-.procurement-table thead th {
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #64748b;
-  font-weight: 700;
-  border-bottom-width: 1px;
+.procurement-table th,
+.procurement-table td {
+  white-space: normal;
+  vertical-align: middle;
 }
 
-.procurement-table tbody td {
-  padding-top: 0.95rem;
-  padding-bottom: 0.95rem;
+.procurement-table th.text-end,
+.procurement-table td.text-end,
+.actions-cell {
+  white-space: nowrap;
 }
 
 .produce-cell {
-  min-width: 150px;
+  min-width: 120px;
   white-space: normal;
 }
 
 .type-cell {
   min-width: 95px;
+}
+
+.actions-cell {
+  min-width: 140px;
 }
 
 </style>

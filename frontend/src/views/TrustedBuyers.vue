@@ -1,6 +1,9 @@
 <template>
-  <div>
-    <h2 class="mb-4">Trusted Buyers</h2>
+  <div class="view-shell">
+    <div class="view-heading">
+      <h2 class="page-title">Trusted Buyers</h2>
+      <p class="page-subtitle">Manage approved buyers for credit sales at your branch.</p>
+    </div>
 
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
@@ -46,7 +49,7 @@
                   <button class="btn btn-sm btn-outline-primary me-2" @click="startEdit(item)">
                     Edit
                   </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="deleteBuyer(item)">
+                  <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
                     Delete
                   </button>
                 </td>
@@ -65,56 +68,70 @@
         <form @submit.prevent="handleSubmit">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Buyer Name *</label>
+              <label class="form-label" for="trusted-buyer-name">Buyer Name *</label>
               <input
+                id="trusted-buyer-name"
                 type="text"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.name }]"
                 v-model="form.name"
                 minlength="2"
                 pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
                 title="Use letters/numbers. Spaces between words are allowed."
+                @input="clearFieldError('name')"
                 required
               />
+              <div v-if="fieldErrors.name" class="invalid-feedback">{{ fieldErrors.name }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">National ID (NIN) *</label>
+              <label class="form-label" for="trusted-buyer-nin">National ID (NIN) *</label>
               <input
+                id="trusted-buyer-nin"
                 type="text"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.nationalId }]"
                 v-model="form.nationalId"
                 pattern="[A-Z0-9]{14}"
                 maxlength="14"
                 placeholder="14 alphanumeric characters"
+                @input="clearFieldError('nationalId')"
                 required
                 :disabled="editingId"
               />
+              <div v-if="fieldErrors.nationalId" class="invalid-feedback">
+                {{ fieldErrors.nationalId }}
+              </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Location *</label>
+              <label class="form-label" for="trusted-buyer-location">Location *</label>
               <input
+                id="trusted-buyer-location"
                 type="text"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.location }]"
                 v-model="form.location"
                 minlength="2"
                 pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
                 title="Use letters/numbers. Spaces between words are allowed."
+                @input="clearFieldError('location')"
                 required
               />
+              <div v-if="fieldErrors.location" class="invalid-feedback">{{ fieldErrors.location }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Contact *</label>
+              <label class="form-label" for="trusted-buyer-contact">Contact *</label>
               <input
+                id="trusted-buyer-contact"
                 type="text"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.contact }]"
                 v-model="form.contact"
                 pattern="^(\\+256|0)[0-9]{9}$"
                 placeholder="+256700000000"
+                @input="clearFieldError('contact')"
                 required
               />
+              <div v-if="fieldErrors.contact" class="invalid-feedback">{{ fieldErrors.contact }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Branch</label>
-              <input type="text" class="form-control" :value="user.branch" disabled />
+              <label class="form-label" for="trusted-buyer-branch">Branch</label>
+              <input id="trusted-buyer-branch" type="text" class="form-control" :value="user.branch" disabled />
             </div>
           </div>
 
@@ -138,14 +155,30 @@
         </form>
       </div>
     </div>
+
+    <ConfirmDialog
+      :show="deleteDialog.show"
+      title="Delete Trusted Buyer"
+      :message="`Delete trusted buyer ${deleteDialog.buyerName}? This action cannot be undone.`"
+      confirm-text="Delete"
+      :busy="deleteDialog.processing"
+      @cancel="closeDeleteDialog"
+      @confirm="confirmDeleteBuyer"
+    />
   </div>
 </template>
 
 <script>
 import { trustedBuyersAPI } from '../services/api';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import { trustedBuyerValidationSchema } from '../utils/formSchemas.mjs';
+import { validateValues } from '../utils/formValidation.mjs';
 
 export default {
   name: 'TrustedBuyers',
+  components: {
+    ConfirmDialog
+  },
   data() {
     return {
       user: {},
@@ -161,7 +194,14 @@ export default {
       },
       loading: false,
       error: '',
-      success: ''
+      success: '',
+      fieldErrors: {},
+      deleteDialog: {
+        show: false,
+        buyerId: '',
+        buyerName: '',
+        processing: false
+      }
     };
   },
   async created() {
@@ -182,19 +222,30 @@ export default {
       }
     },
     async handleSubmit() {
-      this.loading = true;
       this.error = '';
       this.success = '';
+      this.fieldErrors = {};
+
+      // Configure payload.
+      const payload = {
+        name: this.normalizeText(this.form.name),
+        nationalId: String(this.form.nationalId || '')
+          .trim()
+          .toUpperCase(),
+        location: this.normalizeText(this.form.location),
+        contact: this.normalizeText(this.form.contact)
+      };
+
+      const validation = validateValues(payload, trustedBuyerValidationSchema);
+      if (!validation.valid) {
+        this.fieldErrors = validation.errors;
+        this.error = 'Please fix highlighted fields and try again.';
+        return;
+      }
+
+      this.loading = true;
 
       try {
-        // Configure payload.
-        const payload = {
-          name: this.normalizeText(this.form.name),
-          nationalId: this.form.nationalId.toUpperCase(),
-          location: this.normalizeText(this.form.location),
-          contact: this.form.contact.trim()
-        };
-
         if (this.editingId) {
           await trustedBuyersAPI.update(this.editingId, payload);
           this.success = 'Trusted buyer updated successfully!';
@@ -222,27 +273,46 @@ export default {
         location: item.location,
         contact: item.contact
       };
+      this.fieldErrors = {};
       this.error = '';
       this.success = '';
     },
     cancelEdit() {
       this.resetForm();
     },
-    async deleteBuyer(item) {
-      if (!confirm(`Delete trusted buyer ${item.name}?`)) return;
+    openDeleteDialog(item) {
+      this.deleteDialog = {
+        show: true,
+        buyerId: item._id,
+        buyerName: item.name,
+        processing: false
+      };
+    },
+    closeDeleteDialog() {
+      if (this.deleteDialog.processing) return;
+      this.deleteDialog.show = false;
+    },
+    async confirmDeleteBuyer() {
+      if (!this.deleteDialog.buyerId) return;
+      this.deleteDialog.processing = true;
       try {
-        await trustedBuyersAPI.delete(item._id);
-        if (this.editingId === item._id) {
+        await trustedBuyersAPI.delete(this.deleteDialog.buyerId);
+        if (this.editingId === this.deleteDialog.buyerId) {
           this.resetForm();
         }
         await this.loadBuyers();
+        this.success = 'Trusted buyer deleted successfully!';
       } catch (error) {
         this.error = error.response?.data?.message || 'Failed to delete trusted buyer';
+      } finally {
+        this.deleteDialog.processing = false;
+        this.deleteDialog.show = false;
       }
     },
     resetForm() {
       this.editingId = null;
       this.showForm = false;
+      this.fieldErrors = {};
       this.form = {
         name: '',
         nationalId: '',
@@ -256,6 +326,7 @@ export default {
       } else {
         this.showForm = !this.showForm;
       }
+      this.fieldErrors = {};
       this.error = '';
       this.success = '';
     },
@@ -263,6 +334,11 @@ export default {
       return String(value || '')
         .trim()
         .replace(/\s+/g, ' ');
+    },
+    clearFieldError(fieldName) {
+      if (this.fieldErrors[fieldName]) {
+        delete this.fieldErrors[fieldName];
+      }
     }
   }
 };

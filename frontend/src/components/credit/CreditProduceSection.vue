@@ -6,9 +6,10 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Produce Name </label>
+        <label class="form-label" for="credit-produce-name">Produce Name </label>
         <select
-          class="form-select"
+          id="credit-produce-name"
+          :class="['form-select', { 'is-invalid': errors.produceName }]"
           v-model="form.produceName"
           @change="handleProduceChange"
           required
@@ -23,37 +24,44 @@
             {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
           </option>
         </select>
+        <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Produce Type</label>
+        <label class="form-label" for="credit-produce-type">Produce Type</label>
         <input
+          id="credit-produce-type"
           type="text"
-          class="form-control branch-display"
+          :class="['form-control branch-display', { 'is-invalid': errors.produceType }]"
           v-model="form.produceType"
           disabled
         />
+        <div v-if="errors.produceType" class="invalid-feedback">{{ errors.produceType }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Tonnage (kg)</label>
+        <label class="form-label" for="credit-tonnage-kg">Tonnage (kg)</label>
         <input
+          id="credit-tonnage-kg"
           type="number"
-          class="form-control"
+          :class="['form-control', { 'is-invalid': errors.tonnageKg }]"
           v-model="form.tonnageKg"
           @input="$emit('tonnage-input')"
           min="1"
           required
         />
+        <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Amount Due (UGX) </label>
+        <label class="form-label" for="credit-amount-due">Amount Due (UGX) </label>
         <input
+          id="credit-amount-due"
           type="number"
-          class="form-control"
+          :class="['form-control', { 'is-invalid': errors.amountDueUgx }]"
           v-model="form.amountDueUgx"
           min="10000"
           required
           readonly
         />
+        <div v-if="errors.amountDueUgx" class="invalid-feedback">{{ errors.amountDueUgx }}</div>
         <small class="text-muted">Price is determined by manager.</small>
       </div>
     </div>
@@ -80,6 +88,10 @@ defineProps({
   inventory: {
     type: Array,
     required: true
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 });
 </script>

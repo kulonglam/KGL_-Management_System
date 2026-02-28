@@ -1,10 +1,21 @@
 import Procurement from '../models/Procurement.js';
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
+import {
+  normalizeProduceName,
+  normalizeProduceNameKey,
+  normalizeProduceType
+} from '../utils/produceNormalization.js';
+
+// Handle resolve procurement name.
+const resolveProcurementName = (item) => normalizeProduceName(item.produceName || item.name || '');
+
+// Handle resolve procurement type.
+const resolveProcurementType = (item) => normalizeProduceType(item.produceType || item.type || '');
 
 // Handle make inventory key.
 const makeInventoryKey = (produceName, produceType, branch) =>
-  `${produceName}::${produceType}::${branch}`;
+  `${normalizeProduceNameKey(produceName)}::${normalizeProduceType(produceType)}::${branch}`;
 
 // Handle find fallback key.
 const findFallbackKey = (inventoryMap, produceName, branch) => {
@@ -12,7 +23,10 @@ const findFallbackKey = (inventoryMap, produceName, branch) => {
   let highestTonnage = -Infinity;
 
   for (const [key, item] of inventoryMap.entries()) {
-    if (item.produceName === produceName && item.branch === branch) {
+    if (
+      normalizeProduceNameKey(item.produceName) === normalizeProduceNameKey(produceName) &&
+      item.branch === branch
+    ) {
       const tonnage = Number(item.totalTonnageKg || 0);
       if (tonnage > highestTonnage) {
         highestTonnage = tonnage;
@@ -27,8 +41,10 @@ const findFallbackKey = (inventoryMap, produceName, branch) => {
 // Handle subtract from inventory map.
 const subtractFromInventoryMap = (inventoryMap, movement) => {
   const explicitType = movement.produceType;
+  const movementName = normalizeProduceName(movement.produceName || '');
+  const movementType = normalizeProduceType(explicitType || '');
   if (explicitType) {
-    const key = makeInventoryKey(movement.produceName, explicitType, movement.branch);
+    const key = makeInventoryKey(movementName, movementType, movement.branch);
     const item = inventoryMap.get(key);
     if (item) {
       item.totalTonnageKg -= movement.tonnageKg;
@@ -37,7 +53,7 @@ const subtractFromInventoryMap = (inventoryMap, movement) => {
   }
 
   // Fallback for old sale rows without produceType.
-  const fallbackKey = findFallbackKey(inventoryMap, movement.produceName, movement.branch);
+  const fallbackKey = findFallbackKey(inventoryMap, movementName, movement.branch);
   if (!fallbackKey) return;
   inventoryMap.get(fallbackKey).totalTonnageKg -= movement.tonnageKg;
 };
@@ -48,14 +64,18 @@ const buildInventoryMap = (procurements, sales, creditSales) => {
 
   // Add procurements
   procurements.forEach((item) => {
-    const key = makeInventoryKey(item.produceName, item.produceType, item.branch);
+    const produceName = resolveProcurementName(item);
+    const produceType = resolveProcurementType(item);
+    if (!produceName || !produceType) return;
+
+    const key = makeInventoryKey(produceName, produceType, item.branch);
 
     if (inventoryMap.has(key)) {
       inventoryMap.get(key).totalTonnageKg += item.tonnageKg;
     } else {
       inventoryMap.set(key, {
-        produceName: item.produceName,
-        produceType: item.produceType,
+        produceName,
+        produceType,
         branch: item.branch,
         totalTonnageKg: item.tonnageKg,
         sellingPrice: item.sellingPrice
@@ -127,8 +147,9 @@ const getInventoryOverview = async (filter = {}) => {
 // Retrieve stock for produce.
 const getStockForProduce = async (branch, produceName) => {
   const snapshot = await calculateInventoryByFilter({ branch });
+  const requestedNameKey = normalizeProduceNameKey(produceName);
   return snapshot
-    .filter((item) => item.produceName === produceName)
+    .filter((item) => normalizeProduceNameKey(item.produceName) === requestedNameKey)
     .reduce((sum, item) => sum + item.totalTonnageKg, 0);
 };
 

@@ -1,6 +1,9 @@
 <template>
-  <div>
-    <h2 class="page-title mb-4">Record Credit Sale</h2>
+  <div class="view-shell">
+    <div class="view-heading">
+      <h2 class="page-title">Record Credit Sale</h2>
+      <p class="page-subtitle">Register trusted-buyer credit transactions with dispatch details.</p>
+    </div>
 
     <div class="card">
       <div class="card-header">
@@ -12,17 +15,19 @@
             v-model:form="form"
             :trusted-buyers="trustedBuyers"
             :can-manage-buyers="canManageBuyers"
+            :errors="fieldErrors"
             @buyer-change="handleBuyerSelect"
           />
 
           <CreditProduceSection
             v-model:form="form"
             :inventory="inventory"
+            :errors="fieldErrors"
             @produce-change="updateProduceDetails"
             @tonnage-input="updatePrice"
           />
 
-          <CreditDispatchSection v-model:form="form" :user="user" />
+          <CreditDispatchSection v-model:form="form" :user="user" :errors="fieldErrors" />
 
           <FormAlerts :stock-warning="stockWarning" :error="error" :success="success" />
 
@@ -44,13 +49,21 @@
       </div>
     </div>
 
-    <div v-if="showReviewModal" class="modal-mask">
-      <div class="modal-card credit-review-modal">
+    <div v-if="showReviewModal" class="modal-mask" @click.self="closeReviewModal">
+      <div
+        ref="reviewModalRef"
+        class="modal-card credit-review-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="credit-sale-review-title"
+        tabindex="-1"
+      >
         <div class="modal-header">
-          <h5 class="mb-0">Review Credit Sale</h5>
+          <h5 id="credit-sale-review-title" class="mb-0">Review Credit Sale</h5>
           <button
             type="button"
             class="btn-close"
+            aria-label="Close review modal"
             :disabled="loading"
             @click="closeReviewModal"
           ></button>
@@ -77,18 +90,27 @@
 
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label fw-bold">Trusted Buyer</label>
-              <select class="form-select" v-model="form.trustedBuyerId" @change="handleBuyerSelect">
+              <label class="form-label fw-bold" for="credit-review-buyer">Trusted Buyer</label>
+              <select
+                id="credit-review-buyer"
+                :class="['form-select', { 'is-invalid': fieldErrors.trustedBuyerId }]"
+                v-model="form.trustedBuyerId"
+                @change="handleBuyerSelect"
+              >
                 <option value="">Select trusted buyer</option>
                 <option v-for="buyer in trustedBuyers" :key="buyer._id" :value="buyer._id">
                   {{ buyer.name }} ({{ buyer.nationalId }})
                 </option>
               </select>
+              <div v-if="fieldErrors.trustedBuyerId" class="invalid-feedback">
+                {{ fieldErrors.trustedBuyerId }}
+              </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">Produce Name</label>
+              <label class="form-label fw-bold" for="credit-review-produce">Produce Name</label>
               <select
-                class="form-select"
+                id="credit-review-produce"
+                :class="['form-select', { 'is-invalid': fieldErrors.produceName }]"
                 v-model="form.produceName"
                 @change="handleReviewProduceChange"
               >
@@ -102,35 +124,58 @@
                   {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
                 </option>
               </select>
+              <div v-if="fieldErrors.produceName" class="invalid-feedback">
+                {{ fieldErrors.produceName }}
+              </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">Tonnage (kg)</label>
+              <label class="form-label fw-bold" for="credit-review-tonnage">Tonnage (kg)</label>
               <input
+                id="credit-review-tonnage"
                 type="number"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.tonnageKg }]"
                 v-model="form.tonnageKg"
                 min="1"
                 @input="updatePrice"
                 required
               />
+              <div v-if="fieldErrors.tonnageKg" class="invalid-feedback">{{ fieldErrors.tonnageKg }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">Amount Due (UGX)</label>
-              <input type="number" class="form-control" :value="form.amountDueUgx" readonly />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold">Due Date</label>
+              <label class="form-label fw-bold" for="credit-review-amount">Amount Due (UGX)</label>
               <input
+                id="credit-review-amount"
+                type="number"
+                :class="['form-control', { 'is-invalid': fieldErrors.amountDueUgx }]"
+                :value="form.amountDueUgx"
+                readonly
+              />
+              <div v-if="fieldErrors.amountDueUgx" class="invalid-feedback">{{ fieldErrors.amountDueUgx }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold" for="credit-review-due-date">Due Date</label>
+              <input
+                id="credit-review-due-date"
                 type="date"
-                class="form-control"
+                :class="['form-control', { 'is-invalid': fieldErrors.dueDate }]"
                 v-model="form.dueDate"
                 :min="todayIsoDate"
                 required
               />
+              <div v-if="fieldErrors.dueDate" class="invalid-feedback">{{ fieldErrors.dueDate }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-bold">Dispatch Date</label>
-              <input type="date" class="form-control" v-model="form.dateOfDispatch" required />
+              <label class="form-label fw-bold" for="credit-review-dispatch-date">Dispatch Date</label>
+              <input
+                id="credit-review-dispatch-date"
+                type="date"
+                :class="['form-control', { 'is-invalid': fieldErrors.dateOfDispatch }]"
+                v-model="form.dateOfDispatch"
+                required
+              />
+              <div v-if="fieldErrors.dateOfDispatch" class="invalid-feedback">
+                {{ fieldErrors.dateOfDispatch }}
+              </div>
             </div>
           </div>
 
@@ -160,14 +205,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { creditSalesAPI, inventoryAPI, trustedBuyersAPI } from '../services/api';
 import { useFormFeedback } from '../composables/useFormFeedback';
+import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
+import { creditSaleValidationSchema } from '../utils/formSchemas.mjs';
 
 // Configure user.
 const user = ref({});
@@ -179,11 +226,17 @@ const inventory = ref([]);
 const form = ref(createInitialForm());
 // Configure show review modal.
 const showReviewModal = ref(false);
+// Configure review modal ref.
+const reviewModalRef = ref(null);
+// Configure last focused element before opening review modal.
+const lastFocusedElement = ref(null);
 // Configure today iso date.
 const todayIsoDate = new Date().toISOString().split('T')[0];
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
+const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
+  useFormValidation(creditSaleValidationSchema);
 
 // Configure can manage buyers.
 const canManageBuyers = computed(() => user.value.role === 'manager');
@@ -292,34 +345,23 @@ const updatePrice = () => {
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
+  resetErrors();
 };
 
 // Handle open review modal.
 const openReviewModal = () => {
+  const validation = validateForm(form.value);
+  if (!validation.valid) {
+    setError('Please fix highlighted fields before review.');
+    return;
+  }
+
   if (stockWarning.value) {
     setError(stockWarning.value);
     return;
   }
 
-  if (!form.value.trustedBuyerId) {
-    setError('Please select a trusted buyer');
-    return;
-  }
-
-  if (!form.value.produceName || !form.value.tonnageKg || !form.value.dueDate) {
-    setError('Please complete required credit sale fields before review.');
-    return;
-  }
-
-  const selectedDueDate = new Date(form.value.dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  selectedDueDate.setHours(0, 0, 0, 0);
-  if (Number.isNaN(selectedDueDate.getTime()) || selectedDueDate < today) {
-    setError('Due date must be today or a future date.');
-    return;
-  }
-
+  lastFocusedElement.value = document.activeElement;
   showReviewModal.value = true;
 };
 
@@ -329,15 +371,80 @@ const closeReviewModal = () => {
   showReviewModal.value = false;
 };
 
-// Handle confirm save credit sale.
-const confirmSaveCreditSale = async () => {
-  if (stockWarning.value) {
-    setError(stockWarning.value);
+// Focus review modal container when it opens.
+const focusReviewModal = async () => {
+  await nextTick();
+  const firstFocusable = getReviewModalFocusableElements()[0];
+  if (firstFocusable) {
+    firstFocusable.focus();
+    return;
+  }
+  reviewModalRef.value?.focus();
+};
+
+const getReviewModalFocusableElements = () =>
+  Array.from(
+    reviewModalRef.value?.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ) || []
+  );
+
+const trapReviewModalFocus = (event) => {
+  if (!showReviewModal.value || event.key !== 'Tab') return;
+
+  const focusable = getReviewModalFocusableElements();
+  if (focusable.length === 0) {
+    event.preventDefault();
+    reviewModalRef.value?.focus();
     return;
   }
 
-  if (!form.value.trustedBuyerId) {
-    setError('Please select a trusted buyer');
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+const restorePreviousFocus = () => {
+  const element = lastFocusedElement.value;
+  if (element && typeof element.focus === 'function') {
+    element.focus();
+  }
+};
+
+// Handle review modal key events.
+const handleReviewModalKeydown = (event) => {
+  if (!showReviewModal.value) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeReviewModal();
+    return;
+  }
+
+  trapReviewModalFocus(event);
+};
+
+// Handle confirm save credit sale.
+const confirmSaveCreditSale = async () => {
+  const validation = validateForm(form.value);
+  if (!validation.valid) {
+    setError('Please fix highlighted fields before saving.');
+    return;
+  }
+
+  if (stockWarning.value) {
+    setError(stockWarning.value);
     return;
   }
 
@@ -363,6 +470,32 @@ const formatCurrency = (amount) =>
     currency: 'UGX',
     minimumFractionDigits: 0
   }).format(Number(amount || 0));
+
+watch(showReviewModal, (isOpen) => {
+  if (isOpen) {
+    focusReviewModal();
+    window.addEventListener('keydown', handleReviewModalKeydown);
+    return;
+  }
+  window.removeEventListener('keydown', handleReviewModalKeydown);
+  restorePreviousFocus();
+});
+
+watch(
+  form,
+  (next, previous) => {
+    Object.keys(next).forEach((fieldName) => {
+      if (next[fieldName] !== previous[fieldName]) {
+        clearFieldError(fieldName);
+      }
+    });
+  },
+  { deep: true }
+);
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleReviewModalKeydown);
+});
 
 onMounted(async () => {
   user.value = JSON.parse(localStorage.getItem('user') || '{}');

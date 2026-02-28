@@ -1,5 +1,5 @@
 <template>
-  <div class="price-page">
+  <div class="price-page view-shell">
     <div class="price-page-header">
       <div>
         <h2 class="page-title">Price Management</h2>
@@ -91,7 +91,7 @@
                     </button>
                     <button
                       class="btn btn-sm btn-outline-danger"
-                      @click="deletePrice(row)"
+                      @click="openDeleteDialog(row)"
                       :disabled="!row._id || row.saving || row.deleting"
                     >
                       <span
@@ -108,11 +108,22 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      :show="deleteDialog.show"
+      title="Delete Managed Price"
+      :message="`Delete managed price for ${deleteDialog.produceType}?`"
+      confirm-text="Delete"
+      :busy="deleteDialog.processing"
+      @cancel="closeDeleteDialog"
+      @confirm="confirmDeletePrice"
+    />
   </div>
 </template>
 
 <script>
 import { priceAPI } from '../services/api';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 
 // Configure produce types.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
@@ -131,12 +142,21 @@ const createRow = (type) => ({
 
 export default {
   name: 'PriceManagement',
+  components: {
+    ConfirmDialog
+  },
   data() {
     return {
       loading: false,
       globalError: '',
       globalSuccess: '',
-      rows: PRODUCE_TYPES.map(createRow)
+      rows: PRODUCE_TYPES.map(createRow),
+      deleteDialog: {
+        show: false,
+        priceId: '',
+        produceType: '',
+        processing: false
+      }
     };
   },
   computed: {
@@ -241,24 +261,38 @@ export default {
         row.saving = false;
       }
     },
-    async deletePrice(row) {
+    openDeleteDialog(row) {
       this.clearMessages();
       this.clearRowMessages(row);
       if (!row._id) {
         row.error = 'No managed price to delete';
         return;
       }
-      if (!confirm(`Delete managed price for ${row.type}?`)) return;
+      this.deleteDialog = {
+        show: true,
+        priceId: row._id,
+        produceType: row.type,
+        processing: false
+      };
+    },
+    closeDeleteDialog() {
+      if (this.deleteDialog.processing) return;
+      this.deleteDialog.show = false;
+    },
+    async confirmDeletePrice() {
+      if (!this.deleteDialog.priceId) return;
+      this.clearMessages();
+      this.deleteDialog.processing = true;
 
-      row.deleting = true;
       try {
-        await priceAPI.delete(row._id);
+        await priceAPI.delete(this.deleteDialog.priceId);
         await this.loadPrices();
-        this.globalSuccess = `Deleted managed price for ${row.type}`;
+        this.globalSuccess = `Deleted managed price for ${this.deleteDialog.produceType}`;
       } catch (error) {
-        row.error = error.response?.data?.message || 'Failed to delete price';
+        this.globalError = error.response?.data?.message || 'Failed to delete price';
       } finally {
-        row.deleting = false;
+        this.deleteDialog.processing = false;
+        this.deleteDialog.show = false;
       }
     }
   }
@@ -323,19 +357,6 @@ export default {
 .price-card .card-header {
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
-}
-
-.price-table thead th {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #64748b;
-  font-weight: 700;
-}
-
-.price-table tbody td {
-  padding-top: 0.9rem;
-  padding-bottom: 0.9rem;
 }
 
 .produce-cell {

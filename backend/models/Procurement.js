@@ -1,16 +1,33 @@
 import mongoose from 'mongoose';
+import {
+  normalizeProduceName,
+  normalizeProduceType,
+  normalizeSourceType
+} from '../utils/produceNormalization.js';
 
 // Define procurement schema.
 const procurementSchema = new mongoose.Schema(
   {
-    produceName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
+    produceName: {
+      type: String,
+      required: true,
+      minlength: 2,
+      set: normalizeProduceName,
+      match: /^[A-Za-z0-9\s]+$/
+    },
     produceType: {
       type: String,
       required: true,
       minlength: 2,
+      set: normalizeProduceType,
       enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
     },
-    sourceType: { type: String, required: true, enum: ['individual', 'company', 'kgl_farm'] },
+    sourceType: {
+      type: String,
+      required: true,
+      set: normalizeSourceType,
+      enum: ['individual', 'company', 'kgl_farm']
+    },
     dateReceived: { type: Date, required: true },
     timeReceived: { type: String, required: true },
     tonnageKg: {

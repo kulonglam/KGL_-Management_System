@@ -7,9 +7,10 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Produce Name *</label>
+          <label class="form-label" for="sales-produce-name">Produce Name *</label>
           <select
-            class="form-select"
+            id="sales-produce-name"
+            :class="['form-select', { 'is-invalid': errors.produceName }]"
             v-model="form.produceName"
             @change="handleProduceChange"
             required
@@ -25,41 +26,48 @@
               available
             </option>
           </select>
+          <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Tonnage (kg) *</label>
+          <label class="form-label" for="sales-tonnage-kg">Tonnage (kg) *</label>
           <input
+            id="sales-tonnage-kg"
             type="number"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.tonnageKg }]"
             v-model="form.tonnageKg"
             @input="$emit('tonnage-input')"
             min="1"
             required
           />
+          <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Amount Paid (UGX) *</label>
+          <label class="form-label" for="sales-amount-paid">Amount Paid (UGX) *</label>
           <input
+            id="sales-amount-paid"
             type="number"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.amountPaidUgx }]"
             v-model="form.amountPaidUgx"
             min="10000"
             required
             readonly
           />
+          <div v-if="errors.amountPaidUgx" class="invalid-feedback">{{ errors.amountPaidUgx }}</div>
           <small class="text-muted">Price is determined by manager.</small>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Buyer Name *</label>
+          <label class="form-label" for="sales-buyer-name">Buyer Name *</label>
           <input
+            id="sales-buyer-name"
             type="text"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.buyerName }]"
             v-model="form.buyerName"
             minlength="2"
             pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
             @blur="normalizeText('buyerName')"
             required
           />
+          <div v-if="errors.buyerName" class="invalid-feedback">{{ errors.buyerName }}</div>
         </div>
       </div>
     </fieldset>
@@ -71,20 +79,34 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-control" v-model="form.date" required />
+          <label class="form-label" for="sales-date">Date</label>
+          <input
+            id="sales-date"
+            type="date"
+            :class="['form-control', { 'is-invalid': errors.date }]"
+            v-model="form.date"
+            required
+          />
+          <div v-if="errors.date" class="invalid-feedback">{{ errors.date }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Time</label>
-          <input type="time" class="form-control" v-model="form.time" required />
+          <label class="form-label" for="sales-time">Time</label>
+          <input
+            id="sales-time"
+            type="time"
+            :class="['form-control', { 'is-invalid': errors.time }]"
+            v-model="form.time"
+            required
+          />
+          <div v-if="errors.time" class="invalid-feedback">{{ errors.time }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label">Sales Agent</label>
-          <input type="text" class="form-control branch-display" :value="user.name" disabled />
+          <label class="form-label" for="sales-agent-name">Sales Agent</label>
+          <input id="sales-agent-name" type="text" class="form-control branch-display" :value="user.name" disabled />
         </div>
         <div class="col-md-6">
-          <label class="form-label">Branch</label>
-          <input type="text" class="form-control branch-display" :value="user.branch" disabled />
+          <label class="form-label" for="sales-branch">Branch</label>
+          <input id="sales-branch" type="text" class="form-control branch-display" :value="user.branch" disabled />
         </div>
       </div>
     </fieldset>
@@ -124,6 +146,10 @@ defineProps({
   user: {
     type: Object,
     required: true
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 });
 </script>

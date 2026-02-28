@@ -6,9 +6,10 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Trusted Buyer </label>
+        <label class="form-label" for="credit-trusted-buyer">Trusted Buyer </label>
         <select
-          class="form-select"
+          id="credit-trusted-buyer"
+          :class="['form-select', { 'is-invalid': errors.trustedBuyerId }]"
           v-model="form.trustedBuyerId"
           @change="$emit('buyer-change')"
           required
@@ -18,6 +19,7 @@
             {{ buyer.name }} ({{ buyer.nationalId }})
           </option>
         </select>
+        <div v-if="errors.trustedBuyerId" class="invalid-feedback">{{ errors.trustedBuyerId }}</div>
         <div class="mt-2">
           <small v-if="canManageBuyers" class="text-muted">
             Manage trusted buyers in the Trusted Buyers page.
@@ -26,16 +28,37 @@
         </div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">National ID (NIN)</label>
-        <input type="text" class="form-control branch-display" v-model="form.nationalId" disabled />
+        <label class="form-label" for="credit-buyer-nin">National ID (NIN)</label>
+        <input
+          id="credit-buyer-nin"
+          type="text"
+          :class="['form-control branch-display', { 'is-invalid': errors.nationalId }]"
+          v-model="form.nationalId"
+          disabled
+        />
+        <div v-if="errors.nationalId" class="invalid-feedback">{{ errors.nationalId }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Location</label>
-        <input type="text" class="form-control branch-display" v-model="form.location" disabled />
+        <label class="form-label" for="credit-buyer-location">Location</label>
+        <input
+          id="credit-buyer-location"
+          type="text"
+          :class="['form-control branch-display', { 'is-invalid': errors.location }]"
+          v-model="form.location"
+          disabled
+        />
+        <div v-if="errors.location" class="invalid-feedback">{{ errors.location }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Contact</label>
-        <input type="text" class="form-control branch-display" v-model="form.contact" disabled />
+        <label class="form-label" for="credit-buyer-contact">Contact</label>
+        <input
+          id="credit-buyer-contact"
+          type="text"
+          :class="['form-control branch-display', { 'is-invalid': errors.contact }]"
+          v-model="form.contact"
+          disabled
+        />
+        <div v-if="errors.contact" class="invalid-feedback">{{ errors.contact }}</div>
       </div>
     </div>
   </fieldset>
@@ -56,6 +79,10 @@ defineProps({
   canManageBuyers: {
     type: Boolean,
     required: true
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 });
 

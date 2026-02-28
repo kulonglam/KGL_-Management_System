@@ -10,6 +10,11 @@ import {
   buildSalesAggregationPayload
 } from '../services/salesAggregationService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import {
+  normalizeProduceName,
+  normalizeProduceNameKey,
+  normalizeProduceType
+} from '../utils/produceNormalization.js';
 
 // Retrieve all sales.
 const getAllSales = async (req, res) => {
@@ -55,20 +60,22 @@ const getAllSales = async (req, res) => {
 const createSale = async (req, res) => {
   try {
     const {
-      produceName,
+      produceName: rawProduceName,
       produceType: requestedProduceType,
       tonnageKg,
       buyerName,
       date,
       time
     } = req.body;
+    const produceName = normalizeProduceName(rawProduceName);
+    const requestedType = normalizeProduceType(requestedProduceType || '');
     const tonnage = Number(tonnageKg);
     if (!tonnage || Number.isNaN(tonnage)) {
       return res.status(400).json({ message: 'Invalid tonnage value' });
     }
 
     const inventory = await calculateInventoryByBranch(req.user.branch);
-    const resolvedType = resolveProduceTypeForSale(inventory, produceName, requestedProduceType);
+    const resolvedType = resolveProduceTypeForSale(inventory, produceName, requestedType);
     if (resolvedType.error) {
       return res.status(400).json({ message: resolvedType.error });
     }
@@ -77,12 +84,14 @@ const createSale = async (req, res) => {
       {
         branch: req.user.branch,
         produceName,
-        produceType: resolvedType.produceType
+        produceType: normalizeProduceType(resolvedType.produceType)
       },
       async () => {
         const lockedInventory = await calculateInventoryByBranch(req.user.branch);
         const item = lockedInventory.find(
-          (entry) => entry.produceName === produceName && entry.produceType === resolvedType.produceType
+          (entry) =>
+            normalizeProduceNameKey(entry.produceName) === normalizeProduceNameKey(produceName) &&
+            normalizeProduceType(entry.produceType) === normalizeProduceType(resolvedType.produceType)
         );
 
         if (!item) {
@@ -99,7 +108,7 @@ const createSale = async (req, res) => {
         const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
         const createdSale = await Sale.create({
-          produceName,
+          produceName: item.produceName,
           produceType: item.produceType,
           tonnageKg: tonnage,
           amountPaidUgx,
@@ -114,7 +123,7 @@ const createSale = async (req, res) => {
         if (remainingStock <= 0) {
           await createOutOfStockNotification({
             branch: req.user.branch,
-            produceName,
+            produceName: item.produceName,
             produceType: item.produceType
           });
         }
@@ -135,7 +144,8 @@ const getSalesAggregation = async (req, res) => {
   try {
     const aggregationContext = buildAggregationContext({
       period: req.query.period,
-      branch: req.query.branch
+      branch: req.query.branch,
+      specificDate: req.query.specificDate
     });
     if (aggregationContext.error) {
       return res.status(400).json({ message: aggregationContext.error });

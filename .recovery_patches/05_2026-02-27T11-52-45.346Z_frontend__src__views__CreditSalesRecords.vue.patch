@@ -1,0 +1,14 @@
+*** Begin Patch
+*** Update File: c:/Users/Makhol Jr/Documents/REFACTORY/KGL_ Management_System/frontend/src/views/CreditSalesRecords.vue
+@@
+ <template>
+-  <div>
+-    <h2 class="mb-4">Credit Sales Records</h2>
++  <div class="view-shell">
++    <div class="view-heading">
++      <h2 class="page-title">Credit Sales Records</h2>
++      <p class="page-subtitle">Track balances, repayment status, and due dates.</p>
++    </div>
+ 
+     <div v-if="canRepay && repayId" class="card mb-4">
+*** End Patch

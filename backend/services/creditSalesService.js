@@ -3,6 +3,11 @@ import TrustedBuyer from '../models/TrustedBuyer.js';
 import { calculateInventoryByBranch } from './inventoryService.js';
 import { createOutOfStockNotification } from './stockNotificationService.js';
 import { withStockLock } from './stockLockService.js';
+import {
+  normalizeProduceName,
+  normalizeProduceNameKey,
+  normalizeProduceType
+} from '../utils/produceNormalization.js';
 
 // Create a typed service error with HTTP status metadata.
 const createServiceError = (statusCode, message) => {
@@ -13,13 +18,17 @@ const createServiceError = (statusCode, message) => {
 
 // Resolve produce type for credit sale creation.
 const resolveProduceTypeForCreditSale = (inventory, produceName, requestedProduceType) => {
-  const candidates = inventory.filter((entry) => entry.produceName === produceName);
+  const requestedNameKey = normalizeProduceNameKey(produceName);
+  const requestedType = normalizeProduceType(requestedProduceType || '');
+  const candidates = inventory.filter(
+    (entry) => normalizeProduceNameKey(entry.produceName) === requestedNameKey
+  );
   if (candidates.length === 0) {
     return { error: 'Product not available in inventory' };
   }
 
-  if (requestedProduceType) {
-    const match = candidates.find((entry) => entry.produceType === requestedProduceType);
+  if (requestedType) {
+    const match = candidates.find((entry) => normalizeProduceType(entry.produceType) === requestedType);
     if (!match) {
       return { error: 'Selected produce type is not available in inventory' };
     }
@@ -127,11 +136,12 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
   const {
     trustedBuyerId,
     dueDate,
-    produceName,
+    produceName: rawProduceName,
     produceType: requestedProduceType,
     tonnageKg,
     dateOfDispatch
   } = payload;
+  const produceName = normalizeProduceName(rawProduceName);
 
   const tonnage = Number(tonnageKg);
   if (!tonnage || Number.isNaN(tonnage)) {
@@ -176,16 +186,18 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
   }
 
   return withStockLock(
-    {
-      branch: actorUser.branch,
-      produceName,
-      produceType: resolvedType.produceType
-    },
-    async () => {
-      const lockedInventory = await calculateInventoryByBranch(actorUser.branch);
-      const item = lockedInventory.find(
-        (entry) => entry.produceName === produceName && entry.produceType === resolvedType.produceType
-      );
+      {
+        branch: actorUser.branch,
+        produceName,
+        produceType: normalizeProduceType(resolvedType.produceType)
+      },
+      async () => {
+        const lockedInventory = await calculateInventoryByBranch(actorUser.branch);
+        const item = lockedInventory.find(
+          (entry) =>
+            normalizeProduceNameKey(entry.produceName) === normalizeProduceNameKey(produceName) &&
+            normalizeProduceType(entry.produceType) === normalizeProduceType(resolvedType.produceType)
+        );
 
       if (!item) {
         throw createServiceError(400, 'Product not available in inventory');
@@ -198,7 +210,7 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
       const amountDueUgx = item.sellingPrice * tonnage;
       const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
-      const creditSale = await CreditSale.create({
+        const creditSale = await CreditSale.create({
         buyerName: trustedBuyer.name,
         nationalId: trustedBuyer.nationalId,
         location: trustedBuyer.location,
@@ -208,8 +220,8 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
         balanceUgx: amountDueUgx,
         salesAgentName: actorUser.name,
         dueDate,
-        produceName,
-        produceType: item.produceType,
+          produceName: item.produceName,
+          produceType: item.produceType,
         tonnageKg: tonnage,
         dateOfDispatch,
         branch: actorUser.branch,
@@ -218,13 +230,13 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
         isPaid: false
       });
 
-      if (remainingStock <= 0) {
-        await createOutOfStockNotification({
-          branch: actorUser.branch,
-          produceName,
-          produceType: item.produceType
-        });
-      }
+        if (remainingStock <= 0) {
+          await createOutOfStockNotification({
+            branch: actorUser.branch,
+            produceName: item.produceName,
+            produceType: item.produceType
+          });
+        }
 
       return creditSale;
     }

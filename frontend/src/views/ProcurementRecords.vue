@@ -1,6 +1,9 @@
 <template>
-  <div>
-    <h2 class="page-title mb-4">Procurement Records</h2>
+  <div class="view-shell">
+    <div class="view-heading">
+      <h2 class="page-title">Procurement Records</h2>
+      <p class="page-subtitle">Review, edit, and remove procurement entries.</p>
+    </div>
 
     <div v-if="editingId" class="card mb-4">
       <div class="card-header">
@@ -41,13 +44,24 @@
       :loading="loadingList"
       @refresh="loadProcurements"
       @edit="startEdit"
-      @delete="deleteProcurement"
+      @delete="openDeleteDialog"
+    />
+
+    <ConfirmDialog
+      :show="deleteDialog.show"
+      title="Delete Procurement"
+      message="Delete this procurement record? This action cannot be undone."
+      confirm-text="Delete"
+      :busy="deleteDialog.processing"
+      @cancel="closeDeleteDialog"
+      @confirm="confirmDeleteProcurement"
     />
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import ProcurementFormFields from '../components/procurement/ProcurementFormFields.vue';
 import ProcurementRecordsTable from '../components/procurement/ProcurementRecordsTable.vue';
@@ -69,6 +83,12 @@ const loadingList = ref(false);
 const editingId = ref(null);
 // Configure form.
 const form = ref(createInitialProcurementForm());
+// Configure delete dialog state.
+const deleteDialog = ref({
+  show: false,
+  procurementId: '',
+  processing: false
+});
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
@@ -141,19 +161,36 @@ const handleUpdate = async () => {
   }
 };
 
+const openDeleteDialog = (id) => {
+  deleteDialog.value = {
+    show: true,
+    procurementId: id,
+    processing: false
+  };
+};
+
+const closeDeleteDialog = () => {
+  if (deleteDialog.value.processing) return;
+  deleteDialog.value.show = false;
+};
+
 // Delete procurement.
-const deleteProcurement = async (id) => {
-  if (!confirm('Delete this procurement record?')) return;
+const confirmDeleteProcurement = async () => {
+  if (!deleteDialog.value.procurementId) return;
+  deleteDialog.value.processing = true;
   resetFeedback();
   try {
-    await procurementAPI.delete(id);
+    await procurementAPI.delete(deleteDialog.value.procurementId);
     setSuccess('Procurement record deleted.');
-    if (editingId.value === id) {
+    if (editingId.value === deleteDialog.value.procurementId) {
       cancelEdit();
     }
     await loadProcurements();
   } catch (deleteError) {
     setError(deleteError.response?.data?.message || 'Failed to delete procurement');
+  } finally {
+    deleteDialog.value.processing = false;
+    deleteDialog.value.show = false;
   }
 };
 

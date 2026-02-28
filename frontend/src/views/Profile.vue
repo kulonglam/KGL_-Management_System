@@ -1,9 +1,9 @@
 <template>
-  <div class="profile-page">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-      <div>
-        <h2 class="mb-1">My Profile</h2>
-        <p class="text-muted mb-0">Update your account details securely.</p>
+  <div class="profile-page view-shell">
+    <div class="view-header">
+      <div class="view-heading">
+        <h2 class="page-title">My Profile</h2>
+        <p class="page-subtitle">Update your account details securely.</p>
       </div>
     </div>
 
@@ -21,8 +21,9 @@
           </div>
           <div>
             <div class="d-flex flex-wrap gap-2">
-              <label class="btn btn-outline-primary btn-sm mb-0">
+              <label class="btn btn-outline-primary btn-sm mb-0" for="profile-image-upload">
                 <input
+                  id="profile-image-upload"
                   type="file"
                   class="d-none"
                   accept="image/png,image/jpeg,image/jpg,image/webp"
@@ -48,8 +49,9 @@
         <form @submit.prevent="handleSave">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Full Name</label>
+              <label class="form-label fw-semibold" for="profile-full-name">Full Name</label>
               <input
+                id="profile-full-name"
                 v-model="form.name"
                 type="text"
                 class="form-control"
@@ -60,8 +62,9 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Username</label>
+              <label class="form-label fw-semibold" for="profile-username">Username</label>
               <input
+                id="profile-username"
                 v-model="form.username"
                 type="text"
                 class="form-control"
@@ -71,13 +74,13 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Role</label>
-              <input :value="formatRole(form.role)" type="text" class="form-control" disabled />
+              <label class="form-label fw-semibold" for="profile-role">Role</label>
+              <input id="profile-role" :value="formatRole(form.role)" type="text" class="form-control" disabled />
             </div>
 
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Branch</label>
-              <input :value="form.branch || '-'" type="text" class="form-control" disabled />
+              <label class="form-label fw-semibold" for="profile-branch">Branch</label>
+              <input id="profile-branch" :value="form.branch || '-'" type="text" class="form-control" disabled />
             </div>
           </div>
 
@@ -86,8 +89,9 @@
           <h6 class="mb-3">Change Password</h6>
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label fw-semibold">New Password</label>
+              <label class="form-label fw-semibold" for="profile-new-password">New Password</label>
               <input
+                id="profile-new-password"
                 v-model="form.password"
                 type="password"
                 class="form-control"
@@ -96,8 +100,9 @@
               />
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Confirm New Password</label>
+              <label class="form-label fw-semibold" for="profile-confirm-password">Confirm New Password</label>
               <input
+                id="profile-confirm-password"
                 v-model="form.confirmPassword"
                 type="password"
                 class="form-control"

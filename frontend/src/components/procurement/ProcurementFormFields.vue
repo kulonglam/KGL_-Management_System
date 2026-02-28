@@ -7,10 +7,11 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Produce Name </label>
+          <label class="form-label" for="procurement-produce-name">Produce Name </label>
           <input
+            id="procurement-produce-name"
             type="text"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.produceName }]"
             v-model="form.produceName"
             minlength="2"
             pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
@@ -18,13 +19,15 @@
             @blur="normalizeText('produceName')"
             required
           />
+          <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
           <small class="text-muted">Letters, numbers and spaces are allowed.</small>
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Produce Type </label>
+          <label class="form-label" for="procurement-produce-type">Produce Type </label>
           <select
-            class="form-select"
+            id="procurement-produce-type"
+            :class="['form-select', { 'is-invalid': errors.produceType }]"
             v-model="form.produceType"
             @change="$emit('type-change')"
             required
@@ -36,26 +39,47 @@
             <option value="G-nuts">G-nuts</option>
             <option value="Soybeans">Soybeans</option>
           </select>
+          <div v-if="errors.produceType" class="invalid-feedback">{{ errors.produceType }}</div>
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Source Type </label>
-          <select class="form-select" v-model="form.sourceType" required>
+          <label class="form-label" for="procurement-source-type">Source Type </label>
+          <select
+            id="procurement-source-type"
+            :class="['form-select', { 'is-invalid': errors.sourceType }]"
+            v-model="form.sourceType"
+            required
+          >
             <option value="">Select source</option>
             <option value="individual">Individual Dealer</option>
             <option value="company">Company</option>
             <option value="kgl_farm">KGL Farm</option>
           </select>
+          <div v-if="errors.sourceType" class="invalid-feedback">{{ errors.sourceType }}</div>
         </div>
 
         <div class="col-md-3">
-          <label class="form-label">Date </label>
-          <input type="date" class="form-control" v-model="form.dateReceived" required />
+          <label class="form-label" for="procurement-date">Date </label>
+          <input
+            id="procurement-date"
+            type="date"
+            :class="['form-control', { 'is-invalid': errors.dateReceived }]"
+            v-model="form.dateReceived"
+            required
+          />
+          <div v-if="errors.dateReceived" class="invalid-feedback">{{ errors.dateReceived }}</div>
         </div>
 
         <div class="col-md-3">
-          <label class="form-label">Time *</label>
-          <input type="time" class="form-control" v-model="form.timeReceived" required />
+          <label class="form-label" for="procurement-time">Time *</label>
+          <input
+            id="procurement-time"
+            type="time"
+            :class="['form-control', { 'is-invalid': errors.timeReceived }]"
+            v-model="form.timeReceived"
+            required
+          />
+          <div v-if="errors.timeReceived" class="invalid-feedback">{{ errors.timeReceived }}</div>
         </div>
       </div>
     </fieldset>
@@ -67,14 +91,16 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label">Tonnage (kg) </label>
+          <label class="form-label" for="procurement-tonnage">Tonnage (kg) </label>
           <input
+            id="procurement-tonnage"
             type="number"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.tonnageKg }]"
             v-model.number="form.tonnageKg"
             :min="minimumTonnage"
             required
           />
+          <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
           <small class="text-muted">
             {{
               form.sourceType === 'individual'
@@ -85,26 +111,30 @@
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Cost (UGX) </label>
+          <label class="form-label" for="procurement-cost">Cost (UGX) </label>
           <input
+            id="procurement-cost"
             type="number"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.costUgx }]"
             v-model.number="form.costUgx"
             min="10000"
             required
           />
+          <div v-if="errors.costUgx" class="invalid-feedback">{{ errors.costUgx }}</div>
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Selling Price per kg (UGX) </label>
+          <label class="form-label" for="procurement-selling-price">Selling Price per kg (UGX) </label>
           <input
+            id="procurement-selling-price"
             type="number"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.sellingPrice }]"
             v-model.number="form.sellingPrice"
             min="10000"
             required
             :readonly="priceLocked"
           />
+          <div v-if="errors.sellingPrice" class="invalid-feedback">{{ errors.sellingPrice }}</div>
           <small v-if="!hasManagedPrice && form.produceType" class="text-danger">
             Set a manager price in Price Management before saving procurement.
           </small>
@@ -120,10 +150,11 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">Dealer Name</label>
+          <label class="form-label" for="procurement-dealer-name">Dealer Name</label>
           <input
+            id="procurement-dealer-name"
             type="text"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.dealerName }]"
             v-model="form.dealerName"
             minlength="2"
             pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
@@ -131,23 +162,26 @@
             @blur="normalizeText('dealerName')"
             required
           />
+          <div v-if="errors.dealerName" class="invalid-feedback">{{ errors.dealerName }}</div>
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Dealer Contact </label>
+          <label class="form-label" for="procurement-dealer-contact">Dealer Contact </label>
           <input
+            id="procurement-dealer-contact"
             type="text"
-            class="form-control"
+            :class="['form-control', { 'is-invalid': errors.dealerContact }]"
             v-model="form.dealerContact"
             pattern="^(\+256|0)[0-9]{9}$"
             placeholder="+256700000000 or 0700000000"
             required
           />
+          <div v-if="errors.dealerContact" class="invalid-feedback">{{ errors.dealerContact }}</div>
         </div>
 
         <div class="col-md-6">
-          <label class="form-label">Branch</label>
-          <input type="text" class="form-control branch-display" :value="user.branch" disabled />
+          <label class="form-label" for="procurement-branch">Branch</label>
+          <input id="procurement-branch" type="text" class="form-control branch-display" :value="user.branch" disabled />
         </div>
       </div>
     </fieldset>
@@ -189,6 +223,10 @@ defineProps({
   priceLockHint: {
     type: String,
     default: 'Price is controlled in Price Management.'
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 });
 

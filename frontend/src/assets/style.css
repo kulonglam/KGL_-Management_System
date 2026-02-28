@@ -2,6 +2,12 @@
 :root {
   --primary-color: #198754;
   --secondary-color: #0d6efd;
+  --surface-border: #e2e8f0;
+  --surface-muted: #f8fafc;
+  --surface-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  --radius-card: 0.75rem;
+  --radius-control: 0.55rem;
+  --space-page-gap: 1rem;
   --sidebar-bg: #111827;
   --sidebar-border: #1f2937;
   --sidebar-text: #e5e7eb;
@@ -19,6 +25,7 @@ body {
   background-color: #f8f9fa;
   color: #0f172a;
   line-height: 1.5;
+  font-size: 0.95rem;
 }
 
 h1,
@@ -35,11 +42,34 @@ h6 {
   font-size: clamp(1.4rem, 1.1rem + 1vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .page-subtitle {
   color: #64748b;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.view-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-page-gap);
+}
+
+.view-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.view-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
 }
 
 .sidebar {
@@ -282,15 +312,27 @@ h6 {
 }
 
 .card {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
-  margin-bottom: 1.5rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--surface-shadow);
+  margin-bottom: 0;
 }
 
 .card-header {
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--surface-border);
+  padding: 0.82rem 1rem;
+}
+
+.card-header h5,
+.card-header h6 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.card-body {
+  padding: 1rem;
 }
 
 .stats-card {
@@ -307,8 +349,27 @@ h6 {
 }
 
 .table-responsive {
-  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
   overflow: hidden;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table > :not(caption) > * > * {
+  padding: 0.72rem 0.75rem;
+}
+
+.table > thead > tr > th {
+  font-size: 0.77rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  font-weight: 700;
+  background-color: var(--surface-muted);
+  border-bottom-width: 1px;
 }
 
 .btn-primary {
@@ -322,11 +383,25 @@ h6 {
 }
 
 .btn {
-  border-radius: 0.55rem;
+  border-radius: var(--radius-control);
 }
 
 .form-label {
   font-weight: 600;
+  font-size: 0.87rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.35rem;
+}
+
+.form-control,
+.form-select {
+  border-radius: var(--radius-control);
+  font-size: 0.94rem;
+}
+
+.form-control-sm,
+.form-select-sm {
+  font-size: 0.82rem;
 }
 
 .text-primary {

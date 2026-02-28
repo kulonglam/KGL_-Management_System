@@ -103,3 +103,31 @@ test('buildInventorySnapshot supports legacy sales without produceType', () => {
   assert.equal(snapshot.length, 1);
   assert.equal(snapshot[0].totalTonnageKg, 1000);
 });
+
+test('buildInventorySnapshot merges canonical produce name aliases', () => {
+  const procurements = [
+    {
+      produceName: 'Red Bean',
+      produceType: 'Beans',
+      branch: 'Maganjo',
+      tonnageKg: 1000,
+      sellingPrice: 35000
+    },
+    {
+      produceName: 'Red Beans',
+      produceType: 'Beans',
+      branch: 'Maganjo',
+      tonnageKg: 500,
+      sellingPrice: 35000
+    }
+  ];
+
+  const sales = [{ produceName: 'Red Beans', produceType: 'Beans', branch: 'Maganjo', tonnageKg: 600 }];
+  const creditSales = [];
+
+  const snapshot = buildInventorySnapshot(procurements, sales, creditSales);
+  assert.equal(snapshot.length, 1);
+  assert.equal(snapshot[0].produceName, 'Red Beans');
+  assert.equal(snapshot[0].produceType, 'Beans');
+  assert.equal(snapshot[0].totalTonnageKg, 900);
+});

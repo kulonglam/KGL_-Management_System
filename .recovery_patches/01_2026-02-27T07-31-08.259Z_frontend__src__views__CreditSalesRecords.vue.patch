@@ -1,0 +1,101 @@
+*** Begin Patch
+*** Update File: c:\Users\Makhol Jr\Documents\REFACTORY\KGL_ Management_System\frontend\src\views\CreditSalesRecords.vue
+@@
+-    <div v-if="repayId" class="card mb-4">
++    <div v-if="canRepay && repayId" class="card mb-4">
+       <div class="card-header">
+         <h5 class="mb-0">Record Repayment</h5>
+       </div>
+       <div class="card-body">
+         <form @submit.prevent="handleRepay">
+@@
+                 <input
+                   type="number"
+                   class="form-control"
+                   v-model="repayForm.amountUgx"
+                   min="1"
++                  :max="balanceForSelected || undefined"
+                   required
+                 />
+               </div>
+@@
+                 <th>Contact</th>
+                 <th class="text-end">Amount Due (UGX)</th>
++                <th class="text-end">Balance (UGX)</th>
++                <th>Status</th>
+                 <th>Produce</th>
+                 <th>Sales Agent</th>
+                 <th>Due Date</th>
+                 <th>Dispatch Date</th>
++                <th v-if="canRepay" class="text-end">Actions</th>
+               </tr>
+             </thead>
+             <tbody>
+-              <tr v-for="item in creditSales" :key="item._id">
++              <tr
++                v-for="item in creditSales"
++                :key="item._id"
++                :class="{ 'table-active': repayId === item._id }"
++              >
+                 <td>{{ item.buyerName }}</td>
+                 <td>{{ item.nationalId || '-' }}</td>
+                 <td>{{ item.location || '-' }}</td>
+                 <td>{{ item.contact || '-' }}</td>
+                 <td class="text-end">{{ formatCurrency(item.amountDueUgx) }}</td>
++                <td
++                  class="text-end fw-semibold"
++                  :class="{ 'text-danger': getBalance(item) > 0, 'text-success': getBalance(item) === 0 }"
++                >
++                  {{ formatCurrency(getBalance(item)) }}
++                </td>
++                <td>
++                  <span
++                    class="badge"
++                    :class="getBalance(item) > 0 ? 'bg-warning text-dark' : 'bg-success'"
++                  >
++                    {{ getBalance(item) > 0 ? 'Outstanding' : 'Paid' }}
++                  </span>
++                </td>
+                 <td>{{ item.produceName }} ({{ item.produceType }})</td>
+                 <td>{{ item.salesAgentName || '-' }}</td>
+                 <td>{{ formatDate(item.dueDate) }}</td>
+                 <td>{{ formatDate(item.dateOfDispatch) }}</td>
++                <td v-if="canRepay" class="text-end">
++                  <button
++                    v-if="getBalance(item) > 0"
++                    type="button"
++                    class="btn btn-sm btn-outline-primary"
++                    @click="startRepay(item)"
++                  >
++                    Repay
++                  </button>
++                  <span v-else class="text-muted small">Settled</span>
++                </td>
+               </tr>
+             </tbody>
+           </table>
+         </div>
+       </div>
+@@
+     async handleRepay() {
+       if (!this.repayId) return;
++      const amount = Number(this.repayForm.amountUgx || 0);
++      if (!amount || Number.isNaN(amount) || amount <= 0) {
++        this.repayError = 'Amount paid must be greater than 0.';
++        return;
++      }
++      if (amount > this.balanceForSelected) {
++        this.repayError = 'Amount paid cannot exceed the current balance.';
++        return;
++      }
+       this.repayLoading = true;
+       this.repayError = '';
+       this.repaySuccess = '';
+ 
+       try {
+         await creditSalesAPI.repay(this.repayId, {
+-          amountUgx: this.repayForm.amountUgx,
++          amountUgx: amount,
+           paidAt: this.repayForm.paidAt
+         });
+*** End Patch

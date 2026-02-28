@@ -1,19 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Login from '../views/Login.vue';
-import DashboardLayout from '../views/DashboardLayout.vue';
-import DirectorDashboard from '../views/DirectorDashboard.vue';
-import ManagerDashboard from '../views/ManagerDashboard.vue';
-import SalesAgentDashboard from '../views/SalesAgentDashboard.vue';
-import Procurement from '../views/Procurement.vue';
-import ProcurementRecords from '../views/ProcurementRecords.vue';
-import Sales from '../views/Sales.vue';
-import CreditSales from '../views/CreditSales.vue';
-import CreditSalesRecords from '../views/CreditSalesRecords.vue';
-import Inventory from '../views/Inventory.vue';
-import Users from '../views/Users.vue';
-import TrustedBuyers from '../views/TrustedBuyers.vue';
-import PriceManagement from '../views/PriceManagement.vue';
-import Profile from '../views/Profile.vue';
+
+const Login = () => import('../views/Login.vue');
+const DashboardLayout = () => import('../views/DashboardLayout.vue');
+const DirectorDashboard = () => import('../views/DirectorDashboard.vue');
+const ManagerDashboard = () => import('../views/ManagerDashboard.vue');
+const SalesAgentDashboard = () => import('../views/SalesAgentDashboard.vue');
+const Procurement = () => import('../views/Procurement.vue');
+const ProcurementRecords = () => import('../views/ProcurementRecords.vue');
+const Sales = () => import('../views/Sales.vue');
+const SalesRecords = () => import('../views/SalesRecords.vue');
+const CreditSales = () => import('../views/CreditSales.vue');
+const CreditSalesRecords = () => import('../views/CreditSalesRecords.vue');
+const Inventory = () => import('../views/Inventory.vue');
+const Users = () => import('../views/Users.vue');
+const TrustedBuyers = () => import('../views/TrustedBuyers.vue');
+const PriceManagement = () => import('../views/PriceManagement.vue');
+const Profile = () => import('../views/Profile.vue');
 
 // Configure routes.
 const routes = [
@@ -61,6 +63,12 @@ const routes = [
         path: 'sales',
         name: 'Sales',
         component: Sales,
+        meta: { roles: ['manager', 'sales_agent'] }
+      },
+      {
+        path: 'sales-records',
+        name: 'SalesRecords',
+        component: SalesRecords,
         meta: { roles: ['manager', 'sales_agent'] }
       },
       {

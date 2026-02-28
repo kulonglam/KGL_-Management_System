@@ -6,26 +6,35 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label">Due Date </label>
+        <label class="form-label" for="credit-due-date">Due Date </label>
         <input
+          id="credit-due-date"
           type="date"
-          class="form-control"
+          :class="['form-control', { 'is-invalid': errors.dueDate }]"
           v-model="form.dueDate"
           :min="todayIsoDate"
           required
         />
+        <div v-if="errors.dueDate" class="invalid-feedback">{{ errors.dueDate }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Date of Dispatch</label>
-        <input type="date" class="form-control" v-model="form.dateOfDispatch" required />
+        <label class="form-label" for="credit-dispatch-date">Date of Dispatch</label>
+        <input
+          id="credit-dispatch-date"
+          type="date"
+          :class="['form-control', { 'is-invalid': errors.dateOfDispatch }]"
+          v-model="form.dateOfDispatch"
+          required
+        />
+        <div v-if="errors.dateOfDispatch" class="invalid-feedback">{{ errors.dateOfDispatch }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label">Sales Agent</label>
-        <input type="text" class="form-control branch-display" :value="user.name" disabled />
+        <label class="form-label" for="credit-sales-agent">Sales Agent</label>
+        <input id="credit-sales-agent" type="text" class="form-control branch-display" :value="user.name" disabled />
       </div>
       <div class="col-md-6">
-        <label class="form-label">Branch</label>
-        <input type="text" class="form-control branch-display" :value="user.branch" disabled />
+        <label class="form-label" for="credit-branch">Branch</label>
+        <input id="credit-branch" type="text" class="form-control branch-display" :value="user.branch" disabled />
       </div>
     </div>
   </fieldset>
@@ -45,6 +54,10 @@ defineProps({
   user: {
     type: Object,
     required: true
+  },
+  errors: {
+    type: Object,
+    default: () => ({})
   }
 });
 </script>

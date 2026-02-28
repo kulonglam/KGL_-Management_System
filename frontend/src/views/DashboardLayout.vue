@@ -7,15 +7,15 @@
           <button
             type="button"
             class="btn btn-outline-secondary d-md-none me-3 sidebar-toggle-btn"
+            :aria-expanded="mobileSidebarOpen ? 'true' : 'false'"
+            aria-controls="app-sidebar-nav"
+            aria-label="Toggle navigation menu"
             @click="toggleMobileSidebar"
           >
             <i class="bi bi-list"></i>
           </button>
-          <div
-            class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center me-3"
-            style="width: 40px; height: 40px"
-          >
-            <i class="bi bi-box-seam text-white"></i>
+          <div class="app-brand-logo-wrap me-3">
+            <img :src="brandLogo" alt="Karibu Groceries LTD logo" class="app-brand-logo" />
           </div>
           <div>
             <span class="navbar-brand mb-0 h5">Karibu Groceries LTD</span>
@@ -28,7 +28,12 @@
     <div class="container-fluid">
       <div class="layout">
         <!-- Sidebar -->
-        <nav class="sidebar" :class="{ 'is-open': mobileSidebarOpen }">
+        <nav
+          id="app-sidebar-nav"
+          class="sidebar"
+          :class="{ 'is-open': mobileSidebarOpen }"
+          aria-label="Main navigation"
+        >
           <div class="sidebar-inner">
             <div class="sidebar-brand">
               <div class="sidebar-brand-icon">
@@ -55,6 +60,8 @@
                 <button
                   type="button"
                   class="sidebar-group-toggle btn btn-link text-start w-100"
+                  :aria-expanded="isManagerSectionOpen(section.key) ? 'true' : 'false'"
+                  :aria-controls="`manager-nav-section-${section.key}`"
                   @click="toggleManagerSection(section.key)"
                 >
                   <span>{{ section.label }}</span>
@@ -64,7 +71,11 @@
                   ></i>
                 </button>
 
-                <ul v-if="isManagerSectionOpen(section.key)" class="nav flex-column sidebar-nav">
+                <ul
+                  v-if="isManagerSectionOpen(section.key)"
+                  :id="`manager-nav-section-${section.key}`"
+                  class="nav flex-column sidebar-nav"
+                >
                   <li class="nav-item" v-for="item in section.items" :key="item.path">
                     <router-link
                       :to="item.path"
@@ -168,7 +179,12 @@
                 <router-link class="btn btn-light btn-sm" to="/dashboard/inventory">
                   View Inventory
                 </router-link>
-                <button type="button" class="btn-close" @click="dismissStockAlert"></button>
+                <button
+                  type="button"
+                  class="btn-close"
+                  aria-label="Dismiss out-of-stock alert"
+                  @click="dismissStockAlert"
+                ></button>
               </div>
             </div>
 
@@ -188,10 +204,22 @@
     </div>
 
     <div v-if="showLogoutModal" class="modal-mask" @click.self="closeLogoutModal">
-      <div class="modal-card">
+      <div
+        ref="logoutModalRef"
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="logout-modal-title"
+        tabindex="-1"
+      >
         <div class="modal-header">
-          <h5 class="mb-0">Confirm Logout</h5>
-          <button type="button" class="btn-close" @click="closeLogoutModal"></button>
+          <h5 id="logout-modal-title" class="mb-0">Confirm Logout</h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Close logout confirmation"
+            @click="closeLogoutModal"
+          ></button>
         </div>
         <div class="modal-body">
           <p class="mb-4">Are you sure you want to logout?</p>
@@ -209,11 +237,13 @@
 
 <script>
 import { inventoryAPI, notificationsAPI } from '../services/api';
+import brandLogo from '../assets/images/logo.png';
 
 export default {
   name: 'DashboardLayout',
   data() {
     return {
+      brandLogo,
       user: {},
       outOfStockCount: 0,
       stockAlertDismissed: false,
@@ -221,6 +251,7 @@ export default {
       stockMonitorIntervalId: null,
       mobileSidebarOpen: false,
       showLogoutModal: false,
+      lastFocusedElement: null,
       managerSectionOpen: {
         operations: true,
         records: false,
@@ -258,6 +289,11 @@ export default {
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
+            path: '/dashboard/sales-records',
+            icon: 'bi bi-receipt',
+            label: 'Sales Records'
+          },
+          {
             path: '/dashboard/credit-sales-records',
             icon: 'bi bi-journal-text',
             label: 'Credit Sales Records'
@@ -282,6 +318,11 @@ export default {
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
+          {
+            path: '/dashboard/sales-records',
+            icon: 'bi bi-receipt',
+            label: 'Sales Records'
+          },
           {
             path: '/dashboard/credit-sales-records',
             icon: 'bi bi-journal-text',
@@ -316,7 +357,11 @@ export default {
         {
           key: 'records',
           label: 'Records',
-          items: pick(['/dashboard/credit-sales-records', '/dashboard/procurement-records'])
+          items: pick([
+            '/dashboard/sales-records',
+            '/dashboard/credit-sales-records',
+            '/dashboard/procurement-records'
+          ])
         },
         {
           key: 'administration',
@@ -334,6 +379,13 @@ export default {
   watch: {
     '$route.path'() {
       this.ensureActiveManagerSectionOpen();
+    },
+    showLogoutModal(isOpen) {
+      if (isOpen) {
+        this.focusLogoutModal();
+        return;
+      }
+      this.restoreLastFocus();
     }
   },
   created() {
@@ -347,6 +399,7 @@ export default {
   mounted() {
     window.addEventListener('resize', this.handleViewportResize);
     window.addEventListener('user-updated', this.syncUserFromStorage);
+    window.addEventListener('keydown', this.handleEscapeKey);
     if (this.user.role === 'manager') {
       this.startStockMonitor();
     }
@@ -354,6 +407,7 @@ export default {
   beforeUnmount() {
     window.removeEventListener('resize', this.handleViewportResize);
     window.removeEventListener('user-updated', this.syncUserFromStorage);
+    window.removeEventListener('keydown', this.handleEscapeKey);
     this.stopStockMonitor();
   },
   methods: {
@@ -372,7 +426,18 @@ export default {
       }
     },
     openLogoutModal() {
+      this.lastFocusedElement = document.activeElement;
       this.showLogoutModal = true;
+    },
+    focusLogoutModal() {
+      this.$nextTick(() => {
+        const firstFocusable = this.getLogoutModalFocusableElements()[0];
+        if (firstFocusable) {
+          firstFocusable.focus();
+          return;
+        }
+        this.$refs.logoutModalRef?.focus();
+      });
     },
     closeLogoutModal() {
       this.showLogoutModal = false;
@@ -389,6 +454,59 @@ export default {
     },
     closeMobileSidebar() {
       this.mobileSidebarOpen = false;
+    },
+    getLogoutModalFocusableElements() {
+      return Array.from(
+        this.$refs.logoutModalRef?.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ) || []
+      );
+    },
+    trapLogoutModalFocus(event) {
+      if (!this.showLogoutModal || event.key !== 'Tab') return;
+
+      const focusable = this.getLogoutModalFocusableElements();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        this.$refs.logoutModalRef?.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+        return;
+      }
+
+      if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
+    restoreLastFocus() {
+      const element = this.lastFocusedElement;
+      if (element && typeof element.focus === 'function') {
+        element.focus();
+      }
+      this.lastFocusedElement = null;
+    },
+    handleEscapeKey(event) {
+      if (this.showLogoutModal && event.key === 'Tab') {
+        this.trapLogoutModalFocus(event);
+        return;
+      }
+      if (event.key !== 'Escape') return;
+      if (this.showLogoutModal) {
+        this.closeLogoutModal();
+        return;
+      }
+      if (this.mobileSidebarOpen) {
+        this.closeMobileSidebar();
+      }
     },
     handleViewportResize() {
       if (window.innerWidth >= 768 && this.mobileSidebarOpen) {
@@ -481,5 +599,23 @@ export default {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+}
+
+.app-brand-logo-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

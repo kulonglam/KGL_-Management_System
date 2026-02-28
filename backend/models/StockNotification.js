@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define stock notification schema.
 const stockNotificationSchema = new mongoose.Schema(
@@ -12,11 +13,13 @@ const stockNotificationSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 2,
+      set: normalizeProduceName,
       match: /^[A-Za-z0-9\s]+$/
     },
     produceType: {
       type: String,
       required: true,
+      set: normalizeProduceType,
       enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
     },
     category: {

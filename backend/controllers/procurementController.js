@@ -2,6 +2,26 @@ import Procurement from '../models/Procurement.js';
 import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';
 import { resolveSellingPrice, canManagerAccessBranch } from '../services/procurementService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import {
+  normalizeProduceName,
+  normalizeProduceType,
+  normalizeSourceType
+} from '../utils/produceNormalization.js';
+
+// Handle normalize procurement payload for legacy records.
+const normalizeProcurementPayload = (record) => {
+  if (!record || typeof record !== 'object') return record;
+
+  const produceName = normalizeProduceName(record.produceName || record.name || '');
+  const produceType = normalizeProduceType(record.produceType || record.type || '');
+
+  return {
+    ...record,
+    produceName,
+    produceType,
+    sourceType: normalizeSourceType(record.sourceType)
+  };
+};
 
 // Retrieve all procurement.
 const getAllProcurement = async (req, res) => {
@@ -23,7 +43,7 @@ const getAllProcurement = async (req, res) => {
       procurementsQuery.skip(pagination.skip).limit(pagination.limit);
     }
 
-    const procurements = await procurementsQuery;
+    const procurements = (await procurementsQuery).map(normalizeProcurementPayload);
     if (!pagination.enabled) {
       return res.json(procurements);
     }
@@ -47,8 +67,8 @@ const getAllProcurement = async (req, res) => {
 const createProcurement = async (req, res) => {
   try {
     const {
-      produceName,
-      produceType,
+      produceName: rawProduceName,
+      produceType: rawProduceType,
       sourceType,
       dateReceived,
       timeReceived,
@@ -58,6 +78,9 @@ const createProcurement = async (req, res) => {
       dealerContact
     } = req.body;
 
+    const produceName = normalizeProduceName(rawProduceName);
+    const produceType = normalizeProduceType(rawProduceType);
+
     const finalPrice = await resolveSellingPrice({
       branch: req.user.branch,
       produceType
@@ -66,7 +89,7 @@ const createProcurement = async (req, res) => {
     const procurement = await Procurement.create({
       produceName,
       produceType,
-      sourceType,
+      sourceType: normalizeSourceType(sourceType),
       dateReceived,
       timeReceived,
       tonnageKg,
@@ -104,7 +127,7 @@ const getProcurementById = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
-    res.json(procurement);
+    res.json(normalizeProcurementPayload(procurement.toObject()));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -124,25 +147,46 @@ const updateProcurement = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
-    const nextProduceType = req.body.produceType || procurement.produceType;
+    const currentProduceName = procurement.produceName || procurement.name || '';
+    const currentProduceType = procurement.produceType || procurement.type || '';
+    const nextProduceType = normalizeProduceType(req.body.produceType || currentProduceType);
     const finalPrice = await resolveSellingPrice({
       branch: procurement.branch,
       produceType: nextProduceType
     });
 
+    const updatePayload = {
+      ...req.body,
+      sourceType: normalizeSourceType(req.body.sourceType || procurement.sourceType),
+      sellingPrice: finalPrice,
+      branch: procurement.branch
+    };
+
+    // Backfill legacy records on update so future reads are clean.
+    if (!updatePayload.produceName && currentProduceName) {
+      updatePayload.produceName = normalizeProduceName(currentProduceName);
+    } else {
+      updatePayload.produceName = normalizeProduceName(updatePayload.produceName);
+    }
+    if (!updatePayload.produceType && currentProduceType) {
+      updatePayload.produceType = normalizeProduceType(currentProduceType);
+    } else {
+      updatePayload.produceType = normalizeProduceType(updatePayload.produceType);
+    }
+
     const updatedProcurement = await Procurement.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, sellingPrice: finalPrice, branch: procurement.branch },
+      updatePayload,
       { new: true, runValidators: true }
     );
 
     await resolveOutOfStockNotification({
       branch: procurement.branch,
-      produceName: updatedProcurement.produceName,
-      produceType: updatedProcurement.produceType
+      produceName: updatedProcurement.produceName || updatedProcurement.name,
+      produceType: updatedProcurement.produceType || updatedProcurement.type
     });
 
-    res.json(updatedProcurement);
+    res.json(normalizeProcurementPayload(updatedProcurement.toObject()));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

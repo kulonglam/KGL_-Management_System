@@ -1,7 +1,25 @@
 <template>
-  <div>
-    <h2 class="mb-4">Sales Agent Dashboard</h2>
-    <p class="text-muted">{{ user.name }} - {{ user.branch }}</p>
+  <div class="view-shell">
+    <div class="view-heading">
+      <h2 class="page-title">Sales Agent Dashboard</h2>
+      <p class="page-subtitle">{{ user.name }} - {{ user.branch }}</p>
+    </div>
+    <div
+      v-if="loadError"
+      class="alert alert-danger d-flex align-items-start justify-content-between gap-3"
+      role="alert"
+    >
+      <span>{{ loadError }}</span>
+      <button type="button" class="btn btn-sm btn-outline-danger" :disabled="loading" @click="loadData">
+        Retry
+      </button>
+    </div>
+    <div v-if="loading" class="card mb-4" role="status" aria-live="polite">
+      <div class="card-body d-flex align-items-center gap-2">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span>Loading dashboard data...</span>
+      </div>
+    </div>
 
     <div class="d-flex align-items-center justify-content-between mb-3">
       <h5 class="mb-0">Today's Sales Summary</h5>
@@ -57,6 +75,8 @@ export default {
     return {
       user: {},
       todayLabel: '',
+      loading: false,
+      loadError: '',
       midnightTimeout: null,
       midnightInterval: null,
       stats: {
@@ -69,7 +89,7 @@ export default {
     };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user'));
+    this.user = JSON.parse(localStorage.getItem('user') || '{}');
     this.setTodayLabel();
     await this.loadData();
     this.scheduleMidnightRefresh();
@@ -87,6 +107,8 @@ export default {
   methods: {
     // Handle load data.
     async loadData() {
+      this.loading = true;
+      this.loadError = '';
       try {
         const [salesRes, creditRes] = await Promise.all([
           salesAPI.getAll(),
@@ -118,7 +140,9 @@ export default {
           mySales.reduce((sum, s) => sum + s.tonnageKg, 0) +
           myCreditSales.reduce((sum, c) => sum + c.tonnageKg, 0);
       } catch (error) {
-        console.error('Error loading data:', error);
+        this.loadError = error.response?.data?.message || 'Unable to load sales summary.';
+      } finally {
+        this.loading = false;
       }
     },
     setTodayLabel() {
