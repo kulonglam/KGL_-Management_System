@@ -241,13 +241,15 @@
 <script>
 import { inventoryAPI, notificationsAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'DashboardLayout',
   data() {
     return {
       brandLogo,
-      user: {},
+      authStore: useAuthStore(pinia),
       outOfStockCount: 0,
       stockAlertDismissed: false,
       stockNotifications: [],
@@ -264,6 +266,9 @@ export default {
     };
   },
   computed: {
+    user() {
+      return this.authStore.user || {};
+    },
     // Handle current year.
     currentYear() {
       return new Date().getFullYear();
@@ -408,7 +413,7 @@ export default {
     }
   },
   created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    this.authStore.hydrateFromStorage();
     if (this.user.role === 'manager') {
       this.loadStockAlert();
       this.loadStockNotifications();
@@ -417,7 +422,6 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.handleViewportResize);
-    window.addEventListener('user-updated', this.syncUserFromStorage);
     window.addEventListener('keydown', this.handleEscapeKey);
     if (this.user.role === 'manager') {
       this.startStockMonitor();
@@ -425,26 +429,11 @@ export default {
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.handleViewportResize);
-    window.removeEventListener('user-updated', this.syncUserFromStorage);
     window.removeEventListener('keydown', this.handleEscapeKey);
     document.body.classList.remove('no-scroll');
     this.stopStockMonitor();
   },
   methods: {
-    // Handle sync user from storage.
-    syncUserFromStorage() {
-      const previousRole = this.user.role;
-      this.user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (this.user.role === 'manager' && previousRole !== 'manager') {
-        this.loadStockAlert();
-        this.loadStockNotifications();
-        this.startStockMonitor();
-      }
-      if (this.user.role !== 'manager' && previousRole === 'manager') {
-        this.stopStockMonitor();
-        this.stockNotifications = [];
-      }
-    },
     openLogoutModal() {
       this.lastFocusedElement = document.activeElement;
       this.showLogoutModal = true;
@@ -465,8 +454,7 @@ export default {
     confirmLogout() {
       this.closeMobileSidebar();
       this.closeLogoutModal();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      this.authStore.clearSession();
       this.$router.push('/');
     },
     toggleMobileSidebar() {

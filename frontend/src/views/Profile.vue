@@ -137,6 +137,8 @@
 
 <script>
 import { authAPI } from '../services/api';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 // Configure max profile image size bytes.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
@@ -197,19 +199,15 @@ export default {
       this.updateSessionUser(user);
     },
     updateSessionUser(user) {
-      const current = JSON.parse(localStorage.getItem('user') || '{}');
-      // Update d.
-      const updated = {
-        ...current,
-        _id: user._id ?? current._id,
-        name: user.name ?? current.name,
-        username: user.username ?? current.username,
-        profileImage: user.profileImage ?? current.profileImage ?? '',
-        role: user.role ?? current.role,
-        branch: user.branch ?? current.branch
-      };
-      localStorage.setItem('user', JSON.stringify(updated));
-      window.dispatchEvent(new Event('user-updated'));
+      const authStore = useAuthStore(pinia);
+      authStore.updateUser({
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        profileImage: user.profileImage ?? '',
+        role: user.role,
+        branch: user.branch
+      });
     },
     handleImageChange(event) {
       const file = event.target.files?.[0];

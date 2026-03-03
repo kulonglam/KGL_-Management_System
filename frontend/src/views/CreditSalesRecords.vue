@@ -188,15 +188,32 @@
                 <td>{{ formatDate(item.dueDate) }}</td>
                 <td>{{ formatDate(item.dateOfDispatch) }}</td>
                 <td v-if="canRepay" class="text-end">
-                  <button
-                    v-if="getBalance(item) > 0"
-                    type="button"
-                    class="btn btn-sm btn-outline-primary"
-                    @click="startRepay(item)"
-                  >
-                    Repay
-                  </button>
-                  <span v-else class="text-muted small">Settled</span>
+                  <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                    <button
+                      v-if="getBalance(item) > 0"
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      @click="startRepay(item)"
+                    >
+                      Repay
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="startEdit(item)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      :disabled="hasRepayments(item)"
+                      :title="hasRepayments(item) ? 'Cannot delete credit sales with repayments' : ''"
+                      @click="openDeleteDialog(item)"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -214,12 +231,59 @@
         />
       </div>
     </div>
+
+    <div v-if="canRepay && editId" class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Edit Credit Sale</h5>
+      </div>
+      <div class="card-body">
+        <form @submit.prevent="handleEdit">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="edit-credit-due-date">Due Date *</label>
+              <input
+                id="edit-credit-due-date"
+                v-model="editForm.dueDate"
+                type="date"
+                class="form-control"
+                required
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="edit-credit-dispatch-date">Dispatch Date *</label>
+              <input
+                id="edit-credit-dispatch-date"
+                v-model="editForm.dateOfDispatch"
+                type="date"
+                class="form-control"
+                required
+              />
+            </div>
+          </div>
+
+          <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
+          <div v-if="editSuccess" class="alert alert-success mt-3">{{ editSuccess }}</div>
+
+          <div class="mt-4">
+            <button type="submit" class="btn btn-primary" :disabled="editLoading">
+              <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+              Save Changes
+            </button>
+            <button type="button" class="btn btn-outline-secondary ms-2" @click="cancelEdit">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import { creditSalesAPI } from '../services/api';
 import TablePagination from '../components/common/TablePagination.vue';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.mjs';
 
 export default {
@@ -250,7 +314,9 @@ export default {
     };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     await this.loadCreditSales();
   },
   computed: {

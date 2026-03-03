@@ -227,6 +227,8 @@
 <script>
 import { inventoryAPI } from '../services/api';
 import TablePagination from '../components/common/TablePagination.vue';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 
 export default {
@@ -256,7 +258,9 @@ export default {
     };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     await this.loadInventory();
   },
   computed: {

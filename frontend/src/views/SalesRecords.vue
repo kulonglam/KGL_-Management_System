@@ -85,6 +85,7 @@
                 <th>Buyer</th>
                 <th>Sales Agent</th>
                 <th>Date/Time</th>
+                <th v-if="canManageRecords" class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -95,6 +96,24 @@
                 <td>{{ item.buyerName }}</td>
                 <td>{{ item.salesAgentName || '-' }}</td>
                 <td>{{ formatDateTime(item.date, item.time) }}</td>
+                <td v-if="canManageRecords" class="text-end">
+                  <div class="d-inline-flex gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      @click="openEditModal(item)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      @click="openDeleteDialog(item)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -111,14 +130,82 @@
         />
       </div>
     </div>
+
+    <div v-if="editModalOpen" class="modal-mask" @click.self="closeEditModal">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-edit-title">
+        <div class="modal-header">
+          <h5 id="sale-edit-title" class="mb-0">Edit Cash Sale</h5>
+          <button type="button" class="btn-close" aria-label="Close edit sale" @click="closeEditModal"></button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="submitEdit">
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label class="form-label" for="edit-sale-buyer">Buyer Name *</label>
+                <input
+                  id="edit-sale-buyer"
+                  v-model.trim="editForm.buyerName"
+                  type="text"
+                  class="form-control"
+                  minlength="2"
+                  pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-sale-date">Date *</label>
+                <input id="edit-sale-date" v-model="editForm.date" type="date" class="form-control" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-sale-time">Time *</label>
+                <input
+                  id="edit-sale-time"
+                  v-model="editForm.time"
+                  type="time"
+                  class="form-control"
+                  required
+                />
+              </div>
+            </div>
+
+            <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
+
+            <div class="mt-4 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary" :disabled="editLoading" @click="closeEditModal">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="editLoading">
+                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <ConfirmDialog
+      :show="deleteDialog.show"
+      title="Delete Cash Sale"
+      :message="`Delete cash sale record for ${deleteDialog.saleLabel}? This cannot be undone.`"
+      confirm-text="Delete"
+      :busy="deleteDialog.processing"
+      @cancel="closeDeleteDialog"
+      @confirm="confirmDeleteSale"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { salesAPI } from '../services/api';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
+const authStore = useAuthStore(pinia);
+const user = ref({});
 const salesRecords = ref([]);
 const loading = ref(false);
 const loadError = ref('');
@@ -128,6 +215,23 @@ const pageSizeOptions = [10, 20, 50, 100];
 const searchQuery = ref('');
 const selectedProduceType = ref('all');
 const sortBy = ref('newest');
+const editModalOpen = ref(false);
+const editLoading = ref(false);
+const editError = ref('');
+const editForm = ref({
+  id: '',
+  buyerName: '',
+  date: '',
+  time: ''
+});
+const deleteDialog = ref({
+  show: false,
+  saleId: '',
+  saleLabel: '',
+  processing: false
+});
+
+const canManageRecords = computed(() => user.value.role === 'manager');
 
 const loadSalesRecords = async () => {
   loading.value = true;
@@ -193,6 +297,77 @@ const handlePageSizeUpdate = (size) => {
   pageSize.value = Number(size || 20);
 };
 
+const toDateInput = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
+const openEditModal = (item) => {
+  editError.value = '';
+  editForm.value = {
+    id: item._id,
+    buyerName: item.buyerName || '',
+    date: toDateInput(item.date),
+    time: item.time || ''
+  };
+  editModalOpen.value = true;
+};
+
+const closeEditModal = () => {
+  if (editLoading.value) return;
+  editModalOpen.value = false;
+  editError.value = '';
+};
+
+const submitEdit = async () => {
+  if (!editForm.value.id) return;
+  editLoading.value = true;
+  editError.value = '';
+  try {
+    await salesAPI.update(editForm.value.id, {
+      buyerName: editForm.value.buyerName,
+      date: editForm.value.date,
+      time: editForm.value.time
+    });
+    editModalOpen.value = false;
+    await loadSalesRecords();
+  } catch (error) {
+    editError.value = error.response?.data?.message || 'Failed to update sale record.';
+  } finally {
+    editLoading.value = false;
+  }
+};
+
+const openDeleteDialog = (item) => {
+  deleteDialog.value = {
+    show: true,
+    saleId: item._id,
+    saleLabel: item.buyerName || 'selected buyer',
+    processing: false
+  };
+};
+
+const closeDeleteDialog = () => {
+  if (deleteDialog.value.processing) return;
+  deleteDialog.value.show = false;
+};
+
+const confirmDeleteSale = async () => {
+  if (!deleteDialog.value.saleId) return;
+  deleteDialog.value.processing = true;
+  try {
+    await salesAPI.delete(deleteDialog.value.saleId);
+    deleteDialog.value.show = false;
+    await loadSalesRecords();
+  } catch (error) {
+    loadError.value = error.response?.data?.message || 'Failed to delete sale record.';
+  } finally {
+    deleteDialog.value.processing = false;
+  }
+};
+
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',
@@ -232,6 +407,8 @@ const resetFilters = () => {
 };
 
 onMounted(async () => {
+  authStore.hydrateFromStorage();
+  user.value = authStore.user || {};
   await loadSalesRecords();
 });
 </script>

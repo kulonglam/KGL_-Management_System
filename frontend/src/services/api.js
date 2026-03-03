@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 // Configure api url.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -18,7 +20,13 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Add token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const authStore = useAuthStore(pinia);
+    let token = authStore.token;
+
+    if (!token && typeof window !== 'undefined') {
+      token = localStorage.getItem('token');
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -99,6 +107,7 @@ export const procurementAPI = {
 export const salesAPI = {
   getAll: () => api.get('/sales'),
   create: (data) => api.post('/sales', data),
+  update: (id, data) => api.put(`/sales/${id}`, data),
   getAggregation: (params = {}) => api.get('/sales/aggregation', { params }),
   delete: (id) => api.delete(`/sales/${id}`)
 };
@@ -107,6 +116,7 @@ export const salesAPI = {
 export const creditSalesAPI = {
   getAll: () => api.get('/credit-sales'),
   create: (data) => api.post('/credit-sales', data),
+  update: (id, data) => api.put(`/credit-sales/${id}`, data),
   updatePaymentStatus: (id, status) => api.put(`/credit-sales/${id}/payment`, status),
   repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data),
   delete: (id) => api.delete(`/credit-sales/${id}`)

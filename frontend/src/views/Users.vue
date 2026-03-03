@@ -1,7 +1,7 @@
 <template>
   <div class="view-shell">
     <div class="view-heading">
-      <h2 class="page-title">User Management</h2>
+      <h2 class="page-title">Staff Management</h2>
       <p class="page-subtitle">Create and maintain branch user accounts.</p>
     </div>
 
@@ -209,6 +209,8 @@
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'Users',
@@ -302,7 +304,9 @@ export default {
     }
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     await this.loadUsers();
   },
   methods: {

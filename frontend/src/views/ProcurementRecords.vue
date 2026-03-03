@@ -72,6 +72,8 @@ import {
   useProcurementPricing
 } from '../composables/useProcurementForm';
 import { procurementAPI } from '../services/api';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 // Configure user.
 const user = ref({});
@@ -89,12 +91,13 @@ const deleteDialog = ref({
   procurementId: '',
   processing: false
 });
+const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
 const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
 
-// Handle type change.
+// This handle type change.
 const handleTypeChange = () => {
   applyPriceSetting(form.value);
 };
@@ -137,14 +140,14 @@ const startEdit = (item) => {
   resetFeedback();
 };
 
-// Handle cancel edit.
+// cancel edit procurement record.
 const cancelEdit = () => {
   editingId.value = null;
   resetForm();
   resetFeedback();
 };
 
-// Handle update.
+//Uupdating procurement record.
 const handleUpdate = async () => {
   if (!editingId.value) return;
   beginSubmit();
@@ -195,7 +198,8 @@ const confirmDeleteProcurement = async () => {
 };
 
 onMounted(async () => {
-  user.value = JSON.parse(localStorage.getItem('user') || '{}');
+  authStore.hydrateFromStorage();
+  user.value = authStore.user || {};
   await loadPrices();
   await loadProcurements();
 });

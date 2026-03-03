@@ -76,6 +76,8 @@
 import { salesAPI, creditSalesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'SalesAgentDashboard',
@@ -100,7 +102,9 @@ export default {
     };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     this.setTodayLabel();
     await this.loadData();
     this.scheduleMidnightRefresh();

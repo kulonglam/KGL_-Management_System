@@ -210,6 +210,8 @@ import { creditSalesAPI, inventoryAPI, trustedBuyersAPI } from '../services/api'
 import { useFormFeedback } from '../composables/useFormFeedback';
 import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
@@ -232,6 +234,7 @@ const reviewModalRef = ref(null);
 const lastFocusedElement = ref(null);
 // Configure today iso date.
 const todayIsoDate = new Date().toISOString().split('T')[0];
+const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
@@ -498,7 +501,8 @@ onBeforeUnmount(() => {
 });
 
 onMounted(async () => {
-  user.value = JSON.parse(localStorage.getItem('user') || '{}');
+  authStore.hydrateFromStorage();
+  user.value = authStore.user || {};
   await Promise.all([loadTrustedBuyers(), loadInventory()]);
 });
 </script>

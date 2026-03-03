@@ -233,6 +233,8 @@ import {
 } from '../utils/reports/managerReportExport.mjs';
 import ManagerDashboardCharts from '../components/dashboards/ManagerDashboardCharts.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
@@ -296,7 +298,9 @@ export default {
     };
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     await this.loadData();
   },
   computed: {

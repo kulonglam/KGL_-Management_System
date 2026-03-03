@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 const Login = () => import('../views/Login.vue');
 const DashboardLayout = () => import('../views/DashboardLayout.vue');
@@ -124,14 +126,18 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const authStore = useAuthStore(pinia);
+  if (!authStore.hydrated) {
+    authStore.hydrateFromStorage();
+  }
 
-  if (to.meta.requiresAuth && !token) {
+  const userRole = authStore.role;
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/');
-  } else if (to.meta.role && user.role !== to.meta.role) {
+  } else if (to.meta.role && userRole !== to.meta.role) {
     next('/');
-  } else if (to.meta.roles && !to.meta.roles.includes(user.role)) {
+  } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {
     next('/');
   } else {
     next();

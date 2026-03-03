@@ -235,6 +235,8 @@ import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { trustedBuyerValidationSchema } from '../utils/formSchemas.mjs';
 import { validateValues } from '../utils/formValidation.mjs';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'TrustedBuyers',
@@ -321,7 +323,9 @@ export default {
     }
   },
   async created() {
-    this.user = JSON.parse(localStorage.getItem('user') || '{}');
+    const authStore = useAuthStore(pinia);
+    authStore.hydrateFromStorage();
+    this.user = authStore.user || {};
     await this.loadBuyers();
   },
   methods: {

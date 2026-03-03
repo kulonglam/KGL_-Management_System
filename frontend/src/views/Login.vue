@@ -139,6 +139,8 @@
 <script>
 import { authAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'Login',
@@ -181,8 +183,8 @@ export default {
         const response = await authAPI.login(payload);
         const { token, ...user } = response.data;
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        const authStore = useAuthStore(pinia);
+        authStore.setSession(token, user);
         if (this.rememberMe) {
           localStorage.setItem('rememberedUsername', payload.username);
         } else {

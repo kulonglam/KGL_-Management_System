@@ -53,12 +53,15 @@ import {
   useProcurementPricing
 } from '../composables/useProcurementForm';
 import { procurementAPI } from '../services/api';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import { procurementValidationSchema } from '../utils/formSchemas.mjs';
 
 // Configure user.
 const user = ref({});
 // Configure form.
 const form = ref(createInitialProcurementForm());
+const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
@@ -101,7 +104,8 @@ const handleSubmit = async () => {
 };
 
 onMounted(async () => {
-  user.value = JSON.parse(localStorage.getItem('user') || '{}');
+  authStore.hydrateFromStorage();
+  user.value = authStore.user || {};
   await loadPrices();
 });
 

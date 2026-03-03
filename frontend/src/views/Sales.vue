@@ -115,6 +115,8 @@ import { inventoryAPI, salesAPI } from '../services/api';
 import { useFormFeedback } from '../composables/useFormFeedback';
 import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
+import { pinia } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
 import { salesValidationSchema } from '../utils/formSchemas.mjs';
@@ -131,6 +133,7 @@ const showReviewModal = ref(false);
 const reviewModalRef = ref(null);
 // Configure last focused element before opening review modal.
 const lastFocusedElement = ref(null);
+const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
@@ -333,7 +336,8 @@ onBeforeUnmount(() => {
 });
 
 onMounted(async () => {
-  user.value = JSON.parse(localStorage.getItem('user') || '{}');
+  authStore.hydrateFromStorage();
+  user.value = authStore.user || {};
   await loadInventory();
 });
 </script>
