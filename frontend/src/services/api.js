@@ -114,7 +114,9 @@ export const salesAPI = {
 export const creditSalesAPI = {
   getAll: () => api.get('/credit-sales'),
   create: (data) => api.post('/credit-sales', data),
-  repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data)
+  update: (id, data) => api.put(`/credit-sales/${id}`, data),
+  repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data),
+  delete: (id) => api.delete(`/credit-sales/${id}`)
 };
 
 // Inventory API

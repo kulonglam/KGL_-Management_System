@@ -276,11 +276,22 @@
         </form>
       </div>
     </div>
+
+    <ConfirmDialog
+      :show="deleteDialog.show"
+      title="Delete Credit Sale"
+      :message="`Delete credit sale record for ${deleteDialog.buyerName}? This cannot be undone.`"
+      confirm-text="Delete"
+      :busy="deleteDialog.processing"
+      @cancel="closeDeleteDialog"
+      @confirm="confirmDeleteCreditSale"
+    />
   </div>
 </template>
 
 <script>
 import { creditSalesAPI } from '../services/api';
+import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
@@ -289,6 +300,7 @@ import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSa
 export default {
   name: 'CreditSalesRecords',
   components: {
+    ConfirmDialog,
     TablePagination
   },
   data() {
@@ -310,7 +322,21 @@ export default {
       },
       repayLoading: false,
       repayError: '',
-      repaySuccess: ''
+      repaySuccess: '',
+      editId: null,
+      editForm: {
+        dueDate: '',
+        dateOfDispatch: ''
+      },
+      editLoading: false,
+      editError: '',
+      editSuccess: '',
+      deleteDialog: {
+        show: false,
+        creditSaleId: '',
+        buyerName: '',
+        processing: false
+      }
     };
   },
   async created() {
@@ -422,6 +448,83 @@ export default {
       this.searchQuery = '';
       this.statusFilter = 'all';
       this.sortBy = 'newest';
+    },
+    hasRepayments(item) {
+      return Array.isArray(item?.payments) && item.payments.length > 0;
+    },
+    toDateInput(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toISOString().slice(0, 10);
+    },
+    startEdit(item) {
+      this.editId = item._id;
+      this.editForm = {
+        dueDate: this.toDateInput(item.dueDate),
+        dateOfDispatch: this.toDateInput(item.dateOfDispatch)
+      };
+      this.editError = '';
+      this.editSuccess = '';
+    },
+    cancelEdit() {
+      if (this.editLoading) return;
+      this.editId = null;
+      this.editForm = {
+        dueDate: '',
+        dateOfDispatch: ''
+      };
+      this.editError = '';
+      this.editSuccess = '';
+    },
+    async handleEdit() {
+      if (!this.editId) return;
+      this.editLoading = true;
+      this.editError = '';
+      this.editSuccess = '';
+      try {
+        await creditSalesAPI.update(this.editId, {
+          dueDate: this.editForm.dueDate,
+          dateOfDispatch: this.editForm.dateOfDispatch
+        });
+        this.editSuccess = 'Credit sale updated successfully!';
+        await this.loadCreditSales();
+      } catch (error) {
+        this.editError = error.response?.data?.message || 'Failed to update credit sale record.';
+      } finally {
+        this.editLoading = false;
+      }
+    },
+    openDeleteDialog(item) {
+      this.deleteDialog = {
+        show: true,
+        creditSaleId: item._id,
+        buyerName: item.buyerName || 'selected buyer',
+        processing: false
+      };
+    },
+    closeDeleteDialog() {
+      if (this.deleteDialog.processing) return;
+      this.deleteDialog.show = false;
+    },
+    async confirmDeleteCreditSale() {
+      if (!this.deleteDialog.creditSaleId) return;
+      this.deleteDialog.processing = true;
+      try {
+        await creditSalesAPI.delete(this.deleteDialog.creditSaleId);
+        if (this.editId === this.deleteDialog.creditSaleId) {
+          this.cancelEdit();
+        }
+        if (this.repayId === this.deleteDialog.creditSaleId) {
+          this.cancelRepay();
+        }
+        this.deleteDialog.show = false;
+        await this.loadCreditSales();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to delete credit sale record.';
+      } finally {
+        this.deleteDialog.processing = false;
+      }
     },
     startRepay(item) {
       this.repayId = item._id;
