@@ -71,7 +71,7 @@
         </div>
 
         <div class="col-md-3">
-          <label class="form-label" for="procurement-time">Time *</label>
+          <label class="form-label" for="procurement-time">Time </label>
           <input
             id="procurement-time"
             type="time"

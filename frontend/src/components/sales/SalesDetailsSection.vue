@@ -7,7 +7,7 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label" for="sales-produce-name">Produce Name *</label>
+          <label class="form-label" for="sales-produce-name">Produce Name</label>
           <select
             id="sales-produce-name"
             :class="['form-select', { 'is-invalid': errors.produceName }]"
@@ -29,7 +29,7 @@
           <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-tonnage-kg">Tonnage (kg) *</label>
+          <label class="form-label" for="sales-tonnage-kg">Tonnage (kg)</label>
           <input
             id="sales-tonnage-kg"
             type="number"
@@ -42,7 +42,7 @@
           <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-amount-paid">Amount Paid (UGX) *</label>
+          <label class="form-label" for="sales-amount-paid">Amount Paid (UGX)</label>
           <input
             id="sales-amount-paid"
             type="number"
@@ -56,7 +56,7 @@
           <small class="text-muted">Price is determined by manager.</small>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-buyer-name">Buyer Name *</label>
+          <label class="form-label" for="sales-buyer-name">Buyer Name</label>
           <input
             id="sales-buyer-name"
             type="text"
