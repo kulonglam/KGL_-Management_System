@@ -501,7 +501,6 @@ onBeforeUnmount(() => {
 });
 
 onMounted(async () => {
-  authStore.hydrateFromStorage();
   user.value = authStore.user || {};
   await Promise.all([loadTrustedBuyers(), loadInventory()]);
 });
@@ -518,3 +517,4 @@ onMounted(async () => {
   border: 1px solid #dcfce7;
 }
 </style>
+

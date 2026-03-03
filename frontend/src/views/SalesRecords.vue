@@ -407,8 +407,8 @@ const resetFilters = () => {
 };
 
 onMounted(async () => {
-  authStore.hydrateFromStorage();
   user.value = authStore.user || {};
   await loadSalesRecords();
 });
 </script>
+

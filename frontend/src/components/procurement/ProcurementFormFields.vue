@@ -7,7 +7,7 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label" for="procurement-produce-name">Produce Name </label>
+          <label class="form-label" for="procurement-produce-name">Produce Name</label>
           <input
             id="procurement-produce-name"
             type="text"
@@ -24,7 +24,7 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label" for="procurement-produce-type">Produce Type </label>
+          <label class="form-label" for="procurement-produce-type">Produce Type</label>
           <select
             id="procurement-produce-type"
             :class="['form-select', { 'is-invalid': errors.produceType }]"
@@ -43,7 +43,7 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label" for="procurement-source-type">Source Type </label>
+          <label class="form-label" for="procurement-source-type">Source Type</label>
           <select
             id="procurement-source-type"
             :class="['form-select', { 'is-invalid': errors.sourceType }]"
@@ -59,7 +59,7 @@
         </div>
 
         <div class="col-md-3">
-          <label class="form-label" for="procurement-date">Date </label>
+          <label class="form-label" for="procurement-date">Date</label>
           <input
             id="procurement-date"
             type="date"
@@ -71,7 +71,7 @@
         </div>
 
         <div class="col-md-3">
-          <label class="form-label" for="procurement-time">Time </label>
+          <label class="form-label" for="procurement-time">Time</label>
           <input
             id="procurement-time"
             type="time"
@@ -91,7 +91,7 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-4">
-          <label class="form-label" for="procurement-tonnage">Tonnage (kg) </label>
+          <label class="form-label" for="procurement-tonnage">Tonnage (kg)</label>
           <input
             id="procurement-tonnage"
             type="number"
@@ -111,7 +111,7 @@
         </div>
 
         <div class="col-md-4">
-          <label class="form-label" for="procurement-cost">Cost (UGX) </label>
+          <label class="form-label" for="procurement-cost">Cost (UGX)</label>
           <input
             id="procurement-cost"
             type="number"
@@ -124,7 +124,7 @@
         </div>
 
         <div class="col-md-4">
-          <label class="form-label" for="procurement-selling-price">Selling Price per kg (UGX) </label>
+          <label class="form-label" for="procurement-selling-price">Selling Price per kg (UGX)</label>
           <input
             id="procurement-selling-price"
             type="number"
@@ -166,7 +166,7 @@
         </div>
 
         <div class="col-md-6">
-          <label class="form-label" for="procurement-dealer-contact">Dealer Contact </label>
+          <label class="form-label" for="procurement-dealer-contact">Dealer Contact</label>
           <input
             id="procurement-dealer-contact"
             type="text"

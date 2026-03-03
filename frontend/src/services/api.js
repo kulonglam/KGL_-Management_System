@@ -89,7 +89,6 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   updateMe: (data) => api.put('/auth/me', data),
   listUsers: () => api.get('/auth/users'),
-  getUser: (id) => api.get(`/auth/users/${id}`),
   updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
   deleteUser: (id) => api.delete(`/auth/users/${id}`)
 };
@@ -98,7 +97,6 @@ export const authAPI = {
 export const procurementAPI = {
   getAll: () => api.get('/procurement'),
   create: (data) => api.post('/procurement', data),
-  getById: (id) => api.get(`/procurement/${id}`),
   update: (id, data) => api.put(`/procurement/${id}`, data),
   delete: (id) => api.delete(`/procurement/${id}`)
 };
@@ -116,16 +114,12 @@ export const salesAPI = {
 export const creditSalesAPI = {
   getAll: () => api.get('/credit-sales'),
   create: (data) => api.post('/credit-sales', data),
-  update: (id, data) => api.put(`/credit-sales/${id}`, data),
-  updatePaymentStatus: (id, status) => api.put(`/credit-sales/${id}/payment`, status),
-  repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data),
-  delete: (id) => api.delete(`/credit-sales/${id}`)
+  repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data)
 };
 
 // Inventory API
 export const inventoryAPI = {
-  get: () => api.get('/inventory'),
-  checkStock: (data) => api.post('/inventory/check-stock', data)
+  get: () => api.get('/inventory')
 };
 
 // Stock Notifications API
@@ -145,7 +139,6 @@ export const trustedBuyersAPI = {
 // Price Management API
 export const priceAPI = {
   getAll: () => api.get('/prices'),
-  getById: (id) => api.get(`/prices/${id}`),
   create: (data) => api.post('/prices', data),
   update: (id, data) => api.put(`/prices/${id}`, data),
   delete: (id) => api.delete(`/prices/${id}`)

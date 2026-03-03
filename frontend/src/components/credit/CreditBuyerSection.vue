@@ -6,7 +6,7 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label" for="credit-trusted-buyer">Trusted Buyer </label>
+        <label class="form-label" for="credit-trusted-buyer">Trusted Buyer</label>
         <select
           id="credit-trusted-buyer"
           :class="['form-select', { 'is-invalid': errors.trustedBuyerId }]"

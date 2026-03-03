@@ -103,7 +103,6 @@ export default {
   },
   async created() {
     const authStore = useAuthStore(pinia);
-    authStore.hydrateFromStorage();
     this.user = authStore.user || {};
     this.setTodayLabel();
     await this.loadData();
@@ -255,3 +254,4 @@ export default {
   font-size: clamp(1.45rem, 1.9vw, 2rem);
 }
 </style>
+

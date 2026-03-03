@@ -413,7 +413,6 @@ export default {
     }
   },
   created() {
-    this.authStore.hydrateFromStorage();
     if (this.user.role === 'manager') {
       this.loadStockAlert();
       this.loadStockNotifications();
@@ -684,3 +683,4 @@ export default {
   object-fit: cover;
 }
 </style>
+

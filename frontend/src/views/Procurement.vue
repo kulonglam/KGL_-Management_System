@@ -104,7 +104,6 @@ const handleSubmit = async () => {
 };
 
 onMounted(async () => {
-  authStore.hydrateFromStorage();
   user.value = authStore.user || {};
   await loadPrices();
 });
@@ -121,3 +120,4 @@ watch(
   { deep: true }
 );
 </script>
+

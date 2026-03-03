@@ -198,9 +198,9 @@ const confirmDeleteProcurement = async () => {
 };
 
 onMounted(async () => {
-  authStore.hydrateFromStorage();
   user.value = authStore.user || {};
   await loadPrices();
   await loadProcurements();
 });
 </script>
+

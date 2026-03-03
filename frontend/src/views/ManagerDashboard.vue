@@ -299,7 +299,6 @@ export default {
   },
   async created() {
     const authStore = useAuthStore(pinia);
-    authStore.hydrateFromStorage();
     this.user = authStore.user || {};
     await this.loadData();
   },
@@ -860,3 +859,4 @@ export default {
   }
 }
 </style>
+

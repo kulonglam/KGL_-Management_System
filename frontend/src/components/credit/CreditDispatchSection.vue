@@ -6,7 +6,7 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label" for="credit-due-date">Due Date </label>
+        <label class="form-label" for="credit-due-date">Due Date</label>
         <input
           id="credit-due-date"
           type="date"

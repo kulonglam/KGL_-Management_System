@@ -336,7 +336,6 @@ onBeforeUnmount(() => {
 });
 
 onMounted(async () => {
-  authStore.hydrateFromStorage();
   user.value = authStore.user || {};
   await loadInventory();
 });
@@ -353,3 +352,4 @@ onMounted(async () => {
   border: 1px solid #e2e8f0;
 }
 </style>
+

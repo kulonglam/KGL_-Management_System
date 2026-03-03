@@ -6,7 +6,7 @@
     </legend>
     <div class="row g-3">
       <div class="col-md-6">
-        <label class="form-label" for="credit-produce-name">Produce Name </label>
+        <label class="form-label" for="credit-produce-name">Produce Name</label>
         <select
           id="credit-produce-name"
           :class="['form-select', { 'is-invalid': errors.produceName }]"
@@ -51,7 +51,7 @@
         <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
       </div>
       <div class="col-md-6">
-        <label class="form-label" for="credit-amount-due">Amount Due (UGX) </label>
+        <label class="form-label" for="credit-amount-due">Amount Due (UGX)</label>
         <input
           id="credit-amount-due"
           type="number"

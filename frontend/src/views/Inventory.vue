@@ -259,7 +259,6 @@ export default {
   },
   async created() {
     const authStore = useAuthStore(pinia);
-    authStore.hydrateFromStorage();
     this.user = authStore.user || {};
     await this.loadInventory();
   },
@@ -416,3 +415,4 @@ export default {
   font-size: clamp(1.4rem, 1.8vw, 1.95rem);
 }
 </style>
+
