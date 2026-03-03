@@ -1,1 +1,0 @@
-const c=e=>{const t=Number(e);return Number.isFinite(t)?t:0},o=(e,t,r)=>`${(e/t).toFixed(1).replace(/\.0$/,"")}${r}`,s=e=>{const t=c(e),r=Math.abs(t),n=t<0?"-":"";return r>=1e9?`${n}${o(r,1e9,"B")}`:r>=1e6?`${n}${o(r,1e6,"M")}`:r>=1e3?`${n}${o(r,1e3,"k")}`:Math.round(t).toLocaleString("en-UG")},a=(e,t="UGX")=>`${t} ${s(e)}`;export{a,s as f};
