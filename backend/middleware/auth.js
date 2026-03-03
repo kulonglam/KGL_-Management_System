@@ -58,8 +58,9 @@ const authorizeDirectorOrban = (req, res, next) => {
     .trim()
     .toLowerCase();
   const isOrbanIdentity = username === 'orban' || name === 'mr. orban';
+  const hasTotalsPermission = req.user.canViewCrossBranchTotals === true;
 
-  if (req.user.role === 'director' && isOrbanIdentity) {
+  if (req.user.role === 'director' && (hasTotalsPermission || isOrbanIdentity)) {
     return next();
   }
 

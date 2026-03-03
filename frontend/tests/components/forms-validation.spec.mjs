@@ -17,26 +17,23 @@ vi.mock('../../src/services/api', () => ({
   procurementAPI: {
     getAll: vi.fn(),
     create: vi.fn(),
-    getById: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
   },
   salesAPI: {
     getAll: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     getAggregation: vi.fn(),
     delete: vi.fn()
   },
   creditSalesAPI: {
     getAll: vi.fn(),
     create: vi.fn(),
-    updatePaymentStatus: vi.fn(),
-    repay: vi.fn(),
-    delete: vi.fn()
+    repay: vi.fn()
   },
   inventoryAPI: {
-    get: vi.fn(),
-    checkStock: vi.fn()
+    get: vi.fn()
   },
   trustedBuyersAPI: {
     getAll: vi.fn(),
@@ -46,7 +43,6 @@ vi.mock('../../src/services/api', () => ({
   },
   priceAPI: {
     getAll: vi.fn(),
-    getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn()
@@ -57,6 +53,7 @@ const findButtonByText = (wrapper, text) =>
   wrapper.findAll('button').find((button) => button.text().trim().includes(text));
 
 const tomorrowIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+const yesterdayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
 const inventoryPayload = {
   data: {
@@ -153,6 +150,42 @@ describe('Forms Validation E2E', () => {
     );
   });
 
+  it('blocks procurement when individual source tonnage is below 1000 kg', async () => {
+    const wrapper = mount(Procurement);
+    await flushPromises();
+
+    await wrapper.find('#procurement-produce-name').setValue('Beans 1');
+    await wrapper.find('#procurement-produce-type').setValue('Beans');
+    await wrapper.find('#procurement-source-type').setValue('individual');
+    await wrapper.find('#procurement-tonnage').setValue('999');
+    await wrapper.find('#procurement-cost').setValue('15000');
+    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
+    await wrapper.find('#procurement-dealer-contact').setValue('+256700000002');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Tonnage must be at least 1000 kg for individual dealers.');
+    expect(procurementAPI.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks procurement when dealer contact format is invalid', async () => {
+    const wrapper = mount(Procurement);
+    await flushPromises();
+
+    await wrapper.find('#procurement-produce-name').setValue('Beans 1');
+    await wrapper.find('#procurement-produce-type').setValue('Beans');
+    await wrapper.find('#procurement-source-type').setValue('company');
+    await wrapper.find('#procurement-tonnage').setValue('500');
+    await wrapper.find('#procurement-cost').setValue('15000');
+    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
+    await wrapper.find('#procurement-dealer-contact').setValue('0700');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Dealer contact must be a valid Ugandan phone number.');
+    expect(procurementAPI.create).not.toHaveBeenCalled();
+  });
+
   it('shows per-field errors and blocks invalid sale submission', async () => {
     const wrapper = mount(Sales);
     await flushPromises();
@@ -190,6 +223,20 @@ describe('Forms Validation E2E', () => {
         buyerName: 'Buyer 2'
       })
     );
+  });
+
+  it('blocks sale when buyer name contains invalid characters', async () => {
+    const wrapper = mount(Sales);
+    await flushPromises();
+
+    await wrapper.find('#sales-produce-name').setValue('Beans');
+    await wrapper.find('#sales-tonnage-kg').setValue('2');
+    await wrapper.find('#sales-buyer-name').setValue('@@@');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Buyer name must be alphanumeric.');
+    expect(salesAPI.create).not.toHaveBeenCalled();
   });
 
   it('shows per-field errors and blocks invalid credit-sale submission', async () => {
@@ -232,6 +279,21 @@ describe('Forms Validation E2E', () => {
     );
   });
 
+  it('blocks credit sale when due date is in the past', async () => {
+    const wrapper = mount(CreditSales);
+    await flushPromises();
+
+    await wrapper.find('#credit-trusted-buyer').setValue('507f1f77bcf86cd799439011');
+    await wrapper.find('#credit-produce-name').setValue('Beans');
+    await wrapper.find('#credit-tonnage-kg').setValue('2');
+    await wrapper.find('#credit-due-date').setValue(yesterdayIso);
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Due date must be today or a future date.');
+    expect(creditSalesAPI.create).not.toHaveBeenCalled();
+  });
+
   it('shows per-field errors and blocks invalid trusted-buyer submission', async () => {
     const wrapper = mount(TrustedBuyers);
     await flushPromises();
@@ -269,6 +331,42 @@ describe('Forms Validation E2E', () => {
       location: 'Kampala 2',
       contact: '+256700000003'
     });
+  });
+
+  it('blocks trusted-buyer submission when NIN format is invalid', async () => {
+    const wrapper = mount(TrustedBuyers);
+    await flushPromises();
+
+    const addBuyerButton = findButtonByText(wrapper, 'Add Buyer');
+    await addBuyerButton.trigger('click');
+
+    await wrapper.find('#trusted-buyer-name').setValue('Buyer 3');
+    await wrapper.find('#trusted-buyer-nin').setValue('INVALID');
+    await wrapper.find('#trusted-buyer-location').setValue('Kampala 2');
+    await wrapper.find('#trusted-buyer-contact').setValue('+256700000003');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('National ID must be a valid NIN.');
+    expect(trustedBuyersAPI.create).not.toHaveBeenCalled();
+  });
+
+  it('blocks trusted-buyer submission when contact format is invalid', async () => {
+    const wrapper = mount(TrustedBuyers);
+    await flushPromises();
+
+    const addBuyerButton = findButtonByText(wrapper, 'Add Buyer');
+    await addBuyerButton.trigger('click');
+
+    await wrapper.find('#trusted-buyer-name').setValue('Buyer 3');
+    await wrapper.find('#trusted-buyer-nin').setValue('CF120000000000');
+    await wrapper.find('#trusted-buyer-location').setValue('Kampala 2');
+    await wrapper.find('#trusted-buyer-contact').setValue('12345');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Contact must be a valid Ugandan phone number.');
+    expect(trustedBuyersAPI.create).not.toHaveBeenCalled();
   });
 
 });
