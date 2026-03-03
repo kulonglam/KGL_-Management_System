@@ -5,6 +5,7 @@ import {
   getAllSales,
   createSale,
   getSalesAggregation,
+  updateSale,
   deleteSale
 } from '../controllers/salesController.js';
 import { protect, authorize, authorizeDirectorOrban } from '../middleware/auth.js';
@@ -13,6 +14,7 @@ import { validateRequest } from '../middleware/validation.js';
 import {
   paginationValidation,
   saleCreateValidation,
+  saleUpdateValidation,
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
@@ -50,6 +52,16 @@ router.delete(
   mongoIdParamValidation,
   validateRequest,
   deleteSale
+);
+
+router.put(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  saleUpdateValidation,
+  validateRequest,
+  updateSale
 );
 
 export default router;

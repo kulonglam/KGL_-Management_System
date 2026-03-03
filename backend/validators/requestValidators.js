@@ -318,6 +318,23 @@ const saleCreateValidation = [
     .withMessage('time must be in HH:mm format')
 ];
 
+// Configure sale update validation (manager correction fields only).
+const saleUpdateValidation = [
+  ...mongoIdParamValidation,
+  body('buyerName')
+    .optional()
+    .trim()
+    .isLength({ min: saleRules.buyerName.minLength })
+    .withMessage(`buyerName must be at least ${saleRules.buyerName.minLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('buyerName must be alphanumeric'),
+  body('date').optional().isISO8601().withMessage('date must be a valid date'),
+  body('time')
+    .optional()
+    .matches(TIME_PATTERN)
+    .withMessage('time must be in HH:mm format')
+];
+
 // Configure credit sale create validation.
 const creditSaleCreateValidation = [
   body('trustedBuyerId')
@@ -366,6 +383,29 @@ const creditSaleCreateValidation = [
     .withMessage('tonnageKg is required')
     .isFloat({ min: creditSaleRules.tonnageKg.min })
     .withMessage(`tonnageKg must be at least ${creditSaleRules.tonnageKg.min}`)
+];
+
+// Configure credit sale update validation (manager correction fields only).
+const creditSaleUpdateValidation = [
+  ...mongoIdParamValidation,
+  body('dueDate')
+    .optional()
+    .isISO8601()
+    .withMessage('dueDate must be a valid date')
+    .custom((value) => {
+      const dueDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      if (Number.isNaN(dueDate.getTime()) || dueDate < today) {
+        throw new Error('dueDate must be today or a future date');
+      }
+      return true;
+    }),
+  body('dateOfDispatch')
+    .optional()
+    .isISO8601()
+    .withMessage('dateOfDispatch must be a valid date')
 ];
 
 // Configure credit payment status validation.
@@ -484,7 +524,9 @@ export {
   procurementCreateValidation,
   procurementUpdateValidation,
   saleCreateValidation,
+  saleUpdateValidation,
   creditSaleCreateValidation,
+  creditSaleUpdateValidation,
   creditPaymentStatusValidation,
   creditRepaymentValidation,
   trustedBuyerCreateValidation,

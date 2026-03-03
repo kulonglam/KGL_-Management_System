@@ -93,6 +93,38 @@ const repayCreditSale = async (req, res) => {
     res.status(statusCode).json({ message: error.message });
   }
 };
+
+// Update credit sale correction fields.
+const updateCreditSale = async (req, res) => {
+  try {
+    const creditSale = await CreditSale.findById(req.params.id);
+    if (!creditSale) {
+      return res.status(404).json({ message: 'Credit sale not found' });
+    }
+
+    if (req.user.role === 'manager' && creditSale.branch !== req.user.branch) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+
+    const updatableFields = ['dueDate', 'dateOfDispatch'];
+    const fieldsToApply = {};
+    updatableFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        fieldsToApply[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(fieldsToApply).length === 0) {
+      return res.status(400).json({ message: 'No updatable fields provided' });
+    }
+
+    Object.assign(creditSale, fieldsToApply);
+    await creditSale.save();
+    return res.json(creditSale);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
 // Delete credit sale.
 const deleteCreditSale = async (req, res) => {
   try {
@@ -105,6 +137,12 @@ const deleteCreditSale = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
+    if (Array.isArray(creditSale.payments) && creditSale.payments.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete credit sale with repayments. Use repayment/status controls instead.'
+      });
+    }
+
     await creditSale.deleteOne();
     res.json({ message: 'Credit sale deleted' });
   } catch (error) {
@@ -115,6 +153,7 @@ const deleteCreditSale = async (req, res) => {
 export {
   getAllCreditSales,
   createCreditSale,
+  updateCreditSale,
   updatePaymentStatus,
   repayCreditSale,
   deleteCreditSale

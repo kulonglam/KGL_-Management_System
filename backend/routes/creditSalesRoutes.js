@@ -4,6 +4,7 @@ const router = express.Router();
 import {
   getAllCreditSales,
   createCreditSale,
+  updateCreditSale,
   updatePaymentStatus,
   deleteCreditSale,
   repayCreditSale
@@ -14,6 +15,7 @@ import { validateRequest } from '../middleware/validation.js';
 import {
   paginationValidation,
   creditSaleCreateValidation,
+  creditSaleUpdateValidation,
   creditPaymentStatusValidation,
   creditRepaymentValidation,
   mongoIdParamValidation
@@ -63,6 +65,16 @@ router.delete(
   mongoIdParamValidation,
   validateRequest,
   deleteCreditSale
+);
+
+router.put(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  creditSaleUpdateValidation,
+  validateRequest,
+  updateCreditSale
 );
 
 export default router;

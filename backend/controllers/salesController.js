@@ -214,4 +214,37 @@ const deleteSale = async (req, res) => {
   }
 };
 
-export { getAllSales, createSale, getSalesAggregation, deleteSale };
+// Update sale correction fields.
+const updateSale = async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+
+    if (req.user.role === 'manager' && sale.branch !== req.user.branch) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+
+    const updatableFields = ['buyerName', 'date', 'time'];
+    const fieldsToApply = {};
+
+    updatableFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        fieldsToApply[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(fieldsToApply).length === 0) {
+      return res.status(400).json({ message: 'No updatable fields provided' });
+    }
+
+    Object.assign(sale, fieldsToApply);
+    await sale.save();
+    return res.json(sale);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export { getAllSales, createSale, getSalesAggregation, updateSale, deleteSale };
