@@ -1,3 +1,4 @@
+/** Form validation tests across procurement, sales, credit, and trusted-buyer workflows. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Procurement from '../../src/views/Procurement.vue';
@@ -370,3 +371,4 @@ describe('Forms Validation E2E', () => {
   });
 
 });
+

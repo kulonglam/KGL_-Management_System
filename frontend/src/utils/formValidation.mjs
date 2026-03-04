@@ -1,3 +1,4 @@
+/** Primitive reusable validators used to build consistent client-side form validation rules. */
 const isEmpty = (value) => {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim() === '';
@@ -6,6 +7,7 @@ const isEmpty = (value) => {
 
 const toNumber = (value) => Number(value);
 
+// Each validator returns a function so schemas can compose rules declaratively per field.
 const validators = {
   required:
     (message = 'This field is required.') =>
@@ -84,6 +86,7 @@ const validators = {
 const getFieldRules = (schema, fieldName, values) => {
   const ruleConfig = schema?.[fieldName];
   if (!ruleConfig) return [];
+  // Allow dynamic rule generation (function) for cross-field validation scenarios.
   if (typeof ruleConfig === 'function') {
     const resolved = ruleConfig(values);
     return Array.isArray(resolved) ? resolved : [];
@@ -95,6 +98,7 @@ const validateFieldValue = (fieldName, values, schema) => {
   const rules = getFieldRules(schema, fieldName, values);
   const fieldValue = values?.[fieldName];
 
+  // Return on first error to keep messaging focused and avoid overwhelming users.
   for (let i = 0; i < rules.length; i += 1) {
     const rule = rules[i];
     if (typeof rule !== 'function') continue;
@@ -121,3 +125,4 @@ const validateValues = (values, schema) => {
 };
 
 export { validators, validateValues, validateFieldValue };
+

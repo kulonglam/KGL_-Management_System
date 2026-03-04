@@ -41,7 +41,13 @@ Warning: this clears existing seed-related collections before inserting sample d
 node seedData.js
 ```
 
-Seeded password for all users: `password123`
+Seeded password for all users: `Karibu@2026!`
+
+To update passwords for users that already exist in your database:
+
+```bash
+npm run reset:passwords -- --password=Karibu@2026!
+```
 
 - Director: `orban`
 - Managers: `managerA` (Maganjo), `managerB` (Matugga)

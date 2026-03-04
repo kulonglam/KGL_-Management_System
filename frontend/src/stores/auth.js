@@ -5,7 +5,7 @@ const USER_STORAGE_KEY = 'user';
 
 const getStorage = () => {
   if (typeof window === 'undefined') return null;
-  return window.localStorage;
+  return window.sessionStorage;
 };
 
 const readStoredToken = () => {

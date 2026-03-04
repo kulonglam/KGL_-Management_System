@@ -1,3 +1,4 @@
+/** Unit tests for backend request validator chains and expected validation failures. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validationResult } from 'express-validator';
@@ -199,3 +200,4 @@ test('trusted buyer validation rejects invalid NIN and contact', async () => {
   assert.equal(hasFieldError(errors, 'nationalId'), true);
   assert.equal(hasFieldError(errors, 'contact'), true);
 });
+

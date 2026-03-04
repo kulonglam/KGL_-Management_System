@@ -1,10 +1,12 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDB from './config/database.js';
+import { validateEnv } from './config/env.js';
 import createApp from './app.js';
 import logger from './utils/logger.js';
 
 dotenv.config();
+validateEnv();
 
 // Configure port.
 const PORT = Number(process.env.PORT || 5000);

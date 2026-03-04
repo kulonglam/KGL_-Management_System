@@ -1,4 +1,5 @@
 import PriceSetting from '../models/PriceSetting.js';
+import mongoose from 'mongoose';
 import {
   parseAndValidatePriceInput,
   getBranchPriceRows,
@@ -88,7 +89,7 @@ const updatePrice = async (req, res) => {
 
     if (nextProduceType !== setting.produceType) {
       const duplicate = await PriceSetting.findOne({
-        _id: { $ne: setting._id },
+        _id: mongoose.trusted({ $ne: setting._id }),
         branch: req.user.branch,
         produceType: nextProduceType
       });

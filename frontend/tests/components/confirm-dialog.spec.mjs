@@ -1,3 +1,4 @@
+/** Component tests for confirm dialog actions, state transitions, and accessibility behavior. */
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import ConfirmDialog from '../../src/components/common/ConfirmDialog.vue';
@@ -36,3 +37,4 @@ describe('ConfirmDialog', () => {
     expectNoA11yViolations(results);
   });
 });
+

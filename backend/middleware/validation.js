@@ -11,8 +11,7 @@ const validateRequest = (req, res, next) => {
     message: 'Validation failed',
     details: errors.array().map((error) => ({
       field: error.path,
-      message: error.msg,
-      value: error.value
+      message: error.msg
     }))
   });
 };

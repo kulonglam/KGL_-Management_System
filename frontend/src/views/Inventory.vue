@@ -297,6 +297,7 @@ export default {
 
       return `${labels.join(', ')}${suffix} running low on stock.`;
     },
+    // Build table output as search -> status filter -> sort so each control composes predictably.
     filteredInventory() {
       const query = this.searchQuery.trim().toLowerCase();
       const searched = this.inventory.filter((item) => {
@@ -345,6 +346,7 @@ export default {
   },
   watch: {
     pageSize() {
+      // Reset paging when page size changes to avoid landing past the available range.
       this.currentPage = 1;
     },
     inventory() {
@@ -369,6 +371,7 @@ export default {
       this.loadError = '';
       try {
         const response = await inventoryAPI.get();
+        // Keep defensive fallbacks so template bindings stay safe if API fields are missing.
         this.inventory = response.data.inventory || [];
         this.outOfStockItems = response.data.outOfStockItems || [];
         this.statistics = response.data.statistics || {};

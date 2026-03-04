@@ -8,6 +8,14 @@ const isUnifiedShape = (payload) =>
 
 // Handle normalize error.
 const normalizeError = (payload, statusCode) => {
+  if (statusCode >= 500) {
+    return {
+      message: process.env.NODE_ENV === 'production' ? 'Internal Server Error' : 'Request failed',
+      details: null,
+      statusCode
+    };
+  }
+
   if (payload && typeof payload === 'object') {
     if (payload.error && typeof payload.error === 'object') {
       return payload.error;

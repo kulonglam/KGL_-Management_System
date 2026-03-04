@@ -5,37 +5,51 @@
       <p class="page-subtitle">Review, edit, and remove procurement entries.</p>
     </div>
 
-    <div v-if="editingId" class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Update Procurement</h5>
-      </div>
-      <div class="card-body">
-        <form @submit.prevent="handleUpdate">
-          <ProcurementFormFields
-            v-model:form="form"
-            :user="user"
-            :price-locked="priceLocked"
-            price-lock-hint="Price is controlled in Price Management."
-            @type-change="handleTypeChange"
-          />
+    <div v-if="editingId" class="modal-mask" @click.self="cancelEdit">
+      <div
+        class="modal-card procurement-edit-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="procurement-edit-title"
+      >
+        <div class="modal-header">
+          <h5 id="procurement-edit-title" class="mb-0">Update Procurement</h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Close update procurement dialog"
+            :disabled="loading"
+            @click="cancelEdit"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleUpdate">
+            <ProcurementFormFields
+              v-model:form="form"
+              :user="user"
+              :price-locked="priceLocked"
+              price-lock-hint="Price is controlled in Price Management."
+              @type-change="handleTypeChange"
+            />
 
-          <FormAlerts :error="error" :success="success" />
+            <FormAlerts :error="error" :success="success" />
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Update Procurement
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              :disabled="loading"
-              @click="cancelEdit"
-            >
-              Cancel Edit
-            </button>
-          </div>
-        </form>
+            <div class="mt-4 d-flex justify-content-end gap-2">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="loading"
+                @click="cancelEdit"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                Update Procurement
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -136,6 +150,7 @@ const startEdit = (item) => {
     dealerContact: item.dealerContact || '',
     sellingPrice: item.sellingPrice || ''
   };
+  // Re-apply price rule on loaded values so locked/inferred pricing state matches current produce type.
   applyPriceSetting(form.value);
   resetFeedback();
 };
@@ -185,6 +200,7 @@ const confirmDeleteProcurement = async () => {
   try {
     await procurementAPI.delete(deleteDialog.value.procurementId);
     setSuccess('Procurement record deleted.');
+    // If the deleted row is currently open in edit mode, close and reset that editor state.
     if (editingId.value === deleteDialog.value.procurementId) {
       cancelEdit();
     }
@@ -199,8 +215,15 @@ const confirmDeleteProcurement = async () => {
 
 onMounted(async () => {
   user.value = authStore.user || {};
+  // Load managed pricing first so edit/create forms resolve the correct lock state immediately.
   await loadPrices();
   await loadProcurements();
 });
 </script>
+
+<style scoped>
+.procurement-edit-modal {
+  max-width: 920px;
+}
+</style>
 

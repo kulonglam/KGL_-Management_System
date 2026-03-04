@@ -6,6 +6,11 @@ import { apiLimiter } from './middleware/rateLimiter.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
+import {
+  sanitizeRequestPayload,
+  rejectParameterPollution,
+  enforceHttpsInProduction
+} from './middleware/securityGuards.js';
 import { requestContext, accessLogger } from './middleware/observability.js';
 import swaggerSpec from './docs/swagger.js';
 
@@ -37,9 +42,15 @@ const parseAllowedOrigins = () => {
 const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', 1);
 
   const allowedOrigins = parseAllowedOrigins();
   const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '2mb';
+  const enableSwagger =
+    process.env.ENABLE_SWAGGER === 'true' ||
+    (process.env.NODE_ENV !== 'production' && process.env.ENABLE_SWAGGER !== 'false');
+
+  app.use(enforceHttpsInProduction);
 
   app.use(
     cors({
@@ -49,7 +60,9 @@ const createApp = () => {
   );
 
   app.use(express.json({ limit: requestBodyLimit }));
-  app.use(express.urlencoded({ extended: false, limit: requestBodyLimit }));
+  app.use(express.urlencoded({ extended: false, limit: requestBodyLimit, parameterLimit: 100 }));
+  app.use(sanitizeRequestPayload);
+  app.use(rejectParameterPollution);
   app.use(requestContext);
   app.use(securityHeaders);
   app.use(apiLimiter);
@@ -57,7 +70,9 @@ const createApp = () => {
   app.use(responseFormatter);
 
   // Swagger
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  if (enableSwagger) {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  }
   app.use('/', opsRoutes);
 
   // Routes

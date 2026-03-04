@@ -1,3 +1,4 @@
+<!-- Director dashboard chart container for trends, composition, and branch comparison views. -->
 <template>
   <div class="row g-4">
     <div class="col-xl-6">
@@ -297,3 +298,4 @@ export default {
   min-height: 120px;
 }
 </style>
+

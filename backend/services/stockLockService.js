@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import mongoose from 'mongoose';
 import StockLock from '../models/StockLock.js';
 
 // Configure stock lock defaults.
@@ -46,7 +47,7 @@ const acquireStockLock = async (
       const lock = await StockLock.findOneAndUpdate(
         {
           key,
-          $or: [{ expiresAt: { $lte: now } }, { ownerId }]
+          $or: [{ expiresAt: mongoose.trusted({ $lte: now }) }, { ownerId }]
         },
         {
           $set: {

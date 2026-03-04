@@ -10,10 +10,15 @@ const notFound = (req, res, next) => {
 // Handle error handler.
 const errorHandler = (err, req, res, _next) => {
   const statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+  const isServerError = statusCode >= 500;
+  const exposeDetails = !isServerError || process.env.NODE_ENV !== 'production';
   // Configure error payload.
   const errorPayload = {
-    message: err.message || 'Internal Server Error',
-    details: err.details || null,
+    message:
+      isServerError && process.env.NODE_ENV === 'production'
+        ? 'Internal Server Error'
+        : err.message || 'Internal Server Error',
+    details: exposeDetails ? err.details || null : null,
     statusCode,
     requestId: req.requestId || null
   };

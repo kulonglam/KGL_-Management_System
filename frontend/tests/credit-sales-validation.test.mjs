@@ -1,3 +1,4 @@
+/** Unit tests for credit-sales balance and repayment validation helper functions. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../src/utils/creditSalesValidation.mjs';
@@ -32,3 +33,4 @@ test('validateRepaymentAmount accepts valid amount', () => {
   assert.equal(result.error, '');
   assert.equal(result.amount, 1500);
 });
+

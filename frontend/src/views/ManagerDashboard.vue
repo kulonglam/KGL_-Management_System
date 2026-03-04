@@ -1,3 +1,4 @@
+<!-- Manager dashboard view for branch-level KPIs, filters, charts, and report export. -->
 <template>
   <div class="dashboard-view view-shell" :aria-busy="loading ? 'true' : 'false'">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -859,4 +860,5 @@ export default {
   }
 }
 </style>
+
 

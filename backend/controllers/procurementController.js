@@ -155,9 +155,31 @@ const updateProcurement = async (req, res) => {
       produceType: nextProduceType
     });
 
+    const allowedUpdateFields = [
+      'produceName',
+      'produceType',
+      'sourceType',
+      'dateReceived',
+      'timeReceived',
+      'tonnageKg',
+      'costUgx',
+      'dealerName',
+      'dealerContact'
+    ];
+    const fieldsToApply = {};
+    allowedUpdateFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        fieldsToApply[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(fieldsToApply).length === 0) {
+      return res.status(400).json({ message: 'No updatable fields provided' });
+    }
+
     const updatePayload = {
-      ...req.body,
-      sourceType: normalizeSourceType(req.body.sourceType || procurement.sourceType),
+      ...fieldsToApply,
+      sourceType: normalizeSourceType(fieldsToApply.sourceType || procurement.sourceType),
       sellingPrice: finalPrice,
       branch: procurement.branch
     };

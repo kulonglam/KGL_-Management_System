@@ -1,3 +1,4 @@
+<!-- Sales records view for listing, refreshing, and maintaining cash sale entries. -->
 <template>
   <div class="view-shell">
     <div class="view-heading">
@@ -92,7 +93,7 @@
               <tr v-for="item in paginatedSalesRecords" :key="item._id">
                 <td>{{ item.produceName }} ({{ item.produceType }})</td>
                 <td class="text-end">{{ Number(item.tonnageKg || 0).toLocaleString() }}</td>
-                <td class="text-end">{{ formatCurrency(item.amountPaidUgx) }}</td>
+                <td class="text-end">{{ formatAmount(item.amountPaidUgx) }}</td>
                 <td>{{ item.buyerName }}</td>
                 <td>{{ item.salesAgentName || '-' }}</td>
                 <td>{{ formatDateTime(item.date, item.time) }}</td>
@@ -139,7 +140,72 @@
         </div>
         <div class="modal-body">
           <form @submit.prevent="submitEdit">
+            <p class="text-muted small mb-3">
+              You can correct produce, quantity, buyer, sales agent, date, and time. Amount is recalculated automatically.
+            </p>
             <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label" for="edit-sale-produce">Produce</label>
+                <select
+                  id="edit-sale-produce"
+                  v-model="editForm.produceName"
+                  class="form-select"
+                  required
+                >
+                  <option value="">Select produce</option>
+                  <option v-for="name in editProduceNameOptions" :key="name" :value="name">
+                    {{ name }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="edit-sale-type">Produce Type</label>
+                <select
+                  id="edit-sale-type"
+                  v-model="editForm.produceType"
+                  class="form-select"
+                  :disabled="editProduceTypeOptions.length === 0"
+                  required
+                >
+                  <option value="">Select type</option>
+                  <option v-for="type in editProduceTypeOptions" :key="type" :value="type">
+                    {{ type }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-sale-tonnage">Quantity (kg)</label>
+                <input
+                  id="edit-sale-tonnage"
+                  v-model.number="editForm.tonnageKg"
+                  type="number"
+                  class="form-control"
+                  min="1"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-sale-amount">Amount Paid (UGX)</label>
+                <input
+                  id="edit-sale-amount"
+                  :value="formatAmount(editAmountPreview)"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-sale-agent">Sales Agent</label>
+                <input
+                  id="edit-sale-agent"
+                  v-model.trim="editForm.salesAgentName"
+                  type="text"
+                  class="form-control"
+                  minlength="2"
+                  pattern="^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$"
+                  required
+                />
+              </div>
               <div class="col-md-12">
                 <label class="form-label" for="edit-sale-buyer">Buyer Name *</label>
                 <input
@@ -200,13 +266,14 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
-import { salesAPI } from '../services/api';
+import { inventoryAPI, salesAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore(pinia);
 const user = ref({});
 const salesRecords = ref([]);
+const inventory = ref([]);
 const loading = ref(false);
 const loadError = ref('');
 const currentPage = ref(1);
@@ -220,6 +287,11 @@ const editLoading = ref(false);
 const editError = ref('');
 const editForm = ref({
   id: '',
+  produceName: '',
+  produceType: '',
+  tonnageKg: '',
+  amountPaidUgx: '',
+  salesAgentName: '',
   buyerName: '',
   date: '',
   time: ''
@@ -246,10 +318,70 @@ const loadSalesRecords = async () => {
   }
 };
 
+const loadInventory = async () => {
+  try {
+    const response = await inventoryAPI.get();
+    inventory.value = response.data?.inventory || [];
+  } catch (fetchError) {
+    if (!loadError.value) {
+      loadError.value = fetchError.response?.data?.message || 'Failed to load inventory options.';
+    }
+  }
+};
+
 const produceTypeOptions = computed(() =>
   Array.from(new Set(salesRecords.value.map((item) => item.produceType).filter(Boolean))).sort()
 );
 
+const editProduceNameOptions = computed(() =>
+  Array.from(
+    new Set([
+      ...inventory.value.map((item) => item.produceName).filter(Boolean),
+      editForm.value.produceName || null
+    ])
+  )
+    .filter(Boolean)
+    .sort((a, b) => String(a).localeCompare(String(b)))
+);
+
+// Derive valid produce types from inventory for the selected produce name and keep current selection visible.
+const editProduceTypeOptions = computed(() => {
+  if (!editForm.value.produceName) return [];
+  return Array.from(
+    new Set(
+      [
+        ...inventory.value
+        .filter((item) => item.produceName === editForm.value.produceName)
+        .map((item) => item.produceType)
+        .filter(Boolean),
+        editForm.value.produceType || null
+      ]
+    )
+  )
+    .filter(Boolean)
+    .sort((a, b) => String(a).localeCompare(String(b)));
+});
+
+// Preview amount using current inventory pricing; fall back to stored amount when price context is unavailable.
+const editAmountPreview = computed(() => {
+  const tonnage = Number(editForm.value.tonnageKg || 0);
+  if (!tonnage || Number.isNaN(tonnage)) {
+    return Number(editForm.value.amountPaidUgx || 0);
+  }
+
+  const matchingInventory = inventory.value.find(
+    (item) =>
+      item.produceName === editForm.value.produceName &&
+      item.produceType === editForm.value.produceType
+  );
+  if (!matchingInventory) {
+    return Number(editForm.value.amountPaidUgx || 0);
+  }
+
+  return Number(matchingInventory.sellingPrice || 0) * tonnage;
+});
+
+// Apply search, optional type filter, then sorting so table output stays predictable across controls.
 const filteredSalesRecords = computed(() => {
   const query = searchQuery.value.toLowerCase();
   const searched = salesRecords.value.filter((item) => {
@@ -308,6 +440,11 @@ const openEditModal = (item) => {
   editError.value = '';
   editForm.value = {
     id: item._id,
+    produceName: item.produceName || '',
+    produceType: item.produceType || '',
+    tonnageKg: item.tonnageKg || '',
+    amountPaidUgx: item.amountPaidUgx || '',
+    salesAgentName: item.salesAgentName || '',
     buyerName: item.buyerName || '',
     date: toDateInput(item.date),
     time: item.time || ''
@@ -327,12 +464,16 @@ const submitEdit = async () => {
   editError.value = '';
   try {
     await salesAPI.update(editForm.value.id, {
+      produceName: editForm.value.produceName,
+      produceType: editForm.value.produceType,
+      tonnageKg: Number(editForm.value.tonnageKg || 0),
       buyerName: editForm.value.buyerName,
+      salesAgentName: editForm.value.salesAgentName,
       date: editForm.value.date,
       time: editForm.value.time
     });
     editModalOpen.value = false;
-    await loadSalesRecords();
+    await Promise.all([loadSalesRecords(), loadInventory()]);
   } catch (error) {
     editError.value = error.response?.data?.message || 'Failed to update sale record.';
   } finally {
@@ -368,23 +509,45 @@ const confirmDeleteSale = async () => {
   }
 };
 
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0
-  }).format(Number(amount || 0));
+const formatAmount = (amount) =>
+  Number(amount || 0).toLocaleString('en-UG', {
+    maximumFractionDigits: 0
+  });
+
+const formatDate = (dateValue) => {
+  if (!dateValue) return '-';
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return String(dateValue || '-');
+  return date.toLocaleDateString('en-UG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 
 const formatDateTime = (dateValue, timeValue) => {
   if (!dateValue && !timeValue) return '-';
 
-  const date = dateValue ? new Date(dateValue) : null;
-  const formattedDate =
-    date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : String(dateValue || '-');
+  const formattedDate = formatDate(dateValue);
   const formattedTime = timeValue ? String(timeValue) : '-';
 
   return `${formattedDate} ${formattedTime}`;
 };
+
+watch(
+  () => editForm.value.produceName,
+  () => {
+    if (!editForm.value.produceName) {
+      editForm.value.produceType = '';
+      return;
+    }
+
+    // Keep produce type valid whenever produce name changes in the edit form.
+    if (!editProduceTypeOptions.value.includes(editForm.value.produceType)) {
+      editForm.value.produceType = editProduceTypeOptions.value[0] || '';
+    }
+  }
+);
 
 watch(pageSize, () => {
   currentPage.value = 1;
@@ -408,7 +571,9 @@ const resetFilters = () => {
 
 onMounted(async () => {
   user.value = authStore.user || {};
-  await loadSalesRecords();
+  // Load records and inventory together so edit dropdowns and amount previews are immediately usable.
+  await Promise.all([loadSalesRecords(), loadInventory()]);
 });
 </script>
+
 

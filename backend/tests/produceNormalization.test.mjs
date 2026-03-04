@@ -1,3 +1,4 @@
+/** Unit tests for produce normalization utilities and canonical alias behavior. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -28,4 +29,5 @@ test('normalizeSourceType maps own_farm to kgl_farm', () => {
 test('normalizeProduceNameKey aligns aliases to the same comparison key', () => {
   assert.equal(normalizeProduceNameKey('Red Bean'), normalizeProduceNameKey('Red Beans'));
 });
+
 

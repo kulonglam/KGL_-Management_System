@@ -1,3 +1,4 @@
+/** Component tests for procurement records table behavior, pagination, and accessibility checks. */
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import ProcurementRecordsTable from '../../src/components/procurement/ProcurementRecordsTable.vue';
@@ -93,3 +94,4 @@ describe('ProcurementRecordsTable', () => {
     10000
   );
 });
+

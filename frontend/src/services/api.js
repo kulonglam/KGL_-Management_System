@@ -21,11 +21,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 api.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore(pinia);
-    let token = authStore.token;
-
-    if (!token && typeof window !== 'undefined') {
-      token = localStorage.getItem('token');
-    }
+    const token = authStore.token;
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

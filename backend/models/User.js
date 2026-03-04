@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema(
         return this.role !== 'director';
       }
     },
-    canViewCrossBranchTotals: { type: Boolean, default: false }
+    canViewCrossBranchTotals: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0, min: 0 },
+    loginAttempts: { type: Number, default: 0, min: 0 },
+    lockUntil: { type: Date, default: null }
   },
   {
     timestamps: true
@@ -23,5 +26,6 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.index({ branch: 1, role: 1 });
+userSchema.index({ username: 1, lockUntil: 1 });
 
 export default mongoose.model('User', userSchema);

@@ -29,6 +29,9 @@ jobs:
       - name: Lint backend
         run: npm run lint
 
+      - name: Audit backend dependencies
+        run: npm run audit
+
       - name: Test backend
         run: npm test
 
@@ -53,6 +56,9 @@ jobs:
 
       - name: Lint frontend
         run: npm run lint
+
+      - name: Audit frontend dependencies
+        run: npm run audit
 
       - name: Build frontend
         run: npm run build

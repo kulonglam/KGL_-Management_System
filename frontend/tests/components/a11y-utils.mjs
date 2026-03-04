@@ -1,3 +1,4 @@
+/** Shared accessibility test helpers that wrap axe-core execution and violation assertions. */
 import axe from 'axe-core';
 
 const DEFAULT_RULES = {
@@ -40,3 +41,4 @@ export const expectNoA11yViolations = (results) => {
 
   throw new Error(`Accessibility violations found:\n${details}`);
 };
+

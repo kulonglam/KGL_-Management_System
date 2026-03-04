@@ -613,6 +613,10 @@ button:focus-visible,
   border-radius: 0.7rem;
   width: 100%;
   max-width: 520px;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
 
@@ -626,6 +630,7 @@ button:focus-visible,
 
 .modal-body {
   padding: 1.25rem;
+  overflow-y: auto;
 }
 
 @keyframes view-enter {

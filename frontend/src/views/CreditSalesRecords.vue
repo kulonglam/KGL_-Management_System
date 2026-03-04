@@ -232,48 +232,129 @@
       </div>
     </div>
 
-    <div v-if="canRepay && editId" class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Edit Credit Sale</h5>
-      </div>
-      <div class="card-body">
-        <form @submit.prevent="handleEdit">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label" for="edit-credit-due-date">Due Date *</label>
-              <input
-                id="edit-credit-due-date"
-                v-model="editForm.dueDate"
-                type="date"
-                class="form-control"
-                required
-              />
+    <div
+      v-if="canRepay && editId"
+      class="modal-mask"
+      @click.self="cancelEdit"
+    >
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="credit-sale-edit-title"
+      >
+        <div class="modal-header">
+          <h5 id="credit-sale-edit-title" class="mb-0">Edit Credit Sale</h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Close edit credit sale dialog"
+            :disabled="editLoading"
+            @click="cancelEdit"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleEdit">
+            <p class="text-muted small mb-3">
+              Buyer and produce details are reference-only. You can edit due date and dispatch date.
+            </p>
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label" for="edit-credit-produce">Produce</label>
+                <input
+                  id="edit-credit-produce"
+                  :value="`${editForm.produceName || '-'} (${editForm.produceType || '-'})`"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="edit-credit-tonnage">Tonnage (kg)</label>
+                <input
+                  id="edit-credit-tonnage"
+                  :value="Number(editForm.tonnageKg || 0).toLocaleString()"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-buyer">Buyer</label>
+                <input
+                  id="edit-credit-buyer"
+                  :value="editForm.buyerName || '-'"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-agent">Sales Agent</label>
+                <input
+                  id="edit-credit-agent"
+                  :value="editForm.salesAgentName || '-'"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-amount-due">Amount Due (UGX)</label>
+                <input
+                  id="edit-credit-amount-due"
+                  :value="formatCurrency(editForm.amountDueUgx)"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-balance">Balance (UGX)</label>
+                <input
+                  id="edit-credit-balance"
+                  :value="formatCurrency(editForm.balanceUgx)"
+                  type="text"
+                  class="form-control"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-due-date">Due Date *</label>
+                <input
+                  id="edit-credit-due-date"
+                  v-model="editForm.dueDate"
+                  type="date"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="edit-credit-dispatch-date">Dispatch Date *</label>
+                <input
+                  id="edit-credit-dispatch-date"
+                  v-model="editForm.dateOfDispatch"
+                  type="date"
+                  class="form-control"
+                  required
+                />
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label" for="edit-credit-dispatch-date">Dispatch Date *</label>
-              <input
-                id="edit-credit-dispatch-date"
-                v-model="editForm.dateOfDispatch"
-                type="date"
-                class="form-control"
-                required
-              />
+
+            <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
+            <div v-if="editSuccess" class="alert alert-success mt-3">{{ editSuccess }}</div>
+
+            <div class="mt-4 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary" :disabled="editLoading" @click="cancelEdit">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="editLoading">
+                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+                Save Changes
+              </button>
             </div>
-          </div>
-
-          <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
-          <div v-if="editSuccess" class="alert alert-success mt-3">{{ editSuccess }}</div>
-
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="editLoading">
-              <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
-              Save Changes
-            </button>
-            <button type="button" class="btn btn-outline-secondary ms-2" @click="cancelEdit">
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -325,6 +406,13 @@ export default {
       repaySuccess: '',
       editId: null,
       editForm: {
+        buyerName: '',
+        produceName: '',
+        produceType: '',
+        tonnageKg: '',
+        amountDueUgx: '',
+        balanceUgx: '',
+        salesAgentName: '',
         dueDate: '',
         dateOfDispatch: ''
       },
@@ -352,6 +440,7 @@ export default {
     selectedCreditSale() {
       return this.creditSales.find((c) => c._id === this.repayId);
     },
+    // Apply search, repayment-status filtering, then selected sort order for deterministic table results.
     filteredCreditSales() {
       const query = this.searchQuery.trim().toLowerCase();
 
@@ -461,6 +550,13 @@ export default {
     startEdit(item) {
       this.editId = item._id;
       this.editForm = {
+        buyerName: item.buyerName || '',
+        produceName: item.produceName || '',
+        produceType: item.produceType || '',
+        tonnageKg: item.tonnageKg || '',
+        amountDueUgx: item.amountDueUgx || '',
+        balanceUgx: this.getBalance(item),
+        salesAgentName: item.salesAgentName || '',
         dueDate: this.toDateInput(item.dueDate),
         dateOfDispatch: this.toDateInput(item.dateOfDispatch)
       };
@@ -471,6 +567,13 @@ export default {
       if (this.editLoading) return;
       this.editId = null;
       this.editForm = {
+        buyerName: '',
+        produceName: '',
+        produceType: '',
+        tonnageKg: '',
+        amountDueUgx: '',
+        balanceUgx: '',
+        salesAgentName: '',
         dueDate: '',
         dateOfDispatch: ''
       };
@@ -512,6 +615,7 @@ export default {
       this.deleteDialog.processing = true;
       try {
         await creditSalesAPI.delete(this.deleteDialog.creditSaleId);
+        // Clear any active edit/repayment UI state that points to the deleted record.
         if (this.editId === this.deleteDialog.creditSaleId) {
           this.cancelEdit();
         }
@@ -546,6 +650,7 @@ export default {
     },
     async handleRepay() {
       if (!this.repayId) return;
+      // Validate payment amount client-side before submitting to avoid unnecessary API round-trips.
       const validation = validateRepaymentAmount(this.repayForm.amountUgx, this.balanceForSelected);
       if (validation.error) {
         this.repayError = validation.error;

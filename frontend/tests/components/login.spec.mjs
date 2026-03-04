@@ -1,3 +1,4 @@
+/** Component tests for login interactions, remembered credentials, and accessibility behavior. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Login from '../../src/views/Login.vue';
@@ -14,6 +15,7 @@ describe('Login view', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('preloads remembered username from localStorage', () => {
@@ -74,7 +76,7 @@ describe('Login view', () => {
       username: 'manager-user',
       password: 'secret123'
     });
-    expect(localStorage.getItem('token')).toBe('token-1');
+    expect(sessionStorage.getItem('token')).toBe('token-1');
     expect(localStorage.getItem('rememberedUsername')).toBe('manager-user');
     expect(push).toHaveBeenCalledWith('/dashboard/manager');
   });
@@ -92,3 +94,4 @@ describe('Login view', () => {
     expectNoA11yViolations(results);
   });
 });
+

@@ -1,3 +1,4 @@
+/** Frontend ESLint flat configuration and rule wiring for Vue and JavaScript sources. */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FlatCompat } from '@eslint/eslintrc';
@@ -34,3 +35,4 @@ export default [
     }
   })
 ];
+

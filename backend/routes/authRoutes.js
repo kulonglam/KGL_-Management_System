@@ -23,6 +23,13 @@ import {
 
 // Configure router.
 const router = express.Router();
+const noStore = (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Pragma', 'no-cache');
+  next();
+};
+
+router.use(noStore);
 
 router.post('/login', authLimiter, loginValidation, validateRequest, login);
 router.post(

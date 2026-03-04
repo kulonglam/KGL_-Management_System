@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 
 // Configure max profile image size bytes.
@@ -10,6 +12,13 @@ const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'im
 const BRANCH_ROLE_LIMITS = {
   manager: { min: 1, max: 1 },
   sales_agent: { min: 2, max: 2 }
+};
+const PASSWORD_POLICY = {
+  minLength: 10,
+  hasUppercase: /[A-Z]/,
+  hasLowercase: /[a-z]/,
+  hasNumber: /[0-9]/,
+  hasSymbol: /[^A-Za-z0-9]/
 };
 
 // Check whether a user record matches the legacy Orban identity.
@@ -54,10 +63,31 @@ const parseProfileImageUpdate = (rawValue) => {
 };
 
 // Generate JWT token for a user ID.
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d'
+const generateToken = (id, tokenVersion = 0) => {
+  return jwt.sign({ id, tokenVersion, jti: randomUUID() }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '12h'
   });
+};
+
+// Validate password against the application's minimum complexity policy.
+const validatePasswordStrength = (password) => {
+  const value = String(password || '');
+  if (value.length < PASSWORD_POLICY.minLength) {
+    return `Password must be at least ${PASSWORD_POLICY.minLength} characters`;
+  }
+  if (!PASSWORD_POLICY.hasUppercase.test(value)) {
+    return 'Password must include at least one uppercase letter';
+  }
+  if (!PASSWORD_POLICY.hasLowercase.test(value)) {
+    return 'Password must include at least one lowercase letter';
+  }
+  if (!PASSWORD_POLICY.hasNumber.test(value)) {
+    return 'Password must include at least one number';
+  }
+  if (!PASSWORD_POLICY.hasSymbol.test(value)) {
+    return 'Password must include at least one symbol';
+  }
+  return null;
 };
 
 // Build a public user payload from a user document.
@@ -72,7 +102,7 @@ const toUserPayload = (user, includeToken = false) => {
   };
 
   if (includeToken) {
-    payload.token = generateToken(user._id);
+    payload.token = generateToken(user._id, Number(user.tokenVersion || 0));
   }
 
   return payload;
@@ -99,7 +129,7 @@ const checkRoleLimits = async (role, branch, excludeUserId = null) => {
 
   const query = { role, branch };
   if (excludeUserId) {
-    query._id = { $ne: excludeUserId };
+    query._id = mongoose.trusted({ $ne: excludeUserId });
   }
 
   const count = await User.countDocuments(query);
@@ -124,7 +154,7 @@ const checkRoleMinimumAfterRemoval = async (role, branch, excludeUserId) => {
   };
 
   if (excludeUserId) {
-    query._id = { $ne: excludeUserId };
+    query._id = mongoose.trusted({ $ne: excludeUserId });
   }
 
   const remainingCount = await User.countDocuments(query);
@@ -173,6 +203,10 @@ const registerUser = async ({ actorUser, payload }) => {
   const parsedProfileImage = parseProfileImageUpdate(profileImage);
   if (parsedProfileImage.error) {
     throw createServiceError(400, parsedProfileImage.error);
+  }
+  const passwordPolicyError = validatePasswordStrength(password);
+  if (passwordPolicyError) {
+    throw createServiceError(400, passwordPolicyError);
   }
 
   const isManager = actorUser && actorUser.role === 'manager';
@@ -251,7 +285,7 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
   if (username !== undefined) {
     const existing = await User.findOne({
       username,
-      _id: { $ne: user._id }
+      _id: mongoose.trusted({ $ne: user._id })
     });
     if (existing) {
       throw createServiceError(400, 'Username already exists');
@@ -277,7 +311,12 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
   user.branch = nextBranch;
 
   if (password) {
+    const passwordPolicyError = validatePasswordStrength(password);
+    if (passwordPolicyError) {
+      throw createServiceError(400, passwordPolicyError);
+    }
     user.password = await hashPassword(password);
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
   }
 
   return user.save();
@@ -291,6 +330,7 @@ export {
   checkRoleMinimumAfterRemoval,
   hashPassword,
   getManagerUserAccessError,
+  validatePasswordStrength,
   registerUser,
   updateUserRecord
 };

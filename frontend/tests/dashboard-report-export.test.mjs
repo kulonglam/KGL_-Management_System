@@ -1,3 +1,4 @@
+/** Tests CSV export helpers for director and manager report filename/content generation. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -88,3 +89,4 @@ test('buildManagerCsvContent includes key sections', () => {
   assert.match(csv, /Sales Trend/);
   assert.match(csv, /Dealer Performance/);
 });
+

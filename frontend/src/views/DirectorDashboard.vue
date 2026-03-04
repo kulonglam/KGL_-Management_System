@@ -1,3 +1,4 @@
+<!-- Director dashboard view for cross-branch analytics, trends, and executive reporting. -->
 <template>
   <div class="dashboard-view view-shell" :aria-busy="loading ? 'true' : 'false'">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -614,3 +615,4 @@ export default {
   }
 }
 </style>
+

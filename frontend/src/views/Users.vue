@@ -250,6 +250,7 @@ export default {
     };
   },
   computed: {
+    // Build table rows as search -> role filter -> sort so state changes remain predictable.
     displayedUsers() {
       const query = this.searchQuery.trim().toLowerCase();
       const searched = this.users.filter((item) => {
@@ -348,6 +349,7 @@ export default {
             username: this.form.username,
             role: this.form.role
           };
+          // Password is optional during updates; omit it to keep the existing credential unchanged.
           if (this.form.password) {
             payload.password = this.form.password;
           }
@@ -399,6 +401,7 @@ export default {
       this.deleteDialog.processing = true;
       try {
         await authAPI.deleteUser(this.deleteDialog.userId);
+        // Reset editor when the row being edited is deleted from the same table session.
         if (this.editingId === this.deleteDialog.userId) {
           this.resetForm();
         }

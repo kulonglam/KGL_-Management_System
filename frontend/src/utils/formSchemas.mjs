@@ -1,3 +1,4 @@
+/** Composed validation schemas for procurement, sales, credit-sale, and buyer-facing forms. */
 import { validators as v } from './formValidation.mjs';
 
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
@@ -19,6 +20,7 @@ const procurementValidationSchema = {
   sourceType: [v.required('Source type is required.'), v.oneOf(SOURCE_TYPES, 'Invalid source type.')],
   dateReceived: [v.required('Date received is required.'), v.isoDate('Date received must be valid.')],
   timeReceived: [v.required('Time received is required.'), v.timeHHmm()],
+  // Individual suppliers have a higher minimum tonnage requirement than other source types.
   tonnageKg: (values) => [
     v.required('Tonnage is required.'),
     v.number('Tonnage must be numeric.'),
@@ -155,3 +157,4 @@ export {
   creditSaleValidationSchema,
   trustedBuyerValidationSchema
 };
+

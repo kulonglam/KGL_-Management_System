@@ -35,7 +35,7 @@ const seedData = async () => {
 
     // Create users
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('password123', salt);
+    const hashedPassword = await bcrypt.hash('Karibu@2026!', salt);
 
     const users = await User.create([
       {
@@ -232,7 +232,7 @@ const seedData = async () => {
 
     console.log('Credit sales created');
     console.log('\n=== Sample Login Credentials ===');
-    console.log('All users have password: password123');
+    console.log('All users have password: Karibu@2026!');
     console.log('\nDirector:');
     console.log('  Username: orban');
     console.log('\nManagers:');

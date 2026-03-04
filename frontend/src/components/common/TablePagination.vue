@@ -1,3 +1,4 @@
+<!-- Reusable table pagination control with page-size selection and navigation actions. -->
 <template>
   <div
     v-if="totalItems > 0"
@@ -95,3 +96,4 @@ const handlePageSizeChange = (event) => {
   emit('update:pageSize', nextValue);
 };
 </script>
+

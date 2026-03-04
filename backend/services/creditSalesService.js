@@ -1,5 +1,6 @@
 import CreditSale from '../models/CreditSale.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
+import mongoose from 'mongoose';
 import { calculateInventoryByBranch } from './inventoryService.js';
 import { createOutOfStockNotification } from './stockNotificationService.js';
 import { withStockLock } from './stockLockService.js';
@@ -165,7 +166,7 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
   const openCredits = await CreditSale.find({
     trustedBuyer: trustedBuyer._id,
     branch: actorUser.branch,
-    $or: [{ isPaid: false }, { balanceUgx: { $gt: 0 } }]
+    $or: [{ isPaid: false }, { balanceUgx: mongoose.trusted({ $gt: 0 }) }]
   })
     .select('amountDueUgx amountPaidUgx balanceUgx')
     .lean();
@@ -263,7 +264,10 @@ const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid 
     }
 
     const updated = await CreditSale.findOneAndUpdate(
-      { _id: creditSaleId, 'payments.0': { $exists: false } },
+      {
+        _id: creditSaleId,
+        'payments.0': mongoose.trusted({ $exists: false })
+      },
       {
         $set: {
           isPaid: false,
@@ -349,9 +353,10 @@ const repayCreditSaleRecord = async ({ actorUser, creditSaleId, payload }) => {
   const updated = await CreditSale.findOneAndUpdate(
     {
       _id: creditSaleId,
-      $expr: {
+      // Mark this internal operator as trusted while keeping global sanitizeFilter enabled.
+      $expr: mongoose.trusted({
         $gte: [CURRENT_BALANCE_EXPR, repaymentInput.amount]
-      }
+      })
     },
     [
       {

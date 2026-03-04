@@ -348,7 +348,7 @@ export default {
     },
     managerNavSections() {
       const itemMap = new Map(this.mainNavItems.map((item) => [item.path, item]));
-      // Handle pick.
+      // Build sections from already-authorized nav items so hidden routes are excluded automatically.
       const pick = (paths) => paths.map((path) => itemMap.get(path)).filter(Boolean);
 
       return [
@@ -487,6 +487,7 @@ export default {
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
 
+      // Keep keyboard focus inside the modal while it is open.
       if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();
@@ -521,6 +522,7 @@ export default {
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
 
+      // Keep focus cycling inside the mobile drawer until it is closed.
       if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();
@@ -606,6 +608,7 @@ export default {
     },
     startStockMonitor() {
       this.stopStockMonitor();
+      // Poll every minute so stock alerts stay fresh without manual refresh.
       this.stockMonitorIntervalId = window.setInterval(() => {
         this.loadStockAlert();
         this.loadStockNotifications();

@@ -14,6 +14,8 @@ const PHONE_PATTERN = /^(\+256|0)[0-9]{9}$/;
 const NIN_PATTERN = /^[A-Z0-9]{14}$/;
 // Configure time pattern.
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+// Configure password complexity pattern.
+const PASSWORD_COMPLEXITY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).+$/;
 // Configure validation limits.
 const VALIDATION_LIMITS = {
   textMinLength: 2,
@@ -82,8 +84,10 @@ const loginValidation = [
   body('password')
     .notEmpty()
     .withMessage('password is required')
-    .isLength({ min: 6 })
-    .withMessage('password must be at least 6 characters')
+    .isLength({ min: 10 })
+    .withMessage('password must be at least 10 characters')
+    .matches(PASSWORD_COMPLEXITY_PATTERN)
+    .withMessage('password must include uppercase, lowercase, number, and symbol')
 ];
 
 // Configure register validation.
@@ -105,8 +109,10 @@ const registerValidation = [
   body('password')
     .notEmpty()
     .withMessage('password is required')
-    .isLength({ min: 6 })
-    .withMessage('password must be at least 6 characters'),
+    .isLength({ min: 10 })
+    .withMessage('password must be at least 10 characters')
+    .matches(PASSWORD_COMPLEXITY_PATTERN)
+    .withMessage('password must include uppercase, lowercase, number, and symbol'),
   body('role').trim().isIn(ROLES).withMessage('Invalid role'),
   body('branch').optional({ values: 'falsy' }).trim().isIn(BRANCHES).withMessage('Invalid branch')
 ];
@@ -127,8 +133,10 @@ const profileUpdateValidation = [
     .withMessage('username must be at least 2 characters'),
   body('password')
     .optional()
-    .isLength({ min: 6 })
-    .withMessage('password must be at least 6 characters')
+    .isLength({ min: 10 })
+    .withMessage('password must be at least 10 characters')
+    .matches(PASSWORD_COMPLEXITY_PATTERN)
+    .withMessage('password must include uppercase, lowercase, number, and symbol')
 ];
 
 // Configure user update validation.
@@ -150,8 +158,10 @@ const userUpdateValidation = [
   body('branch').optional().trim().isIn(BRANCHES).withMessage('Invalid branch'),
   body('password')
     .optional()
-    .isLength({ min: 6 })
-    .withMessage('password must be at least 6 characters')
+    .isLength({ min: 10 })
+    .withMessage('password must be at least 10 characters')
+    .matches(PASSWORD_COMPLEXITY_PATTERN)
+    .withMessage('password must include uppercase, lowercase, number, and symbol')
 ];
 
 // Configure procurement create validation.
@@ -318,9 +328,21 @@ const saleCreateValidation = [
     .withMessage('time must be in HH:mm format')
 ];
 
-// Configure sale update validation (manager correction fields only).
+// Configure sale update validation (manager correction fields).
 const saleUpdateValidation = [
   ...mongoIdParamValidation,
+  body('produceName')
+    .optional()
+    .trim()
+    .isLength({ min: saleRules.produceName.minLength })
+    .withMessage(`produceName must be at least ${saleRules.produceName.minLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('produceName must be alphanumeric'),
+  body('produceType').optional().trim().isIn(PRODUCE_TYPES).withMessage('Invalid produceType'),
+  body('tonnageKg')
+    .optional()
+    .isFloat({ min: saleRules.tonnageKg.min })
+    .withMessage(`tonnageKg must be at least ${saleRules.tonnageKg.min}`),
   body('buyerName')
     .optional()
     .trim()
@@ -328,6 +350,13 @@ const saleUpdateValidation = [
     .withMessage(`buyerName must be at least ${saleRules.buyerName.minLength} characters`)
     .matches(ALPHANUMERIC_TEXT)
     .withMessage('buyerName must be alphanumeric'),
+  body('salesAgentName')
+    .optional()
+    .trim()
+    .isLength({ min: saleRules.buyerName.minLength })
+    .withMessage(`salesAgentName must be at least ${saleRules.buyerName.minLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('salesAgentName must be alphanumeric'),
   body('date').optional().isISO8601().withMessage('date must be a valid date'),
   body('time')
     .optional()

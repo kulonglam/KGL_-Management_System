@@ -1,3 +1,4 @@
+<!-- Reusable quick-actions panel for rendering dashboard shortcuts and primary actions. -->
 <template>
   <div class="card quick-actions-card">
     <div class="card-body">
@@ -140,3 +141,4 @@ defineProps({
   }
 }
 </style>
+

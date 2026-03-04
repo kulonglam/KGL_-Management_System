@@ -200,6 +200,7 @@ export default {
       try {
         const response = await priceAPI.getAll();
         const map = {};
+        // Normalize API data into a produceType lookup so we can render a stable fixed row list.
         response.data.forEach((entry) => {
           map[entry.produceType] = entry;
         });
@@ -225,6 +226,7 @@ export default {
     },
     validatePrice(row) {
       const price = Number(row.priceUgx);
+      // Guard rail: keep managed prices above minimum business threshold.
       if (!price || Number.isNaN(price) || price < 10000) {
         row.error = 'Price must be at least 10000 UGX';
         return null;
@@ -250,6 +252,7 @@ export default {
           ? await priceAPI.update(row._id, payload)
           : await priceAPI.create(payload);
 
+        // API returns canonical setting details after sync; update the row from that source of truth.
         row._id = response.data.setting._id;
         row.priceUgx = response.data.setting.priceUgx;
         row.source = 'managed';

@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 // Handle connect db.
 const connectDB = async () => {
   try {
+    mongoose.set('strictQuery', true);
+    mongoose.set('sanitizeFilter', true);
     const conn = await mongoose.connect(process.env.MONGODB_URI);
 
     console.log(`MongoDB Connected: ${conn.connection.host}`);

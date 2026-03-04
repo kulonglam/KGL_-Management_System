@@ -1,3 +1,4 @@
+<!-- Manager dashboard chart container for revenue, payments, and branch metric visualizations. -->
 <template>
   <div class="row g-4">
     <div class="col-xl-6">
@@ -31,7 +32,7 @@
     <div class="col-xl-6">
       <div class="card chart-card h-100">
         <div class="card-header chart-header">
-          <h5 class="mb-0">Sales Over Time ({{ selectedPeriodLabel }})</h5>
+          <h5 class="mb-0">Sales Trend ({{ selectedPeriodLabel }})</h5>
         </div>
         <div class="card-body">
           <div v-if="!hasSalesTrendData" class="chart-empty">No sales recorded yet</div>
@@ -347,3 +348,4 @@ export default {
   text-align: center;
 }
 </style>
+

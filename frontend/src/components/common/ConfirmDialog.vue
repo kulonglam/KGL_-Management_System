@@ -1,3 +1,4 @@
+<!-- Reusable confirmation modal used before destructive or high-impact user actions. -->
 <template>
   <div v-if="show" class="modal-mask" @click.self="handleCancel">
     <div
@@ -181,3 +182,4 @@ onBeforeUnmount(() => {
   max-width: 480px;
 }
 </style>
+

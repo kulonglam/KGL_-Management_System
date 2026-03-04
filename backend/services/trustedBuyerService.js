@@ -1,4 +1,5 @@
 import TrustedBuyer from '../models/TrustedBuyer.js';
+import mongoose from 'mongoose';
 
 // Normalize free-text input values.
 const normalizeText = (value) =>
@@ -20,7 +21,7 @@ const findDuplicateTrustedBuyer = async ({ branch, nationalId, excludeId = null 
   };
 
   if (excludeId) {
-    query._id = { $ne: excludeId };
+    query._id = mongoose.trusted({ $ne: excludeId });
   }
 
   return TrustedBuyer.findOne(query);

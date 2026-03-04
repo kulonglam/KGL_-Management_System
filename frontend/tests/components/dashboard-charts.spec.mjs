@@ -1,3 +1,4 @@
+/** Dashboard chart component tests with chart stubs and accessibility assertions. */
 import { mount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
@@ -128,3 +129,4 @@ describe('Dashboard chart components', () => {
     expectNoA11yViolations(results);
   });
 });
+

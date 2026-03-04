@@ -1,30 +1,63 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import mongoose from 'mongoose';
+import logger from '../utils/logger.js';
 import {
   parseProfileImageUpdate,
   toUserPayload,
   ensureLegacyDirectorTotalsAccess,
   checkRoleMinimumAfterRemoval,
   hashPassword,
+  validatePasswordStrength,
   getManagerUserAccessError,
   registerUser,
   updateUserRecord
 } from '../services/authService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
+const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
+const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
+
 // Handle login.
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Check if user exists
     const user = await User.findOne({ username });
+    const now = new Date();
+
+    if (user?.lockUntil && user.lockUntil > now) {
+      logger.warn('auth.login.blocked', {
+        username,
+        reason: 'account_locked',
+        lockUntil: user.lockUntil
+      });
+      return res.status(423).json({ message: 'Account is temporarily locked. Try again later.' });
+    }
 
     if (user && (await bcrypt.compare(password, user.password))) {
+      if (user.loginAttempts || user.lockUntil) {
+        user.loginAttempts = 0;
+        user.lockUntil = null;
+        await user.save();
+      }
       await ensureLegacyDirectorTotalsAccess(user);
-      res.json(toUserPayload(user, true));
+      return res.json(toUserPayload(user, true));
     } else {
-      res.status(401).json({ message: 'Invalid credentials' });
+      if (user) {
+        const nextAttempts = Number(user.loginAttempts || 0) + 1;
+        user.loginAttempts = nextAttempts;
+        if (nextAttempts >= MAX_LOGIN_ATTEMPTS) {
+          user.lockUntil = new Date(Date.now() + LOGIN_LOCK_WINDOW_MS);
+          user.loginAttempts = 0;
+        }
+        await user.save();
+      }
+      logger.warn('auth.login.failed', {
+        username,
+        reason: 'invalid_credentials'
+      });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -63,7 +96,7 @@ const updateMe = async (req, res) => {
     if (username !== undefined) {
       const existing = await User.findOne({
         username,
-        _id: { $ne: user._id }
+        _id: mongoose.trusted({ $ne: user._id })
       });
 
       if (existing) {
@@ -73,8 +106,15 @@ const updateMe = async (req, res) => {
       user.username = username;
     }
 
+    let passwordUpdated = false;
     if (password) {
+      const passwordPolicyError = validatePasswordStrength(password);
+      if (passwordPolicyError) {
+        return res.status(400).json({ message: passwordPolicyError });
+      }
       user.password = await hashPassword(password);
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+      passwordUpdated = true;
     }
 
     if (parsedProfileImage.hasUpdate) {
@@ -83,7 +123,7 @@ const updateMe = async (req, res) => {
 
     const updatedUser = await user.save();
 
-    return res.json(toUserPayload(updatedUser));
+    return res.json(toUserPayload(updatedUser, passwordUpdated));
   } catch (error) {
     return res.status(400).json({ message: error.message });
   }
@@ -110,7 +150,7 @@ const getUsers = async (req, res) => {
     const filter = {};
     if (req.user.role === 'manager') {
       filter.branch = req.user.branch;
-      filter.role = { $in: ['manager', 'sales_agent'] };
+      filter.role = mongoose.trusted({ $in: ['manager', 'sales_agent'] });
     }
 
     const pagination = parsePagination(req.query);

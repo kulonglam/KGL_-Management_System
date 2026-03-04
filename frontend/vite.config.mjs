@@ -1,3 +1,4 @@
+/** Vite development/build configuration with manual chunking for better frontend bundle caching. */
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
@@ -27,3 +28,4 @@ export default defineConfig({
     }
   }
 });
+

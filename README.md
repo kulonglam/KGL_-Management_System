@@ -51,7 +51,14 @@ npm run dev
 Frontend default URL: `http://localhost:5173`
 
 ## Seeded Login Credentials
-All seeded users use password `password123`.
+All seeded users use password `Karibu@2026!`.
+
+To update passwords for already-existing users in your current database:
+
+```bash
+cd backend
+npm run reset:passwords -- --password=Karibu@2026!
+```
 
 - Director: `orban`
 - Managers: `managerA` (Maganjo), `managerB` (Matugga)

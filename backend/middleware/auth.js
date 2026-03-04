@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import logger from '../utils/logger.js';
+
+const ALLOWED_JWT_ALGORITHMS = (process.env.JWT_ALLOWED_ALGS || 'HS256')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
 
 // Protect routes - verify JWT token
 const protect = async (req, res, next) => {
@@ -16,16 +22,31 @@ const protect = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ALLOWED_JWT_ALGORITHMS
+    });
 
     // Get user from token
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) {
+      logger.warn('auth.token.rejected', { reason: 'user_not_found', userId: decoded.id || null });
       return res.status(401).json({ message: 'Not authorized, user not found' });
+    }
+
+    if (
+      decoded.tokenVersion !== undefined &&
+      Number(decoded.tokenVersion) !== Number(req.user.tokenVersion || 0)
+    ) {
+      logger.warn('auth.token.rejected', {
+        reason: 'token_version_mismatch',
+        userId: String(req.user._id)
+      });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
 
     return next();
   } catch (error) {
+    logger.warn('auth.token.rejected', { reason: 'token_invalid', message: error.message });
     return res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };
@@ -37,6 +58,12 @@ const authorize = (...roles) => {
       return res.status(401).json({ message: 'Not authorized' });
     }
     if (!roles.includes(req.user.role)) {
+      logger.warn('auth.access.denied', {
+        reason: 'role_mismatch',
+        userId: req.user?._id ? String(req.user._id) : null,
+        role: req.user.role,
+        requiredRoles: roles
+      });
       return res.status(403).json({
         message: `User role ${req.user.role} is not authorized to access this route`
       });
@@ -51,16 +78,9 @@ const authorizeDirectorOrban = (req, res, next) => {
     return res.status(401).json({ message: 'Not authorized' });
   }
 
-  const username = String(req.user.username || '')
-    .trim()
-    .toLowerCase();
-  const name = String(req.user.name || '')
-    .trim()
-    .toLowerCase();
-  const isOrbanIdentity = username === 'orban' || name === 'mr. orban';
   const hasTotalsPermission = req.user.canViewCrossBranchTotals === true;
 
-  if (req.user.role === 'director' && (hasTotalsPermission || isOrbanIdentity)) {
+  if (req.user.role === 'director' && hasTotalsPermission) {
     return next();
   }
 
