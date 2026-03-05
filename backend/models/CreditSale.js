@@ -1,3 +1,8 @@
+/**
+ * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ * File: backend/models/CreditSale.js
+ */
+
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
@@ -5,7 +10,7 @@ import { normalizeProduceName, normalizeProduceType } from '../utils/produceNorm
 const creditSaleSchema = new mongoose.Schema(
   {
     buyerName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
-    nationalId: { type: String, required: true, match: /^[A-Z0-9]{14}$/ },
+    nationalId: { type: String, required: true, match: /^(CM|CF)[0-9]{12}$/ },
     location: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
     contact: { type: String, required: true, match: /^(\+256|0)[0-9]{9}$/ },
     amountDueUgx: { type: Number, required: true, min: 10000 },
@@ -58,3 +63,8 @@ creditSaleSchema.index({ branch: 1, dueDate: 1, isPaid: 1 });
 creditSaleSchema.index({ trustedBuyer: 1, createdAt: -1 });
 
 export default mongoose.model('CreditSale', creditSaleSchema);
+
+
+
+
+

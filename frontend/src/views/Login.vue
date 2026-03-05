@@ -137,6 +137,11 @@
 </template>
 
 <script>
+/**
+ * Authentication screen that signs users in and routes them to role-specific dashboards.
+ * File: frontend/src/views/Login.vue
+ */
+
 import { authAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
@@ -166,10 +171,11 @@ export default {
     }
   },
   methods: {
+    // Show a non-technical password-reset instruction for users.
     showResetHelp() {
       this.helpMessage = 'Please contact your manager or system administrator to reset your password.';
     },
-    // Handle login.
+    // Submit login credentials and hydrate client session on success.
     async handleLogin() {
       this.loading = true;
       this.error = '';
@@ -191,7 +197,7 @@ export default {
           localStorage.removeItem('rememberedUsername');
         }
 
-        // Navigate based on role
+        // Route user to the dashboard permitted by their assigned role.
         if (user.role === 'director') {
           this.$router.push('/dashboard/director');
         } else if (user.role === 'manager') {

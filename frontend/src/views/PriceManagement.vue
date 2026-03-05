@@ -122,13 +122,18 @@
 </template>
 
 <script>
+/**
+ * Manager price administration page for create/update/delete of produce selling prices.
+ * File: frontend/src/views/PriceManagement.vue
+ */
+
 import { priceAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 
-// Configure produce types.
+// Canonical produce types supported by the business.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
 
-// Create row.
+// Build UI row state for one produce type entry.
 const createRow = (type) => ({
   _id: null,
   type,
@@ -160,7 +165,7 @@ export default {
     };
   },
   computed: {
-    // Handle managed count.
+    // Summary count for rows currently backed by managed prices.
     managedCount() {
       return this.rows.filter((row) => row.source === 'managed').length;
     },
@@ -175,7 +180,7 @@ export default {
     await this.loadPrices();
   },
   methods: {
-    // Handle status label.
+    // Convert row source code into display label.
     statusLabel(source) {
       if (source === 'managed') return 'Managed';
       if (source === 'inferred') return 'Inferred';
@@ -242,7 +247,7 @@ export default {
       row.saving = true;
       try {
         const wasManaged = Boolean(row._id);
-        // Configure payload.
+        // Payload accepted by price create/update endpoints.
         const payload = {
           produceType: row.type,
           priceUgx: price

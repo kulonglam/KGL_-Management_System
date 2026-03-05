@@ -41,13 +41,13 @@
 </template>
 
 <script setup>
-// Configure form.
+// Shared credit-sale form model passed from parent view.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
-// Configure today iso date.
+// Used as minimum selectable due date to prevent past-date credit terms.
 const todayIsoDate = new Date().toISOString().split('T')[0];
 
 defineProps({

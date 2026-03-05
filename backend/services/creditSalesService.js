@@ -1,3 +1,9 @@
+/**
+ * Implements credit-sale business workflows: stock-safe creation, due-date enforcement,
+ * outstanding-balance checks, payment-status transitions, and repayment posting.
+ * File: backend/services/creditSalesService.js
+ */
+
 import CreditSale from '../models/CreditSale.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import mongoose from 'mongoose';
@@ -10,14 +16,14 @@ import {
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 
-// Create a typed service error with HTTP status metadata.
+// Construct a service-domain error object with an explicit HTTP status code.
 const createServiceError = (statusCode, message) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 };
 
-// Resolve produce type for credit sale creation.
+// Resolve the concrete produceType to use for a credit sale from inventory + optional requester hint.
 const resolveProduceTypeForCreditSale = (inventory, produceName, requestedProduceType) => {
   const requestedNameKey = normalizeProduceNameKey(produceName);
   const requestedType = normalizeProduceType(requestedProduceType || '');
@@ -43,7 +49,7 @@ const resolveProduceTypeForCreditSale = (inventory, produceName, requestedProduc
   return { produceType: candidates[0].produceType };
 };
 
-// Validate due date and enforce non-past values.
+// Validate due date format and enforce policy: due date must be today or in the future.
 const validateDueDate = (dueDate) => {
   const dueDateValue = new Date(dueDate);
   if (Number.isNaN(dueDateValue.getTime())) {
@@ -60,7 +66,7 @@ const validateDueDate = (dueDate) => {
   return { dueDateValue };
 };
 
-// Calculate outstanding balance across open credit sales.
+// Sum effective outstanding balances across open credit sales for one trusted buyer.
 const calculateOutstandingBalance = (openCredits) => {
   return openCredits.reduce((sum, sale) => {
     const due = Number(sale.amountDueUgx || 0);
@@ -73,12 +79,12 @@ const calculateOutstandingBalance = (openCredits) => {
   }, 0);
 };
 
-// Format outstanding balance validation message.
+// Build a user-facing message when buyer has unresolved prior credit balance.
 const buildOutstandingBalanceMessage = (outstandingBalance) => {
   return `Trusted buyer has an outstanding balance of ${Math.round(outstandingBalance).toLocaleString('en-UG')} UGX. Clear previous credit first.`;
 };
 
-// Build update payload for paid/unpaid toggle.
+// Build deterministic state values for a paid/unpaid status toggle.
 const buildPaymentStatusUpdate = (creditSale, isPaid) => {
   return {
     isPaid,
@@ -87,7 +93,7 @@ const buildPaymentStatusUpdate = (creditSale, isPaid) => {
   };
 };
 
-// Parse repayment request input.
+// Parse and validate repayment input values (amount and payment date).
 const parseRepaymentInput = ({ amountUgx, paidAt }) => {
   const amount = Number(amountUgx);
   const paidAtDate = paidAt ? new Date(paidAt) : new Date();
@@ -102,7 +108,7 @@ const parseRepaymentInput = ({ amountUgx, paidAt }) => {
   return { amount, paidAt: paidAtDate };
 };
 
-// Compute repayment state and validate against current balance.
+// Compute post-payment amounts and reject overpayment against current remaining balance.
 const calculateRepaymentState = (creditSale, amount) => {
   const currentPaid = creditSale.amountPaidUgx || 0;
   const currentBalance =
@@ -125,14 +131,14 @@ const calculateRepaymentState = (creditSale, amount) => {
   };
 };
 
-// Reusable expression for current paid amount in update pipelines.
+// Reusable aggregation expression for current paid amount in atomic update pipelines.
 const CURRENT_PAID_EXPR = { $ifNull: ['$amountPaidUgx', 0] };
-// Reusable expression for current balance in update pipelines.
+// Reusable aggregation expression for computed current balance in atomic update pipelines.
 const CURRENT_BALANCE_EXPR = {
   $ifNull: ['$balanceUgx', { $max: [{ $subtract: ['$amountDueUgx', CURRENT_PAID_EXPR] }, 0] }]
 };
 
-// Create a credit sale after buyer, balance, and stock validation.
+// Create a credit sale after validating buyer eligibility, due date, stock, and outstanding-balance rules.
 const createCreditSaleRecord = async ({ actorUser, payload }) => {
   const {
     trustedBuyerId,
@@ -244,7 +250,7 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
   );
 };
 
-// Apply paid/unpaid status while preserving payment-history consistency.
+// Apply paid/unpaid status transition while preserving repayment-history consistency.
 const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid }) => {
   const creditSale = await CreditSale.findById(creditSaleId).select(
     'branch amountDueUgx amountPaidUgx balanceUgx payments'
@@ -334,7 +340,7 @@ const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid 
   return updated;
 };
 
-// Apply a repayment amount to an existing credit sale.
+// Apply one repayment installment atomically and update balance/isPaid fields accordingly.
 const repayCreditSaleRecord = async ({ actorUser, creditSaleId, payload }) => {
   const creditSale = await CreditSale.findById(creditSaleId);
   if (!creditSale) {
@@ -415,3 +421,8 @@ export {
   createCreditSaleRecord,
   repayCreditSaleRecord
 };
+
+
+
+
+

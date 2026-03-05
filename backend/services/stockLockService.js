@@ -1,33 +1,39 @@
+/**
+ * Implements short-lived distributed stock locks to prevent concurrent overselling
+ * when multiple requests update the same branch/produce stock bucket.
+ * File: backend/services/stockLockService.js
+ */
+
 import { randomUUID } from 'crypto';
 import mongoose from 'mongoose';
 import StockLock from '../models/StockLock.js';
 
-// Configure stock lock defaults.
+// Default lock tuning values for acquire timeout and retry behavior.
 const DEFAULT_LOCK_TTL_MS = 8000;
 const DEFAULT_LOCK_WAIT_MS = 5000;
 const DEFAULT_RETRY_INTERVAL_MS = 75;
 
-// Wait helper for retry loops.
+// Promise-based sleep helper used between lock acquisition retries.
 const delay = (ms) =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 
-// Normalize text fragments used in lock keys.
+// Normalize lock-key parts so key generation is deterministic across equivalent text input.
 const normalizeLockPart = (value) =>
   String(value ?? '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, ' ');
 
-// Build a deterministic lock key for a stock bucket.
+// Build deterministic lock key for one stock bucket (branch + produceName + produceType).
 const buildStockLockKey = ({ branch, produceName, produceType }) => {
   return `${normalizeLockPart(branch)}::${normalizeLockPart(produceName)}::${normalizeLockPart(
     produceType
   )}`;
 };
 
-// Acquire a lock for a stock bucket with retry and stale-lock takeover.
+// Acquire lock with retries and stale-lock takeover; throws 409 on timeout.
 const acquireStockLock = async (
   key,
   {
@@ -82,12 +88,12 @@ const acquireStockLock = async (
   throw lockTimeoutError;
 };
 
-// Release a previously acquired stock lock.
+// Release lock only for matching key/owner pair to avoid deleting another request's lock.
 const releaseStockLock = async ({ key, ownerId }) => {
   await StockLock.deleteOne({ key, ownerId });
 };
 
-// Execute a task while holding a stock lock.
+// Execute callback while lock is held, guaranteeing release in finally.
 const withStockLock = async (input, task, options) => {
   const key = buildStockLockKey(input);
   const lock = await acquireStockLock(key, options);
@@ -99,3 +105,8 @@ const withStockLock = async (input, task, options) => {
 };
 
 export { buildStockLockKey, acquireStockLock, releaseStockLock, withStockLock };
+
+
+
+
+

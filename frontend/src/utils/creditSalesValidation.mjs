@@ -1,5 +1,9 @@
-// Utility helpers for credit-sale repayments.
+/**
+ * Helper utilities used by credit-sales records to compute balances and validate repayments.
+ * File: frontend/src/utils/creditSalesValidation.mjs
+ */
 
+// Resolve remaining balance from normalized API data or derived fields.
 export const getCreditSaleBalance = (item) => {
   if (!item) return 0;
   if (item.balanceUgx !== undefined && item.balanceUgx !== null) {
@@ -8,6 +12,7 @@ export const getCreditSaleBalance = (item) => {
   return Math.max(Number(item.amountDueUgx || 0) - Number(item.amountPaidUgx || 0), 0);
 };
 
+// Validate repayment input against a positive amount and current outstanding balance.
 export const validateRepaymentAmount = (amountInput, balanceInput) => {
   const amount = Number(amountInput || 0);
   const balance = Number(balanceInput || 0);

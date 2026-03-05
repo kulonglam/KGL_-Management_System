@@ -1,7 +1,12 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/stockNotificationController.js
+ */
+
 import StockNotification from '../models/StockNotification.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-// Retrieve stock notifications.
+// GET /api/notifications: list manager stock notifications with unread filter and optional pagination.
 const getStockNotifications = async (req, res) => {
   try {
     // Configure filter.
@@ -41,7 +46,7 @@ const getStockNotifications = async (req, res) => {
   }
 };
 
-// Handle mark stock notification read.
+// PUT /api/notifications/:id/read: mark one notification as read for the current manager branch.
 const markStockNotificationRead = async (req, res) => {
   try {
     const notification = await StockNotification.findById(req.params.id);
@@ -67,3 +72,8 @@ const markStockNotificationRead = async (req, res) => {
 };
 
 export { getStockNotifications, markStockNotificationRead };
+
+
+
+
+

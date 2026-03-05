@@ -1,12 +1,18 @@
-/** Composed validation schemas for procurement, sales, credit-sale, and buyer-facing forms. */
+/**
+ * Composed client-side validation schemas for procurement, sales, credit-sale,
+ * and trusted-buyer forms.
+ * File: frontend/src/utils/formSchemas.mjs
+ */
 import { validators as v } from './formValidation.mjs';
 
+// Allowed lookup values shared between form widgets and validation rules.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
 const SOURCE_TYPES = ['individual', 'company', 'kgl_farm'];
 const ALPHANUMERIC_TEXT = /^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/;
 const PHONE_PATTERN = /^(\+256|0)[0-9]{9}$/;
-const NIN_PATTERN = /^[A-Za-z0-9]{14}$/;
+const NIN_PATTERN = /^(CM|CF)[0-9]{12}$/;
 
+// Procurement entry rules, including source-dependent minimum tonnage policy.
 const procurementValidationSchema = {
   produceName: [
     v.required('Produce name is required.'),
@@ -52,6 +58,7 @@ const procurementValidationSchema = {
   ]
 };
 
+// Cash-sales entry rules.
 const salesValidationSchema = {
   produceName: [
     v.required('Produce name is required.'),
@@ -77,6 +84,7 @@ const salesValidationSchema = {
   time: [v.required('Time is required.'), v.timeHHmm()]
 };
 
+// Credit-sale dispatch rules with strict Ugandan NIN and due-date constraints.
 const creditSaleValidationSchema = {
   trustedBuyerId: [
     v.required('Trusted buyer is required.'),
@@ -130,6 +138,7 @@ const creditSaleValidationSchema = {
   ]
 };
 
+// Trusted-buyer registration/update rules.
 const trustedBuyerValidationSchema = {
   name: [
     v.required('Buyer name is required.'),

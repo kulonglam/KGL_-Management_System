@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/salesController.js
+ */
+
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
@@ -17,7 +22,7 @@ import {
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 
-// Retrieve all sales.
+// GET /api/sales: list sales visible to requester branch scope with optional pagination metadata.
 const getAllSales = async (req, res) => {
   try {
     const filter = {};
@@ -57,7 +62,7 @@ const getAllSales = async (req, res) => {
   }
 };
 
-// Create sale.
+// POST /api/sales: record a cash sale after stock/type resolution, locking, and out-of-stock notification checks.
 const createSale = async (req, res) => {
   try {
     const {
@@ -142,7 +147,7 @@ const createSale = async (req, res) => {
   }
 };
 
-// Retrieve sales aggregation.
+// GET /api/sales/aggregation: build director-facing totals/trends across selected branches and time window.
 const getSalesAggregation = async (req, res) => {
   try {
     const aggregationContext = buildAggregationContext({
@@ -196,7 +201,7 @@ const getSalesAggregation = async (req, res) => {
   }
 };
 
-// Delete sale.
+// DELETE /api/sales/:id: delete one sale after branch access validation.
 const deleteSale = async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
@@ -217,7 +222,7 @@ const deleteSale = async (req, res) => {
   }
 };
 
-// Update sale correction fields.
+// PUT /api/sales/:id: correct sale fields with stock-aware recalculation when produce/tonnage changes.
 const updateSale = async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
@@ -369,3 +374,8 @@ const updateSale = async (req, res) => {
 };
 
 export { getAllSales, createSale, getSalesAggregation, updateSale, deleteSale };
+
+
+
+
+

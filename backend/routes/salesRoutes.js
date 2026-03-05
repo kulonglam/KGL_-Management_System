@@ -1,3 +1,8 @@
+/**
+ * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ * File: backend/routes/salesRoutes.js
+ */
+
 import express from 'express';
 // Configure router.
 const router = express.Router();
@@ -18,24 +23,27 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router
-  .route('/')
-  .get(
-    protect,
-    authorize('manager', 'sales_agent'),
-    paginationValidation,
-    validateRequest,
-    getAllSales
-  )
-  .post(
-    protect,
-    authorize('manager', 'sales_agent'),
-    writeLimiter,
-    saleCreateValidation,
-    validateRequest,
-    createSale
-  );
+// GET /api/sales: list branch sales visible to manager/sales agent roles.
+router.get(
+  '/',
+  protect,
+  authorize('manager', 'sales_agent'),
+  paginationValidation,
+  validateRequest,
+  getAllSales
+);
+// POST /api/sales: create a new cash-sale transaction.
+router.post(
+  '/',
+  protect,
+  authorize('manager', 'sales_agent'),
+  writeLimiter,
+  saleCreateValidation,
+  validateRequest,
+  createSale
+);
 
+// GET /api/sales/aggregation: return cross-branch sales totals for director reporting.
 router.get(
   '/aggregation',
   protect,
@@ -44,6 +52,7 @@ router.get(
   getSalesAggregation
 );
 
+// DELETE /api/sales/:id: delete one sale record (manager only).
 router.delete(
   '/:id',
   protect,
@@ -54,6 +63,7 @@ router.delete(
   deleteSale
 );
 
+// PUT /api/sales/:id: update one sale record correction (manager only).
 router.put(
   '/:id',
   protect,
@@ -65,3 +75,8 @@ router.put(
 );
 
 export default router;
+
+
+
+
+

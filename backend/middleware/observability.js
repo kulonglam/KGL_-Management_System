@@ -1,3 +1,8 @@
+/**
+ * Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
+ * File: backend/middleware/observability.js
+ */
+
 import { randomUUID } from 'node:crypto';
 import logger from '../utils/logger.js';
 
@@ -39,3 +44,8 @@ const accessLogger = (req, res, next) => {
 };
 
 export { requestContext, accessLogger };
+
+
+
+
+

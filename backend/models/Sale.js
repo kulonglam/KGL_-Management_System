@@ -1,3 +1,8 @@
+/**
+ * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ * File: backend/models/Sale.js
+ */
+
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
@@ -36,3 +41,8 @@ saleSchema.index({ branch: 1, date: -1 });
 saleSchema.index({ branch: 1, produceName: 1, produceType: 1 });
 
 export default mongoose.model('Sale', saleSchema);
+
+
+
+
+

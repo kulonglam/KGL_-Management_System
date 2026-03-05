@@ -1,5 +1,11 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/inventoryController.js
+ */
+
 import { getInventoryOverview, getStockForProduce } from '../services/inventoryService.js';
 
+// GET /api/inventory: return inventory overview (stock buckets, alerts, and summary statistics).
 const getInventory = async (req, res) => {
   try {
     const filter = {};
@@ -16,7 +22,7 @@ const getInventory = async (req, res) => {
   }
 };
 
-// Check stock availability
+// POST /api/inventory/check-stock: evaluate availability for a requested produce + tonnage.
 const checkStock = async (req, res) => {
   try {
     const { produceName, tonnage } = req.body;
@@ -34,3 +40,8 @@ const checkStock = async (req, res) => {
 };
 
 export { getInventory, checkStock };
+
+
+
+
+

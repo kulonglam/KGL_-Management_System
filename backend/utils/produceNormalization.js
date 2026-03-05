@@ -1,3 +1,8 @@
+/**
+ * Supplies shared utility helpers used across multiple backend modules.
+ * File: backend/utils/produceNormalization.js
+ */
+
 // Normalize whitespace and trim text input.
 const normalizeWhitespace = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 
@@ -80,3 +85,8 @@ export {
   normalizeSourceType,
   normalizeProduceNameKey
 };
+
+
+
+
+

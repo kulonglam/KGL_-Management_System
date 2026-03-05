@@ -1,3 +1,8 @@
+/**
+ * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ * File: backend/routes/stockNotificationRoutes.js
+ */
+
 import express from 'express';
 import {
   getStockNotifications,
@@ -10,6 +15,7 @@ import { mongoIdParamValidation, paginationValidation } from '../validators/requ
 // Configure router.
 const router = express.Router();
 
+// GET /api/notifications: list stock notifications for manager review.
 router.get(
   '/',
   protect,
@@ -18,6 +24,8 @@ router.get(
   validateRequest,
   getStockNotifications
 );
+
+// PUT /api/notifications/:id/read: mark one notification as read.
 router.put(
   '/:id/read',
   protect,
@@ -28,3 +36,8 @@ router.put(
 );
 
 export default router;
+
+
+
+
+

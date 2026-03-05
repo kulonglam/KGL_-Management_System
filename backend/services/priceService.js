@@ -1,10 +1,16 @@
+/**
+ * Encapsulates produce-pricing rules: input validation, branch price row composition,
+ * and synchronization of procurement selling prices when managed prices change.
+ * File: backend/services/priceService.js
+ */
+
 import PriceSetting from '../models/PriceSetting.js';
 import Procurement from '../models/Procurement.js';
 
-// Configure supported produce types for pricing.
+// Canonical produce types supported by branch price settings.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
 
-// Parse and validate a produce type and price pair.
+// Validate produce type + numeric price input and return parsed price value.
 const parseAndValidatePriceInput = (produceType, priceUgx) => {
   if (!produceType) {
     return { error: 'Produce type is required' };
@@ -22,7 +28,7 @@ const parseAndValidatePriceInput = (produceType, priceUgx) => {
   return { price };
 };
 
-// Retrieve managed, inferred, and unset price rows for a branch.
+// Build branch price grid containing managed prices plus inferred/unset fallback rows.
 const getBranchPriceRows = async (branch) => {
   const settings = await PriceSetting.find({ branch }).sort({ produceType: 1 });
   const priceMap = {};
@@ -62,7 +68,7 @@ const getBranchPriceRows = async (branch) => {
   return PRODUCE_TYPES.map((produceType) => priceMap[produceType]);
 };
 
-// Sync selling prices on existing procurements for a produce type.
+// Propagate managed price updates to matching procurement records in the same branch.
 const syncProcurementPrices = async (branch, produceType, priceUgx) => {
   const result = await Procurement.updateMany(
     { branch, produceType },
@@ -73,3 +79,8 @@ const syncProcurementPrices = async (branch, produceType, priceUgx) => {
 };
 
 export { PRODUCE_TYPES, parseAndValidatePriceInput, getBranchPriceRows, syncProcurementPrices };
+
+
+
+
+

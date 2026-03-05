@@ -164,7 +164,7 @@ Required fields:
 - Contact
 
 Validation rules:
-- NIN: exactly 14 uppercase alphanumeric characters
+- NIN: strict Uganda format (`CM` or `CF` followed by 12 digits)
 - Contact: Uganda phone format
 - NIN is unique per branch
 

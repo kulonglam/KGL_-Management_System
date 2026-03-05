@@ -206,6 +206,11 @@
 </template>
 
 <script>
+/**
+ * Branch user administration page for creating, updating, filtering, and deleting staff accounts.
+ * File: frontend/src/views/Users.vue
+ */
+
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
@@ -310,7 +315,7 @@ export default {
     await this.loadUsers();
   },
   methods: {
-    // Handle load users.
+    // Load branch users visible to the current manager.
     async loadUsers() {
       this.loadingList = true;
       this.loadError = '';
@@ -343,7 +348,7 @@ export default {
 
       try {
         if (this.editingId) {
-          // Configure payload.
+          // Update payload excludes immutable fields and optional password when blank.
           const payload = {
             name: this.form.name,
             username: this.form.username,

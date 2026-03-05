@@ -1,7 +1,13 @@
+/**
+ * Handles out-of-stock notification lifecycle: create-once for unread events
+ * and resolve/acknowledge when matching stock is replenished.
+ * File: backend/services/stockNotificationService.js
+ */
+
 import StockNotification from '../models/StockNotification.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
-// Create out of stock notification.
+// Create one unread out-of-stock notification if no matching unread notification exists.
 const createOutOfStockNotification = async ({ branch, produceName, produceType }) => {
   const canonicalName = normalizeProduceName(produceName);
   const canonicalType = normalizeProduceType(produceType);
@@ -27,7 +33,7 @@ const createOutOfStockNotification = async ({ branch, produceName, produceType }
   });
 };
 
-// Handle resolve out of stock notification.
+// Mark matching unread out-of-stock notifications as read after stock is replenished.
 const resolveOutOfStockNotification = async ({ branch, produceName, produceType }) => {
   const canonicalName = normalizeProduceName(produceName);
   const canonicalType = normalizeProduceType(produceType);
@@ -49,3 +55,8 @@ const resolveOutOfStockNotification = async ({ branch, produceName, produceType 
 };
 
 export { createOutOfStockNotification, resolveOutOfStockNotification };
+
+
+
+
+

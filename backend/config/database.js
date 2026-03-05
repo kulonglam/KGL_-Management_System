@@ -1,3 +1,8 @@
+/**
+ * Initializes MongoDB connectivity with mongoose safety options and startup failure handling.
+ * File: backend/config/database.js
+ */
+
 import mongoose from 'mongoose';
 
 // Handle connect db.
@@ -15,3 +20,8 @@ const connectDB = async () => {
 };
 
 export default connectDB;
+
+
+
+
+

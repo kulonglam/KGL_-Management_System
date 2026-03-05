@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/priceController.js
+ */
+
 import PriceSetting from '../models/PriceSetting.js';
 import mongoose from 'mongoose';
 import {
@@ -5,7 +10,7 @@ import {
   getBranchPriceRows,
   syncProcurementPrices
 } from '../services/priceService.js';
-// Get price settings for branch
+// GET /api/prices: return manager price settings merged with inferred/unset produce rows for the branch.
 const getPrices = async (req, res) => {
   try {
     const prices = await getBranchPriceRows(req.user.branch);
@@ -15,7 +20,7 @@ const getPrices = async (req, res) => {
   }
 };
 
-// Get single price setting
+// GET /api/prices/:id: return one price setting only when it belongs to the requester's branch.
 const getPriceById = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -32,7 +37,7 @@ const getPriceById = async (req, res) => {
   }
 };
 
-// Create price for produce type (applies globally to branch)
+// POST /api/prices: create a branch price rule and synchronize affected procurement selling prices.
 const createPrice = async (req, res) => {
   try {
     const { produceType, priceUgx } = req.body;
@@ -69,7 +74,7 @@ const createPrice = async (req, res) => {
   }
 };
 
-// Update existing price setting, manager only
+// PUT /api/prices/:id: update one branch price rule and resync procurement selling prices.
 const updatePrice = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -116,7 +121,7 @@ const updatePrice = async (req, res) => {
   }
 };
 
-// Delete existing price setting, manager only.
+// DELETE /api/prices/:id: remove one branch price rule after access checks.
 const deletePrice = async (req, res) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
@@ -135,3 +140,8 @@ const deletePrice = async (req, res) => {
 };
 
 export { getPrices, getPriceById, createPrice, updatePrice, deletePrice };
+
+
+
+
+

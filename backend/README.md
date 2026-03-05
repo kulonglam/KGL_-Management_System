@@ -38,16 +38,10 @@ API base URL: `http://localhost:5000`
 Warning: this clears existing seed-related collections before inserting sample data.
 
 ```bash
-node seedData.js
+npm run seed
 ```
 
 Seeded password for all users: `Karibu@2026!`
-
-To update passwords for users that already exist in your database:
-
-```bash
-npm run reset:passwords -- --password=Karibu@2026!
-```
 
 - Director: `orban`
 - Managers: `managerA` (Maganjo), `managerB` (Matugga)
@@ -77,5 +71,4 @@ npm test
 ## Related Docs
 - Root README: `../README.md`
 - User guide: `../USER_MANUAL.md`
-- Database schema: `../DATABASE_SCHEMA.md`
-- Demo script: `../DEMO_WALKTHROUGH.md`
+- Render deploy guide: `../RENDER_DEPLOYMENT.md`

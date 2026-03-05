@@ -150,9 +150,9 @@
                 type="text"
                 :class="['form-control', { 'is-invalid': fieldErrors.nationalId }]"
                 v-model="form.nationalId"
-                pattern="[A-Z0-9]{14}"
+                pattern="(CM|CF)[0-9]{12}"
                 maxlength="14"
-                placeholder="14 alphanumeric characters"
+                placeholder="CM123456789012"
                 @input="clearFieldError('nationalId')"
                 required
                 :disabled="editingId"
@@ -230,6 +230,11 @@
 </template>
 
 <script>
+/**
+ * Trusted-buyer administration page used to manage approved credit-sale customers.
+ * File: frontend/src/views/TrustedBuyers.vue
+ */
+
 import { trustedBuyersAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
@@ -328,7 +333,7 @@ export default {
     await this.loadBuyers();
   },
   methods: {
-    // Handle load buyers.
+    // Load trusted buyers available for this manager branch.
     async loadBuyers() {
       this.loadingList = true;
       this.loadError = '';
@@ -358,7 +363,7 @@ export default {
       this.success = '';
       this.fieldErrors = {};
 
-      // Configure payload.
+      // Normalize and uppercase fields before schema validation and API submission.
       const payload = {
         name: this.normalizeText(this.form.name),
         nationalId: String(this.form.nationalId || '')

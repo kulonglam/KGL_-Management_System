@@ -73,6 +73,11 @@
 </template>
 
 <script>
+/**
+ * Sales-agent dashboard showing today's personal cash/credit performance snapshot.
+ * File: frontend/src/views/SalesAgentDashboard.vue
+ */
+
 import { salesAPI, creditSalesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
@@ -167,7 +172,7 @@ export default {
     }
   },
   methods: {
-    // Handle load data.
+    // Load and aggregate only the current agent's transactions for today.
     async loadData() {
       this.loading = true;
       this.loadError = '';

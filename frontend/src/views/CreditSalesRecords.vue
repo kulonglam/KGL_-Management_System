@@ -371,6 +371,11 @@
 </template>
 
 <script>
+/**
+ * Credit-sales records page with filtering, editing, repayment capture, and deletion controls.
+ * File: frontend/src/views/CreditSalesRecords.vue
+ */
+
 import { creditSalesAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import TablePagination from '../components/common/TablePagination.vue';
@@ -433,7 +438,7 @@ export default {
     await this.loadCreditSales();
   },
   computed: {
-    // Handle can repay.
+    // Repayment/edit actions are restricted to managers.
     canRepay() {
       return this.user.role === 'manager';
     },
@@ -513,7 +518,7 @@ export default {
     }
   },
   methods: {
-    // Handle load credit sales.
+    // Load credit sales list for current branch context.
     async loadCreditSales() {
       this.loadingList = true;
       this.loadError = '';

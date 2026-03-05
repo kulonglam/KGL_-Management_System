@@ -43,6 +43,11 @@
 </template>
 
 <script setup>
+/**
+ * Procurement entry page: validates input, applies managed pricing, and submits new records.
+ * File: frontend/src/views/Procurement.vue
+ */
+
 import { onMounted, ref, watch } from 'vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import ProcurementFormFields from '../components/procurement/ProcurementFormFields.vue';
@@ -57,9 +62,9 @@ import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { procurementValidationSchema } from '../utils/formSchemas.mjs';
 
-// Configure user.
+// Authenticated user metadata used for branch context in the form.
 const user = ref({});
-// Configure form.
+// Reactive procurement form state.
 const form = ref(createInitialProcurementForm());
 const authStore = useAuthStore(pinia);
 
@@ -69,12 +74,12 @@ const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcur
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(procurementValidationSchema);
 
-// Handle type change.
+// Re-apply manager-controlled price when produce type changes.
 const handleTypeChange = () => {
   applyPriceSetting(form.value);
 };
 
-// Handle reset form.
+// Reset form values and clear visual validation/feedback state.
 const resetForm = () => {
   form.value = createInitialProcurementForm();
   clearPriceLock();
@@ -82,7 +87,7 @@ const resetForm = () => {
   resetFeedback();
 };
 
-// Handle submit.
+// Validate and submit procurement entry to backend.
 const handleSubmit = async () => {
   const validation = validateForm(form.value);
   if (!validation.valid) {
@@ -108,6 +113,7 @@ onMounted(async () => {
   await loadPrices();
 });
 
+// Clear field-specific errors immediately after user edits that field.
 watch(
   form,
   (next, previous) => {

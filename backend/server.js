@@ -1,3 +1,8 @@
+/**
+ * Bootstraps environment and database startup, then manages server lifecycle and graceful shutdown.
+ * File: backend/server.js
+ */
+
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import connectDB from './config/database.js';
@@ -61,3 +66,8 @@ const startServer = async () => {
 };
 
 startServer();
+
+
+
+
+

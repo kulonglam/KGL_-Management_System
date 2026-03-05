@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/procurementController.js
+ */
+
 import Procurement from '../models/Procurement.js';
 import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';
 import { resolveSellingPrice, canManagerAccessBranch } from '../services/procurementService.js';
@@ -8,7 +13,7 @@ import {
   normalizeSourceType
 } from '../utils/produceNormalization.js';
 
-// Handle normalize procurement payload for legacy records.
+// Normalize legacy procurement field aliases to canonical produce/source fields before response output.
 const normalizeProcurementPayload = (record) => {
   if (!record || typeof record !== 'object') return record;
 
@@ -23,7 +28,7 @@ const normalizeProcurementPayload = (record) => {
   };
 };
 
-// Retrieve all procurement.
+// GET /api/procurement: return branch procurement history with optional pagination support.
 const getAllProcurement = async (req, res) => {
   try {
     const filter = {};
@@ -63,7 +68,7 @@ const getAllProcurement = async (req, res) => {
   }
 };
 
-// Create procurement.
+// POST /api/procurement: create a procurement record using managed price resolution and canonicalized fields.
 const createProcurement = async (req, res) => {
   try {
     const {
@@ -113,7 +118,7 @@ const createProcurement = async (req, res) => {
   }
 };
 
-// Retrieve procurement by id.
+// GET /api/procurement/:id: return one procurement record after branch access validation.
 const getProcurementById = async (req, res) => {
   try {
     const procurement = await Procurement.findById(req.params.id).populate('recordedBy', 'name');
@@ -133,7 +138,7 @@ const getProcurementById = async (req, res) => {
   }
 };
 
-// Update procurement.
+// PUT /api/procurement/:id: update allowed procurement fields and keep canonical legacy compatibility.
 const updateProcurement = async (req, res) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
@@ -214,7 +219,7 @@ const updateProcurement = async (req, res) => {
   }
 };
 
-// Delete procurement.
+// DELETE /api/procurement/:id: remove one procurement record after branch ownership checks.
 const deleteProcurement = async (req, res) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
@@ -242,3 +247,8 @@ export {
   updateProcurement,
   deleteProcurement
 };
+
+
+
+
+

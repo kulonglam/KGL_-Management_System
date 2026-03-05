@@ -1,10 +1,15 @@
+/**
+ * Evaluates inventory availability for sales forms and computes payable totals.
+ * File: frontend/src/composables/useStockValidation.js
+ */
+
 import { ref } from 'vue';
 
-// Handle use stock validation.
+// Expose stock warnings plus an inventory lookup utility for selected produce.
 const useStockValidation = () => {
   const stockWarning = ref('');
 
-  // Handle evaluate stock.
+  // Match selected produce against inventory and flag insufficient stock.
   const evaluateStock = (inventory, produceName, tonnageKg, produceType = '') => {
     const tonnage = Number(tonnageKg);
     if (!produceName || !tonnage || Number.isNaN(tonnage)) {

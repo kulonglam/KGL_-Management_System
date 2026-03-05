@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/authController.js
+ */
+
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
@@ -18,7 +23,7 @@ import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 
-// Handle login.
+// POST /api/auth/login: authenticate credentials, apply lockout policy, and return auth payload.
 const login = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -64,7 +69,7 @@ const login = async (req, res) => {
   }
 };
 
-// Retrieve me.
+// GET /api/auth/me: return the current authenticated user's profile (without password hash).
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
@@ -74,7 +79,7 @@ const getMe = async (req, res) => {
   }
 };
 
-// Update me.
+// PUT /api/auth/me: update own profile fields and rotate token version when password changes.
 const updateMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -129,7 +134,7 @@ const updateMe = async (req, res) => {
   }
 };
 
-// Handle register.
+// POST /api/auth/register: manager creates a new branch user via centralized auth service checks.
 const register = async (req, res) => {
   try {
     const user = await registerUser({
@@ -144,7 +149,7 @@ const register = async (req, res) => {
   }
 };
 
-// Retrieve users.
+// GET /api/auth/users: list users visible to the requester with optional pagination metadata.
 const getUsers = async (req, res) => {
   try {
     const filter = {};
@@ -178,7 +183,7 @@ const getUsers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// Retrieve user by id.
+// GET /api/auth/users/:id: return one user if requester has branch/role access to that record.
 const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
@@ -195,7 +200,7 @@ const getUserById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// Update user.
+// PUT /api/auth/users/:id: manager updates one user through shared service validation rules.
 const updateUser = async (req, res) => {
   try {
     const updatedUser = await updateUserRecord({
@@ -211,7 +216,7 @@ const updateUser = async (req, res) => {
   }
 };
 
-// Delete user.
+// DELETE /api/auth/users/:id: delete one user after self-delete and staffing-minimum safeguards.
 const deleteUser = async (req, res) => {
   try {
     if (req.user._id.toString() === req.params.id) {
@@ -238,3 +243,8 @@ const deleteUser = async (req, res) => {
 };
 
 export { login, getMe, updateMe, register, getUsers, getUserById, updateUser, deleteUser };
+
+
+
+
+

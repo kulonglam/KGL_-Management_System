@@ -110,6 +110,11 @@
 </template>
 
 <script setup>
+/**
+ * Cash-sales entry page: validates stock and captures sale details with review modal confirmation.
+ * File: frontend/src/views/Sales.vue
+ */
+
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { useFormFeedback } from '../composables/useFormFeedback';
@@ -121,17 +126,17 @@ import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
 import { salesValidationSchema } from '../utils/formSchemas.mjs';
 
-// Configure user.
+// Authenticated user context for default branch/agent display.
 const user = ref({});
-// Configure inventory.
+// Branch inventory used for produce selection and stock checks.
 const inventory = ref([]);
-// Configure form.
+// Cash-sale form state.
 const form = ref(createInitialForm());
-// Configure show review modal.
+// Controls visibility of pre-submit review modal.
 const showReviewModal = ref(false);
-// Configure review modal ref.
+// DOM ref used for review modal focus management.
 const reviewModalRef = ref(null);
-// Configure last focused element before opening review modal.
+// Element that had focus before modal opened, restored on close.
 const lastFocusedElement = ref(null);
 const authStore = useAuthStore(pinia);
 
@@ -140,7 +145,7 @@ const { stockWarning, evaluateStock } = useStockValidation();
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(salesValidationSchema);
 
-// Create initial form.
+// Build a fresh cash-sale form with current date/time defaults.
 function createInitialForm() {
   return {
     produceName: '',
@@ -153,7 +158,7 @@ function createInitialForm() {
   };
 }
 
-// Handle load inventory.
+// Load inventory options for produce dropdown and stock validations.
 const loadInventory = async () => {
   try {
     const response = await inventoryAPI.get();
@@ -163,7 +168,7 @@ const loadInventory = async () => {
   }
 };
 
-// Update price.
+// Calculate amount due from selected produce, tonnage, and managed selling price.
 const updatePrice = () => {
   let result = evaluateStock(
     inventory.value,
@@ -179,14 +184,14 @@ const updatePrice = () => {
   form.value.amountPaidUgx = result.amount || '';
 };
 
-// Handle reset form.
+// Reset form, warnings, and validation errors.
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
   resetErrors();
 };
 
-// Handle open review modal.
+// Validate form then open review modal for final confirmation.
 const openReviewModal = () => {
   const validation = validateForm(form.value);
   if (!validation.valid) {
@@ -203,13 +208,13 @@ const openReviewModal = () => {
   showReviewModal.value = true;
 };
 
-// Handle close review modal.
+// Close review modal unless submit is currently running.
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
 };
 
-// Focus review modal container when it opens.
+// Focus first interactive control when the review modal becomes visible.
 const focusReviewModal = async () => {
   await nextTick();
   const firstFocusable = getReviewModalFocusableElements()[0];
@@ -220,6 +225,7 @@ const focusReviewModal = async () => {
   reviewModalRef.value?.focus();
 };
 
+// Return focusable controls used to trap tab navigation inside modal.
 const getReviewModalFocusableElements = () =>
   Array.from(
     reviewModalRef.value?.querySelectorAll(
@@ -227,6 +233,7 @@ const getReviewModalFocusableElements = () =>
     ) || []
   );
 
+// Keep keyboard tab sequence contained inside the open review modal.
 const trapReviewModalFocus = (event) => {
   if (!showReviewModal.value || event.key !== 'Tab') return;
 
@@ -253,6 +260,7 @@ const trapReviewModalFocus = (event) => {
   }
 };
 
+// Restore focus to the control that launched the modal.
 const restorePreviousFocus = () => {
   const element = lastFocusedElement.value;
   if (element && typeof element.focus === 'function') {
@@ -260,7 +268,7 @@ const restorePreviousFocus = () => {
   }
 };
 
-// Handle review modal key events.
+// Process keyboard shortcuts while review modal is open.
 const handleReviewModalKeydown = (event) => {
   if (!showReviewModal.value) return;
 
@@ -273,7 +281,7 @@ const handleReviewModalKeydown = (event) => {
   trapReviewModalFocus(event);
 };
 
-// Handle confirm save sale.
+// Final submit action after review confirmation.
 const confirmSaveSale = async () => {
   const validation = validateForm(form.value);
   if (!validation.valid) {
@@ -301,7 +309,7 @@ const confirmSaveSale = async () => {
   }
 };
 
-// Format currency.
+// Format UGX values for review card display.
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',

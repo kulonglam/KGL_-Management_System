@@ -1,3 +1,7 @@
+// Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
+// File: backend/middleware/validation.js
+ 
+
 import { validationResult } from 'express-validator';
 
 // Validate request.

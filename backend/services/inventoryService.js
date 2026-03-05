@@ -1,3 +1,9 @@
+/**
+ * Builds inventory snapshots from procurement and sales movements, including branch-level
+ * totals, low-stock/out-of-stock views, and produce-level stock lookups.
+ * File: backend/services/inventoryService.js
+ */
+
 import Procurement from '../models/Procurement.js';
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
@@ -7,17 +13,17 @@ import {
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 
-// Handle resolve procurement name.
+// Resolve canonical produce name from current or legacy procurement fields.
 const resolveProcurementName = (item) => normalizeProduceName(item.produceName || item.name || '');
 
-// Handle resolve procurement type.
+// Resolve canonical produce type from current or legacy procurement fields.
 const resolveProcurementType = (item) => normalizeProduceType(item.produceType || item.type || '');
 
-// Handle make inventory key.
+// Build a stable inventory-map key (produceName + produceType + branch).
 const makeInventoryKey = (produceName, produceType, branch) =>
   `${normalizeProduceNameKey(produceName)}::${normalizeProduceType(produceType)}::${branch}`;
 
-// Handle find fallback key.
+// Find best fallback inventory bucket for legacy movements missing explicit produceType.
 const findFallbackKey = (inventoryMap, produceName, branch) => {
   let selectedKey = null;
   let highestTonnage = -Infinity;
@@ -38,7 +44,7 @@ const findFallbackKey = (inventoryMap, produceName, branch) => {
   return selectedKey;
 };
 
-// Handle subtract from inventory map.
+// Subtract one movement (sale/credit sale) from its inventory bucket with legacy fallback support.
 const subtractFromInventoryMap = (inventoryMap, movement) => {
   const explicitType = movement.produceType;
   const movementName = normalizeProduceName(movement.produceName || '');
@@ -58,11 +64,11 @@ const subtractFromInventoryMap = (inventoryMap, movement) => {
   inventoryMap.get(fallbackKey).totalTonnageKg -= movement.tonnageKg;
 };
 
-// Handle build inventory map.
+// Build mutable inventory map by adding procurements and subtracting all outbound movements.
 const buildInventoryMap = (procurements, sales, creditSales) => {
   const inventoryMap = new Map();
 
-  // Add procurements
+  // Add inbound stock from procurements.
   procurements.forEach((item) => {
     const produceName = resolveProcurementName(item);
     const produceType = resolveProcurementType(item);
@@ -83,12 +89,12 @@ const buildInventoryMap = (procurements, sales, creditSales) => {
     }
   });
 
-  // Subtract cash sales
+  // Subtract outbound stock from cash sales.
   sales.forEach((sale) => {
     subtractFromInventoryMap(inventoryMap, sale);
   });
 
-  // Subtract credit sales
+  // Subtract outbound stock from credit sales.
   creditSales.forEach((cs) => {
     subtractFromInventoryMap(inventoryMap, cs);
   });
@@ -96,12 +102,12 @@ const buildInventoryMap = (procurements, sales, creditSales) => {
   return inventoryMap;
 };
 
-// Handle build inventory snapshot.
+// Convert inventory map to snapshot array, preserving zero/negative rows for reporting.
 const buildInventorySnapshot = (procurements, sales, creditSales) => {
   return Array.from(buildInventoryMap(procurements, sales, creditSales).values());
 };
 
-// Handle calculate inventory by filter.
+// Query movement collections by filter and return computed inventory snapshot.
 const calculateInventoryByFilter = async (filter = {}) => {
   const [procurements, sales, creditSales] = await Promise.all([
     Procurement.find(filter),
@@ -112,13 +118,13 @@ const calculateInventoryByFilter = async (filter = {}) => {
   return buildInventorySnapshot(procurements, sales, creditSales);
 };
 
-// Handle calculate inventory by branch.
+// Return positive-stock inventory rows for one branch (used for sell/create operations).
 const calculateInventoryByBranch = async (branch) => {
   const snapshot = await calculateInventoryByFilter({ branch });
   return snapshot.filter((item) => item.totalTonnageKg > 0);
 };
 
-// Retrieve inventory overview.
+// Build API-ready inventory overview (active stock, out-of-stock list, and summary metrics).
 const getInventoryOverview = async (filter = {}) => {
   const snapshot = await calculateInventoryByFilter(filter);
   const inventory = snapshot.filter((item) => item.totalTonnageKg > 0);
@@ -144,7 +150,7 @@ const getInventoryOverview = async (filter = {}) => {
   };
 };
 
-// Retrieve stock for produce.
+// Return total available stock for a produce name within a branch across all matching types.
 const getStockForProduce = async (branch, produceName) => {
   const snapshot = await calculateInventoryByFilter({ branch });
   const requestedNameKey = normalizeProduceNameKey(produceName);
@@ -160,3 +166,8 @@ export {
   getInventoryOverview,
   getStockForProduce
 };
+
+
+
+
+

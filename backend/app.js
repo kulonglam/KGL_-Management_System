@@ -1,3 +1,8 @@
+/**
+ * Composes the Express app, security middleware, observability hooks, and API route mounting.
+ * File: backend/app.js
+ */
+
 import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
@@ -96,3 +101,8 @@ const createApp = () => {
 };
 
 export default createApp;
+
+
+
+
+

@@ -1,14 +1,20 @@
+/**
+ * Provides authentication/account domain utilities: token generation, password policy checks,
+ * profile-image validation, role guardrails, and user create/update workflows.
+ * File: backend/services/authService.js
+ */
+
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 
-// Configure max profile image size bytes.
+// Maximum allowed profile image payload size (1 MB).
 const MAX_PROFILE_IMAGE_SIZE = 1024 * 1024;
-// Configure allowed profile image MIME types.
+// Supported profile image MIME types accepted by update/profile APIs.
 const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-// Configure role limits by branch.
+// Branch staffing limits enforced during user create/update/delete flows.
 const BRANCH_ROLE_LIMITS = {
   manager: { min: 1, max: 1 },
   sales_agent: { min: 2, max: 2 }
@@ -21,14 +27,14 @@ const PASSWORD_POLICY = {
   hasSymbol: /[^A-Za-z0-9]/
 };
 
-// Check whether a user record matches the legacy Orban identity.
+// Return true when the user matches the legacy Orban identity used for totals-permission backfill.
 const isLegacyOrbanIdentity = (user) => {
   const username = String(user?.username || '').toLowerCase();
   const name = String(user?.name || '').toLowerCase();
   return username === 'orban' || name === 'mr. orban';
 };
 
-// Parse profile image update input from API payload.
+// Validate and normalize profile image input; returns update metadata or a validation error string.
 const parseProfileImageUpdate = (rawValue) => {
   if (rawValue === undefined) {
     return { hasUpdate: false, value: undefined };
@@ -62,14 +68,14 @@ const parseProfileImageUpdate = (rawValue) => {
   return { hasUpdate: true, value };
 };
 
-// Generate JWT token for a user ID.
+// Create a signed JWT for a user, embedding tokenVersion and a unique JTI claim.
 const generateToken = (id, tokenVersion = 0) => {
   return jwt.sign({ id, tokenVersion, jti: randomUUID() }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '12h'
   });
 };
 
-// Validate password against the application's minimum complexity policy.
+// Enforce password complexity policy and return a human-readable error when a rule fails.
 const validatePasswordStrength = (password) => {
   const value = String(password || '');
   if (value.length < PASSWORD_POLICY.minLength) {
@@ -90,7 +96,7 @@ const validatePasswordStrength = (password) => {
   return null;
 };
 
-// Build a public user payload from a user document.
+// Build the safe API-facing user payload, optionally including a fresh JWT token.
 const toUserPayload = (user, includeToken = false) => {
   const payload = {
     _id: user._id,
@@ -108,7 +114,7 @@ const toUserPayload = (user, includeToken = false) => {
   return payload;
 };
 
-// Ensure legacy director can access cross-branch totals.
+// Backfill cross-branch totals permission for legacy Orban director records at login time.
 const ensureLegacyDirectorTotalsAccess = async (user) => {
   if (
     user.role === 'director' &&
@@ -120,7 +126,7 @@ const ensureLegacyDirectorTotalsAccess = async (user) => {
   }
 };
 
-// Check branch role maximums before create/update.
+// Enforce branch maximum staffing caps for a role, optionally excluding one record during updates.
 const checkRoleLimits = async (role, branch, excludeUserId = null) => {
   const roleLimits = BRANCH_ROLE_LIMITS[role];
   if (!roleLimits || !branch) {
@@ -141,7 +147,7 @@ const checkRoleLimits = async (role, branch, excludeUserId = null) => {
   return null;
 };
 
-// Check branch role minimums before a role/branch move or deletion.
+// Enforce minimum staffing floors before deleting/moving a user out of a required role.
 const checkRoleMinimumAfterRemoval = async (role, branch, excludeUserId) => {
   const roleLimits = BRANCH_ROLE_LIMITS[role];
   if (!roleLimits || !branch) {
@@ -166,13 +172,13 @@ const checkRoleMinimumAfterRemoval = async (role, branch, excludeUserId) => {
   return null;
 };
 
-// Hash a plaintext password for persistence.
+// Generate a salted bcrypt hash for secure password persistence.
 const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(10);
   return bcrypt.hash(password, salt);
 };
 
-// Validate manager-level access to another user record.
+// Return an access error for manager-scoped operations when target user is outside allowed scope.
 const getManagerUserAccessError = (managerUser, targetUser) => {
   if (managerUser.role !== 'manager') {
     return null;
@@ -189,14 +195,14 @@ const getManagerUserAccessError = (managerUser, targetUser) => {
   return null;
 };
 
-// Create a typed service error with HTTP status metadata.
+// Construct a domain/service error object that carries an HTTP status code.
 const createServiceError = (statusCode, message) => {
   const error = new Error(message);
   error.statusCode = statusCode;
   return error;
 };
 
-// Register a new user with branch and role guardrails.
+// Create a new user after validating profile image, password policy, branch assignment, and role limits.
 const registerUser = async ({ actorUser, payload }) => {
   const { name, username, password, role, branch, profileImage } = payload;
 
@@ -253,7 +259,7 @@ const registerUser = async ({ actorUser, payload }) => {
   return user;
 };
 
-// Update an existing user with access and branch role safety checks.
+// Update an existing user while enforcing scope rules, staffing limits, and password policy.
 const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
   const user = await User.findById(targetUserId);
   if (!user) {
@@ -334,3 +340,8 @@ export {
   registerUser,
   updateUserRecord
 };
+
+
+
+
+

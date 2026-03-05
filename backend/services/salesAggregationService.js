@@ -1,16 +1,22 @@
+/**
+ * Builds sales aggregation context and payloads for director reporting, including branch filters,
+ * period windows, trend buckets, and combined cash/credit/procurement totals.
+ * File: backend/services/salesAggregationService.js
+ */
+
 import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 
-// Configure branches.
+// Branch identifiers supported by aggregation endpoints.
 const BRANCHES = ['Maganjo', 'Matugga'];
-// Configure supported aggregation periods.
+// Allowed period filters for trend calculations.
 const PERIODS = new Set(['weekly', 'monthly', 'yearly']);
-// Configure specific date format pattern (YYYY-MM-DD).
+// Strict specific-date input format (YYYY-MM-DD).
 const SPECIFIC_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-// Resolve produce type for sale creation from current inventory.
+// Resolve concrete produce type for a sale using current inventory rows and optional type hint.
 const resolveProduceTypeForSale = (inventory, produceName, requestedProduceType) => {
   const requestedNameKey = normalizeProduceNameKey(produceName);
   const requestedType = normalizeProduceType(requestedProduceType || '');
@@ -36,13 +42,13 @@ const resolveProduceTypeForSale = (inventory, produceName, requestedProduceType)
   return { produceType: candidates[0].produceType };
 };
 
-// Normalize incoming period value with a safe default.
+// Normalize period input and fall back to weekly for unknown values.
 const normalizePeriod = (value) => {
   const period = String(value || 'weekly').toLowerCase();
   return PERIODS.has(period) ? period : 'weekly';
 };
 
-// Normalize incoming branch filter and preserve branch casing.
+// Normalize branch filter input; supports explicit branch names and "all".
 const normalizeBranch = (value) => {
   if (value === undefined || value === null || value === '') {
     return 'all';
@@ -57,21 +63,21 @@ const normalizeBranch = (value) => {
   return matched || null;
 };
 
-// Return midnight for a date value.
+// Convert date to start-of-day timestamp for bucket boundaries.
 const atStartOfDay = (dateValue) => {
   const date = new Date(dateValue);
   date.setHours(0, 0, 0, 0);
   return date;
 };
 
-// Return a date offset by a number of days.
+// Return a new date shifted by the requested number of calendar days.
 const addDays = (dateValue, days) => {
   const date = new Date(dateValue);
   date.setDate(date.getDate() + days);
   return date;
 };
 
-// Parse and validate a specific date filter (YYYY-MM-DD).
+// Parse specific-date query input and return canonical UTC midnight date or error.
 const parseSpecificDate = (value) => {
   if (value === undefined || value === null || value === '') {
     return { specificDate: null };
@@ -90,7 +96,7 @@ const parseSpecificDate = (value) => {
   return { specificDate: parsed };
 };
 
-// Build trend buckets for the selected period.
+// Build ordered trend buckets for weekly/monthly/yearly or one-day specific-date mode.
 const buildTrendBuckets = (period, specificDate = null) => {
   if (specificDate) {
     const start = new Date(specificDate);
@@ -146,7 +152,7 @@ const buildTrendBuckets = (period, specificDate = null) => {
   return buckets;
 };
 
-// Add a sale amount to the correct trend bucket.
+// Add one monetary amount to its corresponding trend bucket by transaction date.
 const addAmountToTrend = (buckets, dateValue, amount) => {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return;
@@ -161,7 +167,7 @@ const addAmountToTrend = (buckets, dateValue, amount) => {
   }
 };
 
-// Build normalized aggregation context from query filters.
+// Build validated aggregation context (filters, date range, branches, and trend buckets).
 const buildAggregationContext = ({ period, branch, specificDate }) => {
   const normalizedPeriod = normalizePeriod(period);
   const normalizedBranch = normalizeBranch(branch);
@@ -190,7 +196,7 @@ const buildAggregationContext = ({ period, branch, specificDate }) => {
   };
 };
 
-// Build sales aggregation response payload.
+// Build final aggregation response payload with branch totals, trends, and report counters.
 const buildSalesAggregationPayload = ({
   period,
   branch,
@@ -270,3 +276,8 @@ const buildSalesAggregationPayload = ({
 };
 
 export { resolveProduceTypeForSale, buildAggregationContext, buildSalesAggregationPayload };
+
+
+
+
+

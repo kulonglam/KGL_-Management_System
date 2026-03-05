@@ -1,3 +1,8 @@
+/**
+ * Defines express-validator chains that enforce payload shape and business constraints.
+ * File: backend/validators/requestValidators.js
+ */
+
 import { body, param, query } from 'express-validator';
 
 // Configure produce types.
@@ -11,7 +16,7 @@ const ALPHANUMERIC_TEXT = /^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/;
 // Configure phone pattern.
 const PHONE_PATTERN = /^(\+256|0)[0-9]{9}$/;
 // Configure nin pattern.
-const NIN_PATTERN = /^[A-Z0-9]{14}$/;
+const NIN_PATTERN = /^(CM|CF)[0-9]{12}$/;
 // Configure time pattern.
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 // Configure password complexity pattern.
@@ -565,3 +570,8 @@ export {
   stockCheckValidation,
   notificationReadValidation
 };
+
+
+
+
+

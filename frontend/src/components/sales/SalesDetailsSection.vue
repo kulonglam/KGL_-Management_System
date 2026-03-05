@@ -114,16 +114,16 @@
 </template>
 
 <script setup>
-// Handle normalize text value.
+// Trim and collapse repeated whitespace for free-text fields.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
 
-// Configure form.
+// Shared cash-sale form model passed from the parent view.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
-// Handle normalize text.
+// Normalize text fields on blur before validation/submission.
 const normalizeText = (field) => {
   if (typeof form.value[field] !== 'string') return;
   form.value[field] = normalizeTextValue(form.value[field]);

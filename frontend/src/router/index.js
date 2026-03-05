@@ -1,3 +1,8 @@
+/**
+ * Declares application routes and enforces authentication/role-based access rules.
+ * File: frontend/src/router/index.js
+ */
+
 import { createRouter, createWebHistory } from 'vue-router';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
@@ -19,7 +24,7 @@ const TrustedBuyers = () => import('../views/TrustedBuyers.vue');
 const PriceManagement = () => import('../views/PriceManagement.vue');
 const Profile = () => import('../views/Profile.vue');
 
-// Configure routes.
+// Route table grouped under dashboard layout with per-route role metadata.
 const routes = [
   {
     path: '/',
@@ -118,13 +123,13 @@ const routes = [
   }
 ];
 
-// Configure router.
+// Create browser-history router instance.
 const router = createRouter({
   history: createWebHistory(),
   routes
 });
 
-// Navigation guard
+// Guard protected routes and reject unauthorized role access early.
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore(pinia);
   if (!authStore.hydrated) {

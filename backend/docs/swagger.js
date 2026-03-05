@@ -1,3 +1,8 @@
+/**
+ * Builds the OpenAPI/Swagger specification used to document and test backend endpoints.
+ * File: backend/docs/swagger.js
+ */
+
 // Handle success response.
 const successResponse = (dataSchema, description = 'Successful response') => ({
   description,

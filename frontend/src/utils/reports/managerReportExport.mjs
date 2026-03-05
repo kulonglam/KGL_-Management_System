@@ -1,7 +1,12 @@
-// Report helpers for the manager dashboard.
+/**
+ * Builds manager dashboard exports in CSV/Excel/print-friendly HTML formats.
+ * File: frontend/src/utils/reports/managerReportExport.mjs
+ */
 
+// Coerce nullable metric values into safe numeric output.
 const toNumber = (value) => Number(value || 0);
 
+// Format amounts as whole-shilling Ugandan currency.
 const formatCurrencyValue = (value) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',
@@ -10,12 +15,15 @@ const formatCurrencyValue = (value) =>
     maximumFractionDigits: 0
   }).format(toNumber(value));
 
+// Return raw number values for data exports or localized values for HTML display.
 const formatNumberValue = (value, formatted) =>
   formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
 
+// Return raw UGX values for CSV/Excel or display-formatted currency for HTML reports.
 const formatCurrencyForOutput = (value, formatted) =>
   formatted ? formatCurrencyValue(value) : toNumber(value);
 
+// Escape values before injecting them into CSV cells.
 const escapeCsvValue = (value) => {
   const text = value === undefined || value === null ? '' : String(value);
   if (/[",\n]/.test(text)) {
@@ -24,6 +32,7 @@ const escapeCsvValue = (value) => {
   return text;
 };
 
+// Escape dynamic text to prevent malformed HTML in exported documents.
 const escapeHtml = (value) =>
   String(value === undefined || value === null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -32,6 +41,7 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+// Normalize label fragments so filenames stay cross-platform safe.
 const sanitizeFileSegment = (value) => {
   const cleaned = String(value || '')
     .toLowerCase()
@@ -40,6 +50,7 @@ const sanitizeFileSegment = (value) => {
   return cleaned || 'all';
 };
 
+// Build top-level summary table rows for manager report output.
 const getSummaryRows = (state, formatted) => [
   ['Branch', state.userBranch || '-'],
   ['Report Period', state.selectedPeriodLabel],
@@ -66,21 +77,27 @@ const getSummaryRows = (state, formatted) => [
   ]
 ];
 
+// Build sales trend rows for export sections.
 const getSalesTrendRows = (state, formatted) =>
   (state.salesOverTime || []).map((item) => [item.label, formatCurrencyForOutput(item.amount, formatted)]);
 
+// Build product performance rows (kg sold) for export sections.
 const getTopProductsRows = (state, formatted) =>
   (state.topProducts || []).map((item) => [item.name, formatNumberValue(item.totalKg, formatted)]);
 
+// Build stock availability rows for export sections.
 const getStockRows = (state, formatted) =>
   (state.stockByProduct || []).map((item) => [item.name, formatNumberValue(item.totalKg, formatted)]);
 
+// Build per-sales-agent contribution rows.
 const getAgentRows = (state, formatted) =>
   (state.agentPerformance || []).map((item) => [item.name, formatCurrencyForOutput(item.amount, formatted)]);
 
+// Build dealer procurement contribution rows.
 const getDealerRows = (state, formatted) =>
   (state.dealerPerformance || []).map((item) => [item.name, formatCurrencyForOutput(item.amount, formatted)]);
 
+// Compose filename with branch, period, and current date stamp.
 export const buildManagerFileName = (state, extension) => {
   const period = sanitizeFileSegment(state.selectedPeriodLabel);
   const branch = sanitizeFileSegment(state.userBranch || 'branch');
@@ -88,6 +105,7 @@ export const buildManagerFileName = (state, extension) => {
   return `manager_report_${branch}_${period}_${stamp}.${extension}`;
 };
 
+// Build UTF-8 CSV with sectioned manager analytics tables.
 export const buildManagerCsvContent = (state) => {
   const lines = [];
   const addSection = (title, headers, rows) => {
@@ -110,6 +128,7 @@ export const buildManagerCsvContent = (state) => {
   return `\ufeff${content}`;
 };
 
+// Build Excel-compatible HTML document for spreadsheet imports.
 export const buildManagerExcelContent = (state) => {
   const buildTable = (title, headers, rows) => {
     const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
@@ -147,6 +166,7 @@ export const buildManagerExcelContent = (state) => {
   `;
 };
 
+// Build printable HTML report used by browser print/PDF flows.
 export const buildManagerReportHtml = (state) => {
   const summaryRows = getSummaryRows(state, true);
   const trendRows = getSalesTrendRows(state, true);
@@ -252,6 +272,7 @@ export const buildManagerReportHtml = (state) => {
   `;
 };
 
+// Trigger browser download for generated report payloads.
 export const downloadReportFile = ({ filename, content, type }) => {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);

@@ -201,3 +201,15 @@ test('trusted buyer validation rejects invalid NIN and contact', async () => {
   assert.equal(hasFieldError(errors, 'contact'), true);
 });
 
+test('trusted buyer validation rejects non-Uganda NIN prefix', async () => {
+  const payload = validTrustedBuyerPayload();
+  payload.nationalId = 'AB123456789012';
+
+  const errors = await runValidation({
+    rules: trustedBuyerCreateValidation,
+    body: payload
+  });
+
+  assert.equal(hasFieldError(errors, 'nationalId'), true);
+});
+

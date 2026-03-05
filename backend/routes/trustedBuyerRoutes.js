@@ -1,3 +1,8 @@
+/**
+ * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ * File: backend/routes/trustedBuyerRoutes.js
+ */
+
 import express from 'express';
 // Configure router.
 const router = express.Router();
@@ -17,41 +22,50 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router
-  .route('/')
-  .get(
-    protect,
-    authorize('manager', 'sales_agent'),
-    paginationValidation,
-    validateRequest,
-    getTrustedBuyers
-  )
-  .post(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    trustedBuyerCreateValidation,
-    validateRequest,
-    createTrustedBuyer
-  );
+// GET /api/trusted-buyers: list branch trusted buyers for credit-sale flows.
+router.get(
+  '/',
+  protect,
+  authorize('manager', 'sales_agent'),
+  paginationValidation,
+  validateRequest,
+  getTrustedBuyers
+);
+// POST /api/trusted-buyers: create a new trusted buyer profile.
+router.post(
+  '/',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  trustedBuyerCreateValidation,
+  validateRequest,
+  createTrustedBuyer
+);
 
-router
-  .route('/:id')
-  .put(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    trustedBuyerUpdateValidation,
-    validateRequest,
-    updateTrustedBuyer
-  )
-  .delete(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    mongoIdParamValidation,
-    validateRequest,
-    deleteTrustedBuyer
-  );
+// PUT /api/trusted-buyers/:id: update one trusted buyer profile.
+router.put(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  trustedBuyerUpdateValidation,
+  validateRequest,
+  updateTrustedBuyer
+);
+// DELETE /api/trusted-buyers/:id: delete one trusted buyer profile.
+router.delete(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  deleteTrustedBuyer
+);
 
 export default router;
+
+
+
+
+

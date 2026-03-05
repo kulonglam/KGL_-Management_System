@@ -1,7 +1,12 @@
-// Report helpers for the director dashboard.
+/**
+ * Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
+ * File: frontend/src/utils/reports/directorReportExport.mjs
+ */
 
+// Coerce nullable numeric fields from dashboard state into numbers.
 const toNumber = (value) => Number(value || 0);
 
+// Format a value as whole-shilling Ugandan currency.
 const formatCurrencyValue = (value) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',
@@ -10,12 +15,15 @@ const formatCurrencyValue = (value) =>
     maximumFractionDigits: 0
   }).format(toNumber(value));
 
+// Return raw number for machine exports or localized number for HTML views.
 const formatNumberValue = (value, formatted) =>
   formatted ? toNumber(value).toLocaleString('en-UG') : toNumber(value);
 
+// Return raw UGX value for CSV/Excel or formatted currency for printable report.
 const formatCurrencyForOutput = (value, formatted) =>
   formatted ? formatCurrencyValue(value) : toNumber(value);
 
+// Escape text values for safe CSV cell output.
 const escapeCsvValue = (value) => {
   const text = value === undefined || value === null ? '' : String(value);
   if (/[",\n]/.test(text)) {
@@ -24,6 +32,7 @@ const escapeCsvValue = (value) => {
   return text;
 };
 
+// Escape dynamic text injected into generated report HTML.
 const escapeHtml = (value) =>
   String(value === undefined || value === null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -32,6 +41,7 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+// Sanitize labels so generated filenames remain safe across operating systems.
 const sanitizeFileSegment = (value) => {
   const cleaned = String(value || '')
     .toLowerCase()
@@ -40,6 +50,7 @@ const sanitizeFileSegment = (value) => {
   return cleaned || 'all';
 };
 
+// Build summary metric rows displayed/exported at the top of the report.
 const getDirectorSummaryRows = (state, formatted) => [
   ['Report Period', state.selectedPeriodLabel],
   ['Branch Scope', state.selectedBranchLabel],
@@ -52,6 +63,7 @@ const getDirectorSummaryRows = (state, formatted) => [
   ['Total Produce Sold (kg)', formatNumberValue(state.grandTotal?.totalKg, formatted)]
 ];
 
+// Build branch-level totals table, adding procurement column only when present.
 const getDirectorBranchSection = (state, formatted) => {
   const includeProcurement = Object.keys(state.procurementTotals || {}).length > 0;
   const headers = [
@@ -84,6 +96,7 @@ const getDirectorBranchSection = (state, formatted) => {
   return { headers, rows };
 };
 
+// Build sales trend rows for period-over-period chart exports.
 const getDirectorTrendSection = (state, formatted) => ({
   headers: ['Period', 'Total Sales (UGX)'],
   rows: (state.trendLabels || []).map((label, index) => [
@@ -92,6 +105,7 @@ const getDirectorTrendSection = (state, formatted) => ({
   ])
 });
 
+// Compose an export filename with period, branch scope, and date stamp.
 export const buildDirectorFileName = (state, extension) => {
   const period = sanitizeFileSegment(state.selectedPeriodLabel);
   const branch = sanitizeFileSegment(state.selectedBranchLabel);
@@ -99,6 +113,7 @@ export const buildDirectorFileName = (state, extension) => {
   return `director_report_${period}_${branch}_${stamp}.${extension}`;
 };
 
+// Build UTF-8 CSV content with sectioned tables for summary, branches, and trend.
 export const buildDirectorCsvContent = (state) => {
   const lines = [];
   const addSection = (title, headers, rows) => {
@@ -120,6 +135,7 @@ export const buildDirectorCsvContent = (state) => {
   return `\ufeff${content}`;
 };
 
+// Build Excel-compatible HTML content for direct spreadsheet opening.
 export const buildDirectorExcelContent = (state) => {
   const buildTable = (title, headers, rows) => {
     const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
@@ -158,6 +174,7 @@ export const buildDirectorExcelContent = (state) => {
   `;
 };
 
+// Build printable dashboard report HTML for browser print or PDF save.
 export const buildDirectorReportHtml = (state) => {
   const summaryRows = getDirectorSummaryRows(state, true);
   const branchSection = getDirectorBranchSection(state, true);
@@ -233,6 +250,7 @@ export const buildDirectorReportHtml = (state) => {
   `;
 };
 
+// Trigger browser download for a generated report payload.
 export const downloadReportFile = ({ filename, content, type }) => {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);

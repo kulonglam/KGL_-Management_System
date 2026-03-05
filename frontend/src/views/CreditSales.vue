@@ -205,6 +205,11 @@
 </template>
 
 <script setup>
+/**
+ * Credit-sales entry page: selects trusted buyers, validates stock, and saves deferred-payment sales.
+ * File: frontend/src/views/CreditSales.vue
+ */
+
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { creditSalesAPI, inventoryAPI, trustedBuyersAPI } from '../services/api';
 import { useFormFeedback } from '../composables/useFormFeedback';
@@ -218,21 +223,21 @@ import CreditProduceSection from '../components/credit/CreditProduceSection.vue'
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
 import { creditSaleValidationSchema } from '../utils/formSchemas.mjs';
 
-// Configure user.
+// Authenticated user context for agent/branch-specific fields.
 const user = ref({});
-// Configure trusted buyers.
+// Branch-approved trusted buyers used to populate buyer details.
 const trustedBuyers = ref([]);
-// Configure inventory.
+// Current inventory list used for produce selection and stock checks.
 const inventory = ref([]);
-// Configure form.
+// Credit-sale form state.
 const form = ref(createInitialForm());
-// Configure show review modal.
+// Controls visibility of review modal prior to final save.
 const showReviewModal = ref(false);
-// Configure review modal ref.
+// DOM ref used for keyboard focus handling in review modal.
 const reviewModalRef = ref(null);
-// Configure last focused element before opening review modal.
+// Restores keyboard focus after modal closes.
 const lastFocusedElement = ref(null);
-// Configure today iso date.
+// Used as min value for due-date pickers.
 const todayIsoDate = new Date().toISOString().split('T')[0];
 const authStore = useAuthStore(pinia);
 
@@ -241,10 +246,10 @@ const { stockWarning, evaluateStock } = useStockValidation();
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(creditSaleValidationSchema);
 
-// Configure can manage buyers.
+// Managers can navigate and maintain trusted buyers list.
 const canManageBuyers = computed(() => user.value.role === 'manager');
 
-// Create initial form.
+// Build a fresh credit-sale form with dispatch date defaulted to today.
 function createInitialForm() {
   return {
     trustedBuyerId: '',
@@ -261,7 +266,7 @@ function createInitialForm() {
   };
 }
 
-// Handle load inventory.
+// Load inventory used for produce dropdown and amount calculations.
 const loadInventory = async () => {
   try {
     const response = await inventoryAPI.get();
@@ -271,7 +276,7 @@ const loadInventory = async () => {
   }
 };
 
-// Handle load trusted buyers.
+// Load trusted-buyer records for buyer selection.
 const loadTrustedBuyers = async () => {
   try {
     const response = await trustedBuyersAPI.getAll();
@@ -281,7 +286,7 @@ const loadTrustedBuyers = async () => {
   }
 };
 
-// Handle buyer select.
+// Copy selected trusted-buyer details into read-only form fields.
 const handleBuyerSelect = () => {
   const buyer = trustedBuyers.value.find((entry) => entry._id === form.value.trustedBuyerId);
   if (!buyer) {
@@ -298,7 +303,7 @@ const handleBuyerSelect = () => {
   form.value.contact = buyer.contact;
 };
 
-// Update produce details.
+// Sync produce type and amount when produce selection changes.
 const updateProduceDetails = () => {
   if (!form.value.produceName) {
     form.value.produceType = '';
@@ -326,14 +331,14 @@ const updateProduceDetails = () => {
   updatePrice();
 };
 
-// Keep produce type synchronized when selecting produce from review modal.
+// Keep review-modal produce selection synchronized with produce type metadata.
 const handleReviewProduceChange = (event) => {
   const selected = event?.target?.options?.[event.target.selectedIndex];
   form.value.produceType = selected?.dataset?.produceType || '';
   updateProduceDetails();
 };
 
-// Update price.
+// Compute amount due from selected produce stock price and tonnage.
 const updatePrice = () => {
   const { amount } = evaluateStock(
     inventory.value,
@@ -344,14 +349,14 @@ const updatePrice = () => {
   form.value.amountDueUgx = amount || '';
 };
 
-// Handle reset form.
+// Reset form fields plus validation and warning state.
 const resetForm = () => {
   form.value = createInitialForm();
   stockWarning.value = '';
   resetErrors();
 };
 
-// Handle open review modal.
+// Validate data before opening final confirmation modal.
 const openReviewModal = () => {
   const validation = validateForm(form.value);
   if (!validation.valid) {
@@ -368,13 +373,13 @@ const openReviewModal = () => {
   showReviewModal.value = true;
 };
 
-// Handle close review modal.
+// Close review modal unless submit is in progress.
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
 };
 
-// Focus review modal container when it opens.
+// Focus first interactive element after review modal renders.
 const focusReviewModal = async () => {
   await nextTick();
   const firstFocusable = getReviewModalFocusableElements()[0];
@@ -385,6 +390,7 @@ const focusReviewModal = async () => {
   reviewModalRef.value?.focus();
 };
 
+// Return focusable controls used to trap tab navigation in modal.
 const getReviewModalFocusableElements = () =>
   Array.from(
     reviewModalRef.value?.querySelectorAll(
@@ -392,6 +398,7 @@ const getReviewModalFocusableElements = () =>
     ) || []
   );
 
+// Keep keyboard focus cycling inside the review modal.
 const trapReviewModalFocus = (event) => {
   if (!showReviewModal.value || event.key !== 'Tab') return;
 
@@ -418,6 +425,7 @@ const trapReviewModalFocus = (event) => {
   }
 };
 
+// Restore focus to the element that launched the review modal.
 const restorePreviousFocus = () => {
   const element = lastFocusedElement.value;
   if (element && typeof element.focus === 'function') {
@@ -425,7 +433,7 @@ const restorePreviousFocus = () => {
   }
 };
 
-// Handle review modal key events.
+// Process keyboard shortcuts while the review modal is open.
 const handleReviewModalKeydown = (event) => {
   if (!showReviewModal.value) return;
 
@@ -438,7 +446,7 @@ const handleReviewModalKeydown = (event) => {
   trapReviewModalFocus(event);
 };
 
-// Handle confirm save credit sale.
+// Submit credit sale after modal confirmation and validation.
 const confirmSaveCreditSale = async () => {
   const validation = validateForm(form.value);
   if (!validation.valid) {
@@ -466,7 +474,7 @@ const confirmSaveCreditSale = async () => {
   }
 };
 
-// Format currency.
+// Format UGX values in review summary.
 const formatCurrency = (amount) =>
   new Intl.NumberFormat('en-UG', {
     style: 'currency',

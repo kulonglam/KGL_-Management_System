@@ -1,4 +1,7 @@
-/** Primitive reusable validators used to build consistent client-side form validation rules. */
+/**
+ * Primitive reusable validators and schema runners for frontend form validation.
+ * File: frontend/src/utils/formValidation.mjs
+ */
 const isEmpty = (value) => {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim() === '';
@@ -83,6 +86,7 @@ const validators = {
       test(value, values) ? '' : message
 };
 
+// Resolve static or dynamic rule definitions for one field.
 const getFieldRules = (schema, fieldName, values) => {
   const ruleConfig = schema?.[fieldName];
   if (!ruleConfig) return [];
@@ -94,6 +98,7 @@ const getFieldRules = (schema, fieldName, values) => {
   return Array.isArray(ruleConfig) ? ruleConfig : [];
 };
 
+// Evaluate rules for a single field and return the first failing message.
 const validateFieldValue = (fieldName, values, schema) => {
   const rules = getFieldRules(schema, fieldName, values);
   const fieldValue = values?.[fieldName];
@@ -109,6 +114,7 @@ const validateFieldValue = (fieldName, values, schema) => {
   return '';
 };
 
+// Validate all schema fields and return boolean + keyed error map.
 const validateValues = (values, schema) => {
   const errors = {};
   const fields = Object.keys(schema || {});

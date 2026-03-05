@@ -1,3 +1,8 @@
+/**
+ * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ * File: backend/routes/priceRoutes.js
+ */
+
 import express from 'express';
 // Configure router.
 const router = express.Router();
@@ -17,36 +22,43 @@ import {
   mongoIdParamValidation
 } from '../validators/requestValidators.js';
 
-router
-  .route('/')
-  .get(protect, authorize('manager'), getPrices)
-  .post(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    priceCreateValidation,
-    validateRequest,
-    createPrice
-  );
+// GET /api/prices: list branch managed prices with inferred/unset rows.
+router.get('/', protect, authorize('manager'), getPrices);
 
-router
-  .route('/:id')
-  .get(protect, authorize('manager'), mongoIdParamValidation, validateRequest, getPriceById)
-  .put(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    priceUpdateValidation,
-    validateRequest,
-    updatePrice
-  )
-  .delete(
-    protect,
-    authorize('manager'),
-    writeLimiter,
-    mongoIdParamValidation,
-    validateRequest,
-    deletePrice
-  );
+// POST /api/prices: create one branch managed price rule.
+router.post(
+  '/',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  priceCreateValidation,
+  validateRequest,
+  createPrice
+);
+
+// GET /api/prices/:id: return one price rule by id after access checks.
+router.get('/:id', protect, authorize('manager'), mongoIdParamValidation, validateRequest, getPriceById);
+
+// PUT /api/prices/:id: update one price rule and propagate the new selling price.
+router.put(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  priceUpdateValidation,
+  validateRequest,
+  updatePrice
+);
+
+// DELETE /api/prices/:id: remove one branch price rule.
+router.delete(
+  '/:id',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  deletePrice
+);
 
 export default router;

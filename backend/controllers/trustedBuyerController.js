@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/trustedBuyerController.js
+ */
+
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import {
   normalizeText,
@@ -6,8 +11,7 @@ import {
 } from '../services/trustedBuyerService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-
-// Private (Manager, Sales Agent)
+// GET /api/trusted-buyers: list trusted buyers visible to requester scope with optional pagination.
 const getTrustedBuyers = async (req, res) => {
   try {
     const filter = {};
@@ -42,7 +46,7 @@ const getTrustedBuyers = async (req, res) => {
   }
 };
 
-// Create trusted buyer.
+// POST /api/trusted-buyers: create one trusted buyer after branch-unique NIN duplication checks.
 const createTrustedBuyer = async (req, res) => {
   try {
     const { name, nationalId, location, contact } = req.body;
@@ -75,7 +79,7 @@ const createTrustedBuyer = async (req, res) => {
   }
 };
 
-// Update trusted buyer.
+// PUT /api/trusted-buyers/:id: update one trusted buyer with branch and duplicate-NIN safeguards.
 const updateTrustedBuyer = async (req, res) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
@@ -108,7 +112,7 @@ const updateTrustedBuyer = async (req, res) => {
   }
 };
 
-// Delete trusted buyer by manager only
+// DELETE /api/trusted-buyers/:id: delete one trusted buyer after branch ownership validation.
 const deleteTrustedBuyer = async (req, res) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
@@ -125,3 +129,8 @@ const deleteTrustedBuyer = async (req, res) => {
   }
 };
 export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer };
+
+
+
+
+

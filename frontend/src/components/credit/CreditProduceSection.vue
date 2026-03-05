@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-// Configure form.
+// Shared credit-sale form model passed from parent view.
 const form = defineModel('form', {
   type: Object,
   required: true

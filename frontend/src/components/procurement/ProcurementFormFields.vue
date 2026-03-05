@@ -191,24 +191,24 @@
 <script setup>
 import { computed } from 'vue';
 
-// Handle normalize text value.
+// Trim and collapse repeated whitespace for name/contact text fields.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
 
-// Configure form.
+// Shared procurement form model passed from parent views.
 const form = defineModel('form', {
   type: Object,
   required: true
 });
 
-// Handle normalize text.
+// Normalize user-entered text on blur to keep payloads clean and consistent.
 const normalizeText = (field) => {
   if (typeof form.value[field] !== 'string') return;
   form.value[field] = normalizeTextValue(form.value[field]);
 };
 
-// Configure minimum tonnage.
+// Enforce business minimum tonnage by source type.
 const minimumTonnage = computed(() => (form.value.sourceType === 'individual' ? 1000 : 100));
-// Configure has managed price.
+// Indicates whether a manager-defined selling price is already populated.
 const hasManagedPrice = computed(() => Number(form.value.sellingPrice) >= 10000);
 
 defineProps({

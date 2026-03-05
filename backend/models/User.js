@@ -1,3 +1,8 @@
+/**
+ * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ * File: backend/models/User.js
+ */
+
 import mongoose from 'mongoose';
 
 // Define user schema.
@@ -8,10 +13,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     profileImage: { type: String, default: '' },
     role: { type: String, enum: ['director', 'manager', 'sales_agent'], required: true },
-    branch: {
-      type: String,
-      enum: ['Maganjo', 'Matugga'],
-      required: function () {
+    branch: { type: String, enum: ['Maganjo', 'Matugga'], required: function () {
         return this.role !== 'director';
       }
     },
@@ -29,3 +31,8 @@ userSchema.index({ branch: 1, role: 1 });
 userSchema.index({ username: 1, lockUntil: 1 });
 
 export default mongoose.model('User', userSchema);
+
+
+
+
+

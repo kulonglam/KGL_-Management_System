@@ -74,6 +74,11 @@
 </template>
 
 <script setup>
+/**
+ * Procurement records page: list, edit, and delete procurement entries per branch.
+ * File: frontend/src/views/ProcurementRecords.vue
+ */
+
 import { onMounted, ref } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
@@ -89,17 +94,17 @@ import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
-// Configure user.
+// Authenticated user metadata used for branch-aware display.
 const user = ref({});
-// Configure procurements.
+// Loaded procurement records displayed in the table.
 const procurements = ref([]);
-// Configure loading list.
+// Tracks list-fetch loading state.
 const loadingList = ref(false);
-// Configure editing id.
+// Selected record id currently being edited in modal.
 const editingId = ref(null);
-// Configure form.
+// Edit form state for selected procurement record.
 const form = ref(createInitialProcurementForm());
-// Configure delete dialog state.
+// Delete confirmation dialog state.
 const deleteDialog = ref({
   show: false,
   procurementId: '',
@@ -111,18 +116,18 @@ const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, r
   useFormFeedback();
 const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
 
-// This handle type change.
+// Re-apply manager-controlled price when edited produce type changes.
 const handleTypeChange = () => {
   applyPriceSetting(form.value);
 };
 
-// Handle reset form.
+// Reset editable form values to initial defaults.
 const resetForm = () => {
   form.value = createInitialProcurementForm();
   clearPriceLock();
 };
 
-// Handle load procurements.
+// Fetch procurement records for the active branch.
 const loadProcurements = async () => {
   loadingList.value = true;
   try {
@@ -135,7 +140,7 @@ const loadProcurements = async () => {
   }
 };
 
-// Handle start edit.
+// Open edit modal and hydrate form with selected record values.
 const startEdit = (item) => {
   editingId.value = item._id;
   form.value = {
@@ -155,14 +160,14 @@ const startEdit = (item) => {
   resetFeedback();
 };
 
-// cancel edit procurement record.
+// Close edit modal and clear transient edit state.
 const cancelEdit = () => {
   editingId.value = null;
   resetForm();
   resetFeedback();
 };
 
-//Uupdating procurement record.
+// Persist procurement edits to backend and refresh table.
 const handleUpdate = async () => {
   if (!editingId.value) return;
   beginSubmit();
@@ -192,7 +197,7 @@ const closeDeleteDialog = () => {
   deleteDialog.value.show = false;
 };
 
-// Delete procurement.
+// Delete selected procurement after confirmation dialog approval.
 const confirmDeleteProcurement = async () => {
   if (!deleteDialog.value.procurementId) return;
   deleteDialog.value.processing = true;

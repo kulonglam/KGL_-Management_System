@@ -7,9 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "migrate:procurement-legacy": "node scripts/migrateLegacyProcurementFields.js",
-    "migrate:produce-canonical": "node scripts/migrateCanonicalProduceData.js",
-    "reset:passwords": "node scripts/resetExistingPasswords.js",
+    "seed": "node seedData.js",
     "test": "node --test tests/*.test.mjs",
     "lint": "eslint . --config eslint.config.mjs",
     "lint:fix": "eslint . --config eslint.config.mjs --fix",

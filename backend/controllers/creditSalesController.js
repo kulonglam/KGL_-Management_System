@@ -1,3 +1,8 @@
+/**
+ * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ * File: backend/controllers/creditSalesController.js
+ */
+
 import CreditSale from '../models/CreditSale.js';
 import {
   applyCreditPaymentStatusUpdate,
@@ -6,7 +11,7 @@ import {
 } from '../services/creditSalesService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-// Retrieve all credit sales.
+// GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
 const getAllCreditSales = async (req, res) => {
   try {
     const filter = {};
@@ -46,7 +51,7 @@ const getAllCreditSales = async (req, res) => {
   }
 };
 
-// Create credit sale.
+// POST /api/credit-sales: create a credit sale using service-layer stock, buyer, and balance rules.
 const createCreditSale = async (req, res) => {
   try {
     const creditSale = await createCreditSaleRecord({
@@ -61,7 +66,7 @@ const createCreditSale = async (req, res) => {
   }
 };
 
-// Update payment status.
+// PUT /api/credit-sales/:id/payment: toggle paid/unpaid state with service-level consistency checks.
 const updatePaymentStatus = async (req, res) => {
   try {
     const isPaid = req.body.isPaid === true || req.body.isPaid === 'true';
@@ -78,7 +83,7 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// Handle repay credit sale.
+// POST /api/credit-sales/:id/repay: register a repayment installment against one credit sale.
 const repayCreditSale = async (req, res) => {
   try {
     const updated = await repayCreditSaleRecord({
@@ -94,7 +99,7 @@ const repayCreditSale = async (req, res) => {
   }
 };
 
-// Update credit sale correction fields.
+// PUT /api/credit-sales/:id: update manager-allowed correction fields (due/dispatch dates).
 const updateCreditSale = async (req, res) => {
   try {
     const creditSale = await CreditSale.findById(req.params.id);
@@ -125,7 +130,7 @@ const updateCreditSale = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-// Delete credit sale.
+// DELETE /api/credit-sales/:id: remove one credit sale when branch access and payment-state rules allow.
 const deleteCreditSale = async (req, res) => {
   try {
     const creditSale = await CreditSale.findById(req.params.id);
@@ -158,3 +163,8 @@ export {
   repayCreditSale,
   deleteCreditSale
 };
+
+
+
+
+

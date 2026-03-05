@@ -1,12 +1,18 @@
+/**
+ * Centralizes HTTP client configuration, auth token injection, response normalization,
+ * retry behavior, and typed endpoint groups used across the frontend.
+ * File: frontend/src/services/api.js
+ */
+
 import axios from 'axios';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
-// Configure api url.
+// Resolve API base URL from environment with local fallback.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const RETRY_DELAY_MS = 250;
 
-// Create axios instance
+// Shared axios client used by all domain API wrappers.
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -14,10 +20,10 @@ const api = axios.create({
   }
 });
 
-// Handle delay helper.
+// Promise-based sleep utility used by lightweight retry flow.
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Add token to requests
+// Attach bearer token from Pinia session before each outgoing request.
 api.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore(pinia);
@@ -33,7 +39,7 @@ api.interceptors.request.use(
   }
 );
 
-// Normalize API responses shaped as { success, data, error }
+// Normalize envelope responses shaped as { success, data, error }.
 api.interceptors.response.use(
   (response) => {
     const payload = response.data;
@@ -78,7 +84,7 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
+// Authentication and user-management endpoints.
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
@@ -89,7 +95,7 @@ export const authAPI = {
   deleteUser: (id) => api.delete(`/auth/users/${id}`)
 };
 
-// Procurement API
+// Procurement lifecycle endpoints.
 export const procurementAPI = {
   getAll: () => api.get('/procurement'),
   create: (data) => api.post('/procurement', data),
@@ -97,7 +103,7 @@ export const procurementAPI = {
   delete: (id) => api.delete(`/procurement/${id}`)
 };
 
-// Sales API
+// Cash sales and aggregated sales reporting endpoints.
 export const salesAPI = {
   getAll: () => api.get('/sales'),
   create: (data) => api.post('/sales', data),
@@ -106,7 +112,7 @@ export const salesAPI = {
   delete: (id) => api.delete(`/sales/${id}`)
 };
 
-// Credit Sales API
+// Credit-sale lifecycle and repayment endpoints.
 export const creditSalesAPI = {
   getAll: () => api.get('/credit-sales'),
   create: (data) => api.post('/credit-sales', data),
@@ -115,18 +121,18 @@ export const creditSalesAPI = {
   delete: (id) => api.delete(`/credit-sales/${id}`)
 };
 
-// Inventory API
+// Inventory read endpoints.
 export const inventoryAPI = {
   get: () => api.get('/inventory')
 };
 
-// Stock Notifications API
+// Stock notification endpoints.
 export const notificationsAPI = {
   getAll: (params = {}) => api.get('/notifications', { params }),
   markAsRead: (id) => api.put(`/notifications/${id}/read`)
 };
 
-// Trusted Buyers API
+// Trusted-buyer CRUD endpoints.
 export const trustedBuyersAPI = {
   getAll: () => api.get('/trusted-buyers'),
   create: (data) => api.post('/trusted-buyers', data),
@@ -134,7 +140,7 @@ export const trustedBuyersAPI = {
   delete: (id) => api.delete(`/trusted-buyers/${id}`)
 };
 
-// Price Management API
+// Branch produce-price management endpoints.
 export const priceAPI = {
   getAll: () => api.get('/prices'),
   create: (data) => api.post('/prices', data),

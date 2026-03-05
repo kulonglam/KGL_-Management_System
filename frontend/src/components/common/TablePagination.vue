@@ -79,11 +79,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:currentPage', 'update:pageSize']);
 
+// 1-based starting row index for the current page.
 const rowsStart = computed(() => {
   if (props.totalItems === 0) return 0;
   return (props.currentPage - 1) * props.pageSize + 1;
 });
 
+// Ending row index for the current page, capped by total item count.
 const rowsEnd = computed(() =>
   Math.min(props.currentPage * props.pageSize, props.totalItems)
 );
@@ -91,6 +93,7 @@ const rowsEnd = computed(() =>
 const rowsControlId = computed(() => `${props.idPrefix}-page-size`);
 const summaryId = computed(() => `${props.idPrefix}-summary`);
 
+// Emit selected page size as number to keep parent state numeric.
 const handlePageSizeChange = (event) => {
   const nextValue = Number(event.target.value || props.pageSize);
   emit('update:pageSize', nextValue);

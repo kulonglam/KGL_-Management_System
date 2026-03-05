@@ -88,12 +88,14 @@ const cancelButtonRef = ref(null);
 const lastActiveElement = ref(null);
 const titleId = `confirm-dialog-title-${Math.random().toString(36).slice(2, 10)}`;
 
+// Map semantic variant name to Bootstrap button class.
 const confirmButtonClass = computed(() => {
   if (props.confirmVariant === 'primary') return 'btn-primary';
   if (props.confirmVariant === 'success') return 'btn-success';
   return 'btn-danger';
 });
 
+// Collect tabbable elements so keyboard focus can be contained in modal.
 const getFocusableElements = () =>
   Array.from(
     dialogRef.value?.querySelectorAll(
@@ -101,6 +103,7 @@ const getFocusableElements = () =>
     ) || []
   );
 
+// Focus cancel action first to reduce accidental destructive confirmations.
 const focusDialog = async () => {
   await nextTick();
   if (cancelButtonRef.value) {
@@ -110,6 +113,7 @@ const focusDialog = async () => {
   dialogRef.value?.focus();
 };
 
+// Trap tab navigation inside the dialog while it is open.
 const trapFocus = (event) => {
   if (!props.show || event.key !== 'Tab') return;
   const focusable = getFocusableElements();
@@ -135,6 +139,7 @@ const trapFocus = (event) => {
   }
 };
 
+// Process global keyboard shortcuts while dialog is visible.
 const onWindowKeydown = (event) => {
   if (!props.show) return;
   if (event.key === 'Escape') {
@@ -145,6 +150,7 @@ const onWindowKeydown = (event) => {
   trapFocus(event);
 };
 
+// Return focus to the element that opened the dialog.
 const restoreFocus = () => {
   const element = lastActiveElement.value;
   if (element && typeof element.focus === 'function') {
@@ -152,6 +158,7 @@ const restoreFocus = () => {
   }
 };
 
+// Ignore cancel requests while async confirm action is running.
 const handleCancel = () => {
   if (props.busy) return;
   emit('cancel');

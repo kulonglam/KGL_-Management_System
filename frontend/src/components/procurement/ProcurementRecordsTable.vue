@@ -173,6 +173,7 @@ const produceTypeOptions = computed(() =>
   Array.from(new Set(props.procurements.map((record) => record.produceType).filter(Boolean))).sort()
 );
 
+// Apply search, optional produce-type filter, then selected sort order.
 const filteredProcurements = computed(() => {
   const query = searchQuery.value.toLowerCase();
   const bySearch = props.procurements.filter((record) => {
@@ -219,6 +220,7 @@ const paginatedProcurements = computed(() => {
   return filteredProcurements.value.slice(start, start + pageSize.value);
 });
 
+// Clamp target page so pagination controls cannot exceed valid bounds.
 const goToPage = (page) => {
   const nextPage = Math.max(1, Math.min(totalPages.value, Number(page || 1)));
   currentPage.value = nextPage;
@@ -251,7 +253,7 @@ const resetFilters = () => {
   sortBy.value = 'newest';
 };
 
-// Format number.
+// Render numeric values with local grouping separators for easier scanning.
 const formatNumber = (value) => {
   if (value === undefined || value === null) return '-';
   return Number(value).toLocaleString();

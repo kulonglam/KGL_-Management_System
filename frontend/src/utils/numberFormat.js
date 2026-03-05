@@ -1,16 +1,21 @@
-// Handle to number.
+/**
+ * Numeric formatting helpers for compact dashboard/table display values.
+ * File: frontend/src/utils/numberFormat.js
+ */
+
+// Convert unknown input into a finite number, defaulting invalid values to zero.
 const toNumber = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-// Handle compact suffix.
+// Format scaled values with one decimal and a compact unit suffix.
 const compactSuffix = (value, divisor, suffix) => {
   const scaled = value / divisor;
   return `${scaled.toFixed(1).replace(/\.0$/, '')}${suffix}`;
 };
 
-// Format compact number.
+// Render numbers using B/M/k suffixes when large, otherwise locale integers.
 const formatCompactNumber = (value) => {
   const number = toNumber(value);
   const absolute = Math.abs(number);
@@ -31,7 +36,7 @@ const formatCompactNumber = (value) => {
   return Math.round(number).toLocaleString('en-UG');
 };
 
-// Format compact currency.
+// Prefix compact numeric output with a currency label.
 const formatCompactCurrency = (value, currencyLabel = 'UGX') =>
   `${currencyLabel} ${formatCompactNumber(value)}`;
 

@@ -1,3 +1,8 @@
+/**
+ * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ * File: backend/models/PriceSetting.js
+ */
+
 import mongoose from 'mongoose';
 
 // Define price setting schema.
@@ -19,3 +24,8 @@ const priceSettingSchema = new mongoose.Schema(
 priceSettingSchema.index({ branch: 1, produceType: 1 }, { unique: true });
 
 export default mongoose.model('PriceSetting', priceSettingSchema);
+
+
+
+
+

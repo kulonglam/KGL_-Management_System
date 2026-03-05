@@ -136,13 +136,18 @@
 </template>
 
 <script>
+/**
+ * Profile management page for viewing/updating account details and optional profile photo.
+ * File: frontend/src/views/Profile.vue
+ */
+
 import { authAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
-// Configure max profile image size bytes.
+// Cap uploaded profile image size to 1 MB.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
-// Configure allowed profile image types.
+// Restrict uploads to accepted image MIME types.
 const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
 export default {
@@ -170,7 +175,7 @@ export default {
     await this.loadProfile();
   },
   methods: {
-    // Handle load profile.
+    // Load current user profile from backend and hydrate local form state.
     async loadProfile() {
       this.loading = true;
       this.error = '';
@@ -184,6 +189,7 @@ export default {
         this.loading = false;
       }
     },
+    // Apply backend user payload to editable form fields.
     applyUserToForm(user) {
       this.form = {
         _id: user._id || '',
@@ -198,6 +204,7 @@ export default {
       this.profileImageChanged = false;
       this.updateSessionUser(user);
     },
+    // Keep Pinia session user details synchronized with profile updates.
     updateSessionUser(user) {
       const authStore = useAuthStore(pinia);
       authStore.updateUser({
@@ -209,6 +216,7 @@ export default {
         branch: user.branch
       });
     },
+    // Validate and preview selected profile image before upload.
     handleImageChange(event) {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -237,11 +245,13 @@ export default {
       reader.readAsDataURL(file);
       event.target.value = '';
     },
+    // Remove current previewed profile image from pending payload.
     removeImage() {
       this.error = '';
       this.profileImagePreview = '';
       this.profileImageChanged = true;
     },
+    // Validate profile changes and submit update payload.
     async handleSave() {
       this.error = '';
       this.success = '';
@@ -259,7 +269,7 @@ export default {
 
       this.saving = true;
       try {
-        // Configure payload.
+        // Send only mutable account fields and optional password/image changes.
         const payload = {
           name: this.form.name.trim(),
           username: this.form.username.trim()

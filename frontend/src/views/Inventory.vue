@@ -225,6 +225,11 @@
 </template>
 
 <script>
+/**
+ * Inventory overview page with stock status alerts, filters, and paginated table views.
+ * File: frontend/src/views/Inventory.vue
+ */
+
 import { inventoryAPI } from '../services/api';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
@@ -263,7 +268,7 @@ export default {
     await this.loadInventory();
   },
   computed: {
-    // Handle low stock items.
+    // Items below normal threshold but not fully depleted.
     lowStockItems() {
       return this.inventory.filter((item) => {
         const tonnage = Number(item.totalTonnageKg || 0);
@@ -365,7 +370,7 @@ export default {
     }
   },
   methods: {
-    // Handle load inventory.
+    // Fetch latest inventory snapshot and derived backend aggregates.
     async loadInventory() {
       this.loading = true;
       this.loadError = '';

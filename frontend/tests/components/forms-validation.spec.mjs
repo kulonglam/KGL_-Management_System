@@ -342,7 +342,7 @@ describe('Forms Validation E2E', () => {
     await addBuyerButton.trigger('click');
 
     await wrapper.find('#trusted-buyer-name').setValue('Buyer 3');
-    await wrapper.find('#trusted-buyer-nin').setValue('INVALID');
+    await wrapper.find('#trusted-buyer-nin').setValue('AB123456789012');
     await wrapper.find('#trusted-buyer-location').setValue('Kampala 2');
     await wrapper.find('#trusted-buyer-contact').setValue('+256700000003');
     await wrapper.find('form').trigger('submit.prevent');

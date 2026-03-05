@@ -1,7 +1,12 @@
+/**
+ * Provides procurement-form defaults and managed-price synchronization helpers.
+ * File: frontend/src/composables/useProcurementForm.js
+ */
+
 import { ref } from 'vue';
 import { priceAPI } from '../services/api';
 
-// Create initial procurement form.
+// Create a new procurement form object with current date/time defaults.
 const createInitialProcurementForm = () => ({
   produceName: '',
   produceType: '',
@@ -15,12 +20,12 @@ const createInitialProcurementForm = () => ({
   dealerContact: ''
 });
 
-// Handle use procurement pricing.
+// Load manager-defined selling prices and apply them to procurement selections.
 const useProcurementPricing = () => {
   const priceSettings = ref({});
   const priceLocked = ref(true);
 
-  // Handle load prices.
+  // Fetch managed prices and map them by produce type for quick lookup.
   const loadPrices = async () => {
     try {
       const response = await priceAPI.getAll();
@@ -36,7 +41,7 @@ const useProcurementPricing = () => {
     }
   };
 
-  // Handle apply price setting.
+  // Apply the selected produce type price; clear when no managed price exists.
   const applyPriceSetting = (form) => {
     const price = priceSettings.value[form.produceType];
     if (typeof price === 'number') {
@@ -47,7 +52,7 @@ const useProcurementPricing = () => {
     priceLocked.value = true;
   };
 
-  // Handle clear price lock.
+  // Keep the price field read-only because pricing is controlled centrally.
   const clearPriceLock = () => {
     priceLocked.value = true;
   };
@@ -61,7 +66,7 @@ const useProcurementPricing = () => {
   };
 };
 
-// Format source.
+// Convert source enum values into display-friendly labels.
 const formatSource = (value) => {
   if (value === 'individual') return 'Individual';
   if (value === 'company') return 'Company';
@@ -69,7 +74,7 @@ const formatSource = (value) => {
   return value || '-';
 };
 
-// Handle to date input.
+// Normalize date-like input into HTML date input format (YYYY-MM-DD).
 const toDateInput = (value) => {
   if (!value) return '';
   const date = new Date(value);

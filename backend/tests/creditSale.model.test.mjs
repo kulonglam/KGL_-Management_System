@@ -6,7 +6,7 @@ import CreditSale from '../models/CreditSale.js';
 // Handle base payload.
 const basePayload = () => ({
   buyerName: 'Trusted Buyer',
-  nationalId: 'CM1234567890AB',
+  nationalId: 'CM123456789012',
   location: 'Kampala',
   contact: '+256700000000',
   amountDueUgx: 50000,

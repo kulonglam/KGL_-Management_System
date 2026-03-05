@@ -239,6 +239,11 @@
 </template>
 
 <script>
+/**
+ * Shared authenticated layout: sidebar/navigation, stock alerts, and logout modal controls.
+ * File: frontend/src/views/DashboardLayout.vue
+ */
+
 import { inventoryAPI, notificationsAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
@@ -269,12 +274,12 @@ export default {
     user() {
       return this.authStore.user || {};
     },
-    // Handle current year.
+    // Footer year rendered dynamically.
     currentYear() {
       return new Date().getFullYear();
     },
     roleLabel() {
-      // Configure roles.
+      // Friendly labels for role codes stored in auth payload.
       const roles = {
         director: 'Director',
         manager: 'Manager',

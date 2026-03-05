@@ -30,7 +30,7 @@ npm install
 Copy `backend/.env.example` to `backend/.env`, then update values if needed.
 
 ```bash
-node seedData.js
+npm run seed
 npm run dev
 ```
 
@@ -53,16 +53,14 @@ Frontend default URL: `http://localhost:5173`
 ## Seeded Login Credentials
 All seeded users use password `Karibu@2026!`.
 
-To update passwords for already-existing users in your current database:
-
-```bash
-cd backend
-npm run reset:passwords -- --password=Karibu@2026!
-```
-
 - Director: `orban`
 - Managers: `managerA` (Maganjo), `managerB` (Matugga)
 - Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
+
+## Deploy on Render
+Use the included Render blueprint and setup guide:
+- `render.yaml`
+- `RENDER_DEPLOYMENT.md`
 
 ## Quality Checks
 Run these before submission/deployment:
