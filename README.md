@@ -1,4 +1,4 @@
-# Karibu Groceries LTD Management System
+﻿# Karibu Groceries LTD Management System
 
 Karibu Groceries LTD Management System is a full-stack web application for branch-level wholesale produce operations and executive reporting.
 
@@ -54,7 +54,7 @@ Frontend default URL: `http://localhost:5173`
 All seeded users use password `Karibu@2026!`.
 
 - Director: `orban`
-- Managers: `managerA` (Maganjo), `managerB` (Matugga)
+- Managers: `kulong` (Maganjo), `lam` (Matugga)
 - Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
 
 ## Deploy on Render
@@ -95,3 +95,4 @@ npm test
 - `PRODUCTION_HARDENING.md`
 - `QA_REHEARSAL_CHECKLIST.md`
 - `QA_REHEARSAL_CHECKLIST_TABLE.md`
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Resets the database and inserts a clean demo baseline for local testing and demos.
  * File: backend/seedData.js
  */
@@ -28,36 +28,36 @@ const PRODUCE_PRICES = {
   Soybeans: 40000
 };
 
-const USER_SEED = [
+const userSeed = [
   { name: 'Mr Orban', username: 'orban', role: 'director', canViewCrossBranchTotals: true },
-  { name: 'Manager Maganjo', username: 'managerA', role: 'manager', branch: 'Maganjo' },
-  { name: 'Manager Matugga', username: 'managerB', role: 'manager', branch: 'Matugga' },
+  { name: 'Manager Maganjo', username: 'kulong', role: 'manager', branch: 'Maganjo' },
+  { name: 'Manager Matugga', username: 'lam', role: 'manager', branch: 'Matugga' },
   { name: 'Agent One Maganjo', username: 'agent1A', role: 'sales_agent', branch: 'Maganjo' },
   { name: 'Agent Two Maganjo', username: 'agent2A', role: 'sales_agent', branch: 'Maganjo' },
   { name: 'Agent One Matugga', username: 'agent1B', role: 'sales_agent', branch: 'Matugga' },
   { name: 'Agent Two Matugga', username: 'agent2B', role: 'sales_agent', branch: 'Matugga' }
 ];
 
-const TRUSTED_BUYER_SEED = [
+const trustedBuyerSeed = [
   {
     name: 'Kulong Lam',
     nationalId: 'CM123456789012',
     location: 'Kampala Central',
     contact: '+256700567890',
     branch: 'Matugga',
-    recordedByUsername: 'managerB'
+    recordedByUsername: 'lam'
   },
   {
     name: 'Mary Nyajime',
     nationalId: 'CF987654321098',
-    location: 'Kawempe',
+    location: 'Kawempe01Bef',
     contact: '+256700111222',
     branch: 'Maganjo',
-    recordedByUsername: 'managerA'
+    recordedByUsername: 'kulong'
   }
 ];
 
-const PROCUREMENT_SEED = [
+const procurementSeed = [
   {
     produceName: 'Red Beans',
     produceType: 'Beans',
@@ -66,14 +66,14 @@ const PROCUREMENT_SEED = [
     timeReceived: '09:00',
     tonnageKg: 5000,
     costUgx: 15000000,
-    dealerName: 'Maganjo Farm Cooperative',
+    dealerName: 'Maganjo Farm ',
     dealerContact: '+256700123456',
     branch: 'Maganjo',
     sellingPrice: 35000,
-    recordedByUsername: 'managerA'
+    recordedByUsername: 'kulong'
   },
   {
-    produceName: 'Soy Beans',
+    produceName: 'SoyBeans01',
     produceType: 'Soybeans',
     sourceType: 'kgl_farm',
     dateReceived: '2026-02-12',
@@ -84,7 +84,7 @@ const PROCUREMENT_SEED = [
     dealerContact: '+256700765432',
     branch: 'Maganjo',
     sellingPrice: 40000,
-    recordedByUsername: 'managerA'
+    recordedByUsername: 'kulong'
   },
   {
     produceName: 'Ground Nuts',
@@ -98,7 +98,7 @@ const PROCUREMENT_SEED = [
     dealerContact: '0700345678',
     branch: 'Maganjo',
     sellingPrice: 55000,
-    recordedByUsername: 'managerA'
+    recordedByUsername: 'kulong'
   },
   {
     produceName: 'White Maize',
@@ -112,7 +112,7 @@ const PROCUREMENT_SEED = [
     dealerContact: '+256700234567',
     branch: 'Matugga',
     sellingPrice: 28000,
-    recordedByUsername: 'managerB'
+    recordedByUsername: 'lam'
   },
   {
     produceName: 'Brown Cow Peas',
@@ -126,7 +126,7 @@ const PROCUREMENT_SEED = [
     dealerContact: '+256700345678',
     branch: 'Matugga',
     sellingPrice: 32000,
-    recordedByUsername: 'managerB'
+    recordedByUsername: 'lam'
   },
   {
     produceName: 'Yellow Soy Beans',
@@ -140,11 +140,11 @@ const PROCUREMENT_SEED = [
     dealerContact: '+256700456789',
     branch: 'Matugga',
     sellingPrice: 40000,
-    recordedByUsername: 'managerB'
+    recordedByUsername: 'lam'
   }
 ];
 
-const SALES_SEED = [
+const salesSeed = [
   {
     produceName: 'Red Beans',
     produceType: 'Beans',
@@ -191,7 +191,7 @@ const SALES_SEED = [
   }
 ];
 
-const CREDIT_SALE_SEED = [
+const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789012',
     salesAgentUsername: 'agent2B',
@@ -204,7 +204,7 @@ const CREDIT_SALE_SEED = [
     dueDate: '2026-03-20',
     dateOfDispatch: '2026-02-18',
     branch: 'Matugga',
-    paymentReceivedByUsername: 'managerB',
+    paymentReceivedByUsername: 'lam',
     isPaid: false
   },
   {
@@ -219,7 +219,7 @@ const CREDIT_SALE_SEED = [
     dueDate: '2026-03-10',
     dateOfDispatch: '2026-02-19',
     branch: 'Maganjo',
-    paymentReceivedByUsername: 'managerA',
+    paymentReceivedByUsername: 'kulong',
     isPaid: true
   }
 ];
@@ -256,7 +256,7 @@ const clearCollections = async () => {
 
 const seedUsers = async () => {
   const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-  const records = USER_SEED.map((user) => ({
+  const records = userSeed.map((user) => ({
     ...user,
     password: hashedPassword
   }));
@@ -286,7 +286,7 @@ const getUserOrThrow = (userByUsername, username) => {
 };
 
 const seedTrustedBuyers = async (userByUsername) => {
-  const records = TRUSTED_BUYER_SEED.map((buyer) => ({
+  const records = trustedBuyerSeed.map((buyer) => ({
     name: buyer.name,
     nationalId: buyer.nationalId,
     location: buyer.location,
@@ -301,7 +301,7 @@ const seedTrustedBuyers = async (userByUsername) => {
 };
 
 const seedProcurements = async (userByUsername) => {
-  const records = PROCUREMENT_SEED.map((item) => ({
+  const records = procurementSeed.map((item) => ({
     produceName: item.produceName,
     produceType: item.produceType,
     sourceType: item.sourceType,
@@ -321,7 +321,7 @@ const seedProcurements = async (userByUsername) => {
 };
 
 const seedSales = async (userByUsername) => {
-  const records = SALES_SEED.map((item) => {
+  const records = salesSeed.map((item) => {
     const recordedBy = getUserOrThrow(userByUsername, item.recordedByUsername);
     return {
       produceName: item.produceName,
@@ -342,7 +342,7 @@ const seedSales = async (userByUsername) => {
 };
 
 const seedCreditSales = async (userByUsername, buyerByNin) => {
-  const records = CREDIT_SALE_SEED.map((item) => {
+  const records = creditSalesSeed.map((item) => {
     const trustedBuyer = buyerByNin.get(item.trustedBuyerNationalId);
     if (!trustedBuyer) {
       throw new Error(
@@ -391,7 +391,7 @@ const printLoginSummary = () => {
   console.log('\n=== Seed Login Credentials ===');
   console.log(`Password for all users: ${DEFAULT_PASSWORD}`);
   console.log('Director: orban');
-  console.log('Managers: managerA (Maganjo), managerB (Matugga)');
+  console.log('Managers: kulong (Maganjo), lam (Matugga)');
   console.log('Sales Agents: agent1A, agent2A, agent1B, agent2B');
   console.log('==============================\n');
 };
@@ -422,6 +422,7 @@ main()
     await mongoose.disconnect();
     process.exit(1);
   });
+
 
 
 

@@ -1,4 +1,4 @@
-services:
+﻿services:
   - type: web
     name: kgl-backend
     runtime: node
@@ -19,8 +19,9 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://kgl-frontend.onrender.com
 
-  - type: static
+  - type: web
     name: kgl-frontend
+    runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
@@ -31,3 +32,5 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+
+

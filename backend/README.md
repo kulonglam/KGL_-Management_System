@@ -1,4 +1,4 @@
-# Karibu Groceries LTD - Backend API
+﻿# Karibu Groceries LTD - Backend API
 
 Node.js/Express/MongoDB backend for Karibu Groceries LTD Management System.
 
@@ -44,7 +44,7 @@ npm run seed
 Seeded password for all users: `Karibu@2026!`
 
 - Director: `orban`
-- Managers: `managerA` (Maganjo), `managerB` (Matugga)
+- Managers: `kulong` (Maganjo), `lam` (Matugga)
 - Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
 
 ## Health and Ops Endpoints
@@ -72,3 +72,4 @@ npm test
 - Root README: `../README.md`
 - User guide: `../USER_MANUAL.md`
 - Render deploy guide: `../RENDER_DEPLOYMENT.md`
+

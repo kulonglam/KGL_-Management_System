@@ -1,4 +1,4 @@
-# Render Deployment Guide
+﻿# Render Deployment Guide
 
 This repository includes a Render Blueprint file at `render.yaml` for:
 - `kgl-backend` (Node web service)
@@ -46,6 +46,7 @@ node seedData.js
 - Frontend: open your Render frontend URL
 - Seeded users:
   - Director: `orban`
-  - Managers: `managerA`, `managerB`
+  - Managers: `kulong`, `lam`
   - Sales agents: `agent1A`, `agent2A`, `agent1B`, `agent2B`
 - Password: from `SEED_DEFAULT_PASSWORD` env var if set, otherwise `Karibu@2026!`
+
