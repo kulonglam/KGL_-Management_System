@@ -1,7 +1,5 @@
-/**
- * Evaluates inventory availability for sales forms and computes payable totals.
- * File: frontend/src/composables/useStockValidation.js
- */
+// Evaluates inventory availability for sales forms and computes payable totals.
+ 
 
 import { ref } from 'vue';
 
