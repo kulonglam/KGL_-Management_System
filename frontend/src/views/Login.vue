@@ -187,7 +187,12 @@ export default {
           password: this.credentials.password
         };
         const response = await authAPI.login(payload);
-        const { token, ...user } = response.data;
+        const authPayload = response?.data;
+        if (!authPayload || typeof authPayload !== 'object' || !authPayload.token || !authPayload.role) {
+          throw new Error('Login service misconfiguration detected. Check frontend API URL settings.');
+        }
+
+        const { token, ...user } = authPayload;
 
         const authStore = useAuthStore(pinia);
         authStore.setSession(token, user);
@@ -206,7 +211,7 @@ export default {
           this.$router.push('/dashboard/sales-agent');
         }
       } catch (error) {
-        this.error = error.response?.data?.message || 'Login failed';
+        this.error = error.response?.data?.message || error.message || 'Login failed';
       } finally {
         this.loading = false;
       }

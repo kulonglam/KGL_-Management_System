@@ -8,8 +8,19 @@ import axios from 'axios';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
+const sanitizeApiUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  // Accept mistakenly pasted ".env style" values such as "VITE_API_URL=https://...".
+  const withoutPrefix = raw.startsWith('VITE_API_URL=') ? raw.slice('VITE_API_URL='.length) : raw;
+  const unquoted = withoutPrefix.replace(/^['"]|['"]$/g, '').trim();
+
+  return unquoted;
+};
+
 // Resolve API base URL from environment with local fallback.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = sanitizeApiUrl(import.meta.env.VITE_API_URL) || 'http://localhost:5000/api';
 const RETRY_DELAY_MS = 250;
 
 // Shared axios client used by all domain API wrappers.
