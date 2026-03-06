@@ -302,7 +302,7 @@ button:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: var(--sidebar-muted);
+  color: var(--sidebar-muted) !important;
   font-size: 0.76rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -312,8 +312,8 @@ button:focus-visible,
 }
 
 .sidebar-group-toggle:hover {
-  color: #d1d5db;
-  text-decoration: none;
+  color: #d1d5db !important;
+  text-decoration: none !important;
 }
 
 .sidebar-group-toggle i {
@@ -330,7 +330,7 @@ button:focus-visible,
   display: flex;
   align-items: center;
   gap: 0.7rem;
-  color: var(--sidebar-text);
+  color: var(--sidebar-text) !important;
   border: 1px solid transparent;
   border-radius: 0.6rem;
   padding: 0.72rem 0.78rem;
@@ -345,50 +345,50 @@ button:focus-visible,
 .sidebar-link i {
   width: 18px;
   text-align: center;
-  color: #c7d2fe;
+  color: #c7d2fe !important;
 }
 
 .sidebar-link:hover {
   background-color: var(--sidebar-hover-bg);
   border-color: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  text-decoration: none;
+  color: #ffffff !important;
+  text-decoration: none !important;
 }
 
 .sidebar-link:focus-visible {
   outline: none;
   border-color: rgba(14, 165, 233, 0.6);
   box-shadow: var(--focus-ring);
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .sidebar-link.active {
   background-color: var(--sidebar-active-bg);
   border-color: var(--sidebar-active-border);
   box-shadow: inset 3px 0 0 var(--primary-color);
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .sidebar-link.active i {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .sidebar-link-danger {
-  color: #fecaca;
+  color: #fecaca !important;
 }
 
 .sidebar-link-danger i {
-  color: #fca5a5;
+  color: #fca5a5 !important;
 }
 
 .sidebar-link-danger:hover {
   background-color: rgba(220, 53, 69, 0.16);
   border-color: rgba(220, 53, 69, 0.35);
-  color: #ffe4e6;
+  color: #ffe4e6 !important;
 }
 
 .sidebar .btn-link {
-  text-decoration: none;
+  text-decoration: none !important;
 }
 
 .sidebar-toggle-btn {
@@ -624,12 +624,12 @@ button:focus-visible,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 1.25rem !important;
+  border-bottom: 1px solid #e5e7eb !important;
 }
 
 .modal-body {
-  padding: 1.25rem;
+  padding: 1.25rem !important;
   overflow-y: auto;
 }
 
