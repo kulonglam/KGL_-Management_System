@@ -86,13 +86,4 @@ npm test
   - See `DATABASE_SCHEMA.md` and `backend/seedData.js`.
 - User guide or README:
   - See `USER_MANUAL.md` (primary) and this `README.md`.
-- Live demonstration or recorded walkthrough:
-  - Use `DEMO_WALKTHROUGH.md` as the scripted demo flow and attach your final video/live-demo link there.
-
-## Additional Documentation
-- `USER_MANUAL.md`
-- `REQUIREMENTS_COMPLIANCE.md`
-- `PRODUCTION_HARDENING.md`
-- `QA_REHEARSAL_CHECKLIST.md`
-- `QA_REHEARSAL_CHECKLIST_TABLE.md`
-
+  
