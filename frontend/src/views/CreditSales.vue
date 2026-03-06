@@ -121,7 +121,7 @@
                   :value="item.produceName"
                   :data-produce-type="item.produceType"
                 >
-                  {{ item.produceName }} ({{ item.produceType }}) - {{ item.totalTonnageKg }} kg
+                  {{ item.produceName }}
                 </option>
               </select>
               <div v-if="fieldErrors.produceName" class="invalid-feedback">
