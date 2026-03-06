@@ -200,7 +200,7 @@
           <div v-if="success" class="alert alert-success mt-3">{{ success }}</div>
 
           <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="loading">
+            <button type="submit" class="btn btn-success" :disabled="loading">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               {{ editingId ? 'Update Buyer' : 'Add Buyer' }}
             </button>

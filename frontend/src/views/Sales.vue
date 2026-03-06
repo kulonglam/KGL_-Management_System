@@ -23,17 +23,17 @@
           <FormAlerts :stock-warning="stockWarning" :error="error" :success="success" />
 
           <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="loading">
+            <button type="submit" class="btn btn-success" :disabled="loading">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Record Sale
             </button>
             <button
               type="button"
-              class="btn btn-danger ms-2"
+              class="btn btn-outline-secondary ms-2"
               :disabled="loading"
               @click="resetForm"
             >
-              Clear Form
+              Clear
             </button>
           </div>
         </form>
@@ -94,7 +94,7 @@
             </button>
             <button
               type="button"
-              class="btn btn-primary"
+              class="btn btn-success"
               :disabled="loading"
               @click="confirmSaveSale"
             >

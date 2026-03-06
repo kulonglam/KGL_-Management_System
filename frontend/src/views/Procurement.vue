@@ -23,7 +23,7 @@
           <FormAlerts :error="error" :success="success" />
 
           <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="loading">
+            <button type="submit" class="btn btn-success" :disabled="loading">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
               Record Procurement
             </button>
