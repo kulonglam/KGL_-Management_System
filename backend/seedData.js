@@ -590,7 +590,7 @@ const printLoginSummary = () => {
   console.log(`Password for all users: ${DEFAULT_PASSWORD}`);
   console.log('Director: orban');
   console.log('Managers: kulong (Maganjo), lam (Matugga)');
-  console.log('Sales Agents: agent1A, agent2A, agent1B, agent2B');
+  console.log('Sales Agents: wuol, makhol, nyar, chuol');
   console.log('==============================\n');
 };
 
