@@ -586,9 +586,9 @@ button:focus-visible,
 }
 
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 1030;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1030 !important;
 }
 
 .spinner-border-sm {
