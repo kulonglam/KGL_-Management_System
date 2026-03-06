@@ -2,7 +2,7 @@
   <div class="view-shell">
     <div class="view-heading">
       <h2 class="page-title">Credit Sales Records</h2>
-      <p class="page-subtitle">Track balances, repayment status, and due dates.</p>
+      <p class="page-subtitle">Track amount due, repayment status, and due dates.</p>
     </div>
 
     <div v-if="canRepay && repayId" class="card mb-4">
@@ -124,7 +124,7 @@
               <select id="credit-sort" v-model="sortBy" class="form-select form-select-sm">
                 <option value="newest">Newest dispatch</option>
                 <option value="oldest">Oldest dispatch</option>
-                <option value="balance_desc">Highest balance</option>
+                <option value="balance_desc">Highest amount due</option>
                 <option value="due_soon">Due soonest</option>
               </select>
             </div>
@@ -153,7 +153,6 @@
                 <th>Location</th>
                 <th>Contact</th>
                 <th class="text-end">Amount Due (UGX)</th>
-                <th class="text-end">Balance (UGX)</th>
                 <th>Status</th>
                 <th>Produce</th>
                 <th>Sales Agent</th>
@@ -168,7 +167,6 @@
                 <td>{{ item.nationalId || '-' }}</td>
                 <td>{{ item.location || '-' }}</td>
                 <td>{{ item.contact || '-' }}</td>
-                <td class="text-end">{{ formatCurrency(item.amountDueUgx) }}</td>
                 <td
                   class="text-end fw-semibold"
                   :class="{ 'text-danger': getBalance(item) > 0, 'text-success': getBalance(item) === 0 }"
