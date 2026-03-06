@@ -11,12 +11,15 @@ const validateRequest = (req, res, next) => {
     return next();
   }
 
+  const details = errors.array().map((error) => ({
+    field: error.path,
+    message: error.msg
+  }));
+
   return res.status(400).json({
-    message: 'Validation failed',
-    details: errors.array().map((error) => ({
-      field: error.path,
-      message: error.msg
-    }))
+    // Return the first actionable validation detail for better UX.
+    message: details[0]?.message || 'Validation failed',
+    details
   });
 };
 

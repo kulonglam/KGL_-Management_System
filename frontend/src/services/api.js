@@ -85,7 +85,13 @@ api.interceptors.response.use(
       Object.prototype.hasOwnProperty.call(payload, 'data') &&
       Object.prototype.hasOwnProperty.call(payload, 'error')
     ) {
-      const normalizedMessage = payload.error?.message || 'Request failed';
+      const detailMessages = Array.isArray(payload.error?.details)
+        ? payload.error.details.map((detail) => detail?.message).filter(Boolean)
+        : [];
+      const normalizedMessage =
+        detailMessages[0] ||
+        payload.error?.message ||
+        'Request failed';
       error.response.data = {
         ...payload,
         message: normalizedMessage

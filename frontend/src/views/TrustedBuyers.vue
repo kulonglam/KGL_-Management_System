@@ -21,6 +21,13 @@
       </button>
     </div>
 
+    <div v-if="error" class="alert alert-danger" role="alert">
+      {{ error }}
+    </div>
+    <div v-if="success" class="alert alert-success" role="status">
+      {{ success }}
+    </div>
+
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Trusted Buyers List</h5>
@@ -195,9 +202,6 @@
               <input id="trusted-buyer-branch" type="text" class="form-control" :value="user.branch" disabled />
             </div>
           </div>
-
-          <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
-          <div v-if="success" class="alert alert-success mt-3">{{ success }}</div>
 
           <div class="mt-4">
             <button type="submit" class="btn btn-success" :disabled="loading">
