@@ -521,13 +521,28 @@ button:focus-visible,
 }
 
 .btn-primary {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-color-hover);
-  border-color: var(--primary-color-hover);
+  background-color: var(--primary-color-hover) !important;
+  border-color: var(--primary-color-hover) !important;
+  color: #ffffff !important;
+}
+
+.btn-outline-primary {
+  color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus,
+.btn-outline-primary:active {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
 }
 
 .btn {

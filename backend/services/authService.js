@@ -141,7 +141,7 @@ const checkRoleLimits = async (role, branch, excludeUserId = null) => {
   const count = await User.countDocuments(query);
   if (count >= roleLimits.max) {
     if (role === 'manager') return 'Each branch can only have 1 manager';
-    if (role === 'sales_agent') return 'Each branch can only have 2 attendants';
+    if (role === 'sales_agent') return 'Each branch can only have 2 sales agents';
   }
 
   return null;
@@ -166,7 +166,7 @@ const checkRoleMinimumAfterRemoval = async (role, branch, excludeUserId) => {
   const remainingCount = await User.countDocuments(query);
   if (remainingCount < roleLimits.min) {
     if (role === 'manager') return 'Each branch must always have 1 manager';
-    if (role === 'sales_agent') return 'Each branch must always have 2 attendants';
+    if (role === 'sales_agent') return 'Each branch must retain at least 2 sales agents';
   }
 
   return null;
