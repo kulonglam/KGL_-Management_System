@@ -55,14 +55,14 @@ const createApp = () => {
     process.env.ENABLE_SWAGGER === 'true' ||
     (process.env.NODE_ENV !== 'production' && process.env.ENABLE_SWAGGER !== 'false');
 
-  app.use(enforceHttpsInProduction);
-
   app.use(
     cors({
       origin: allowedOrigins,
       credentials: true
     })
   );
+
+  app.use(enforceHttpsInProduction);
 
   app.use(express.json({ limit: requestBodyLimit }));
   app.use(express.urlencoded({ extended: false, limit: requestBodyLimit, parameterLimit: 100 }));
