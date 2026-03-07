@@ -6,6 +6,8 @@
       <p class="page-subtitle">Review all cash sale entries.</p>
     </div>
 
+    <InsightStrip label="Sales records overview" :items="overviewItems" />
+
     <div
       v-if="loadError"
       class="alert alert-danger d-flex align-items-start justify-content-between gap-3"
@@ -77,7 +79,7 @@
           No sales records match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle table-sticky table-row-hover">
+          <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
               <tr>
                 <th>Produce</th>
@@ -91,14 +93,18 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedSalesRecords" :key="item._id">
-                <td>{{ item.produceName }} ({{ item.produceType }})</td>
-                <td class="text-end">{{ Number(item.tonnageKg || 0).toLocaleString() }}</td>
-                <td class="text-end">{{ formatAmount(item.amountPaidUgx) }}</td>
-                <td>{{ item.buyerName }}</td>
-                <td>{{ item.salesAgentName || '-' }}</td>
-                <td>{{ formatDateTime(item.date, item.time) }}</td>
-                <td v-if="canManageRecords" class="text-end">
-                  <div class="d-inline-flex gap-2">
+                <td data-label="Produce">{{ item.produceName }} ({{ item.produceType }})</td>
+                <td data-label="Quantity (kg)" class="text-end">
+                  {{ Number(item.tonnageKg || 0).toLocaleString() }}
+                </td>
+                <td data-label="Amount Paid (UGX)" class="text-end">
+                  {{ formatAmount(item.amountPaidUgx) }}
+                </td>
+                <td data-label="Buyer">{{ item.buyerName }}</td>
+                <td data-label="Sales Agent">{{ item.salesAgentName || '-' }}</td>
+                <td data-label="Date/Time">{{ formatDateTime(item.date, item.time) }}</td>
+                <td v-if="canManageRecords" data-label="Actions" class="text-end">
+                  <div class="record-row-actions justify-content-end">
                     <button
                       type="button"
                       class="btn btn-sm btn-outline-primary"
@@ -190,7 +196,7 @@
                   id="edit-sale-amount"
                   :value="formatAmount(editAmountPreview)"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -236,14 +242,25 @@
 
             <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
 
-            <div class="mt-4 d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-outline-secondary" :disabled="editLoading" @click="closeEditModal">
-                Cancel
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="editLoading">
-                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
-                Save Changes
-              </button>
+            <div class="form-action-bar">
+              <div class="form-action-copy">
+                <strong>Amount is recalculated from the active inventory price.</strong>
+                <span>Use this editor to correct the record details, then save the updated sale.</span>
+              </div>
+              <div class="form-action-buttons">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="editLoading"
+                  @click="closeEditModal"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="editLoading">
+                  <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+                  Save Changes
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -265,10 +282,12 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { formatDisplayDateTime } from '../utils/dateFormat.mjs';
 
 const authStore = useAuthStore(pinia);
 const user = ref({});
@@ -304,6 +323,46 @@ const deleteDialog = ref({
 });
 
 const canManageRecords = computed(() => user.value.role === 'manager');
+const totalSalesAmount = computed(() =>
+  salesRecords.value.reduce((sum, item) => sum + Number(item.amountPaidUgx || 0), 0)
+);
+const activeFilterCount = computed(() => {
+  let count = 0;
+  if (searchQuery.value) count += 1;
+  if (selectedProduceType.value !== 'all') count += 1;
+  if (sortBy.value !== 'newest') count += 1;
+  return count;
+});
+const sortLabelMap = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  amount_desc: 'Highest amount',
+  quantity_desc: 'Highest quantity'
+};
+const overviewItems = computed(() => [
+  {
+    label: 'Branch',
+    value: user.value.branch || 'Unassigned',
+    meta: canManageRecords.value ? 'Manager records workspace' : 'Sales agent records workspace'
+  },
+  {
+    label: 'Cash Records',
+    value: salesRecords.value.length.toLocaleString('en-UG'),
+    meta: 'Loaded branch entries'
+  },
+  {
+    label: 'Visible Results',
+    value: filteredSalesRecords.value.length.toLocaleString('en-UG'),
+    meta: activeFilterCount.value
+      ? `${activeFilterCount.value} filter(s) applied`
+      : 'No filters applied'
+  },
+  {
+    label: 'Cash Value',
+    value: `UGX ${formatAmount(totalSalesAmount.value)}`,
+    meta: sortLabelMap[sortBy.value] || 'Newest first'
+  }
+]);
 
 const loadSalesRecords = async () => {
   loading.value = true;
@@ -514,24 +573,8 @@ const formatAmount = (amount) =>
     maximumFractionDigits: 0
   });
 
-const formatDate = (dateValue) => {
-  if (!dateValue) return '-';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return String(dateValue || '-');
-  return date.toLocaleDateString('en-UG', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-};
-
 const formatDateTime = (dateValue, timeValue) => {
-  if (!dateValue && !timeValue) return '-';
-
-  const formattedDate = formatDate(dateValue);
-  const formattedTime = timeValue ? String(timeValue) : '-';
-
-  return `${formattedDate} ${formattedTime}`;
+  return formatDisplayDateTime(dateValue, timeValue);
 };
 
 watch(

@@ -25,7 +25,7 @@ const procurementSchema = new mongoose.Schema(
       required: true,
       minlength: 2,
       set: normalizeProduceType,
-      enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+      enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
     },
     sourceType: {
       type: String,

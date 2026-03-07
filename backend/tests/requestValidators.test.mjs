@@ -75,7 +75,7 @@ test('procurement validation accepts a valid strict payload', async () => {
   assert.equal(errors.length, 0);
 });
 
-test('procurement validation rejects missing sellingPrice', async () => {
+test('procurement validation accepts missing sellingPrice because pricing is manager-controlled', async () => {
   const payload = validProcurementPayload();
   delete payload.sellingPrice;
 
@@ -84,7 +84,7 @@ test('procurement validation rejects missing sellingPrice', async () => {
     body: payload
   });
 
-  assert.equal(hasFieldError(errors, 'sellingPrice'), true);
+  assert.equal(errors.length, 0);
 });
 
 test('procurement validation rejects invalid dealer contact', async () => {
@@ -154,7 +154,7 @@ test('credit sale validation accepts a valid strict payload', async () => {
   assert.equal(errors.length, 0);
 });
 
-test('credit sale validation rejects past due date', async () => {
+test('credit sale validation accepts a past due date when the date is otherwise valid', async () => {
   const payload = validCreditSalePayload();
   payload.dueDate = yesterdayIso;
 
@@ -163,7 +163,7 @@ test('credit sale validation rejects past due date', async () => {
     body: payload
   });
 
-  assert.equal(hasFieldError(errors, 'dueDate'), true);
+  assert.equal(hasFieldError(errors, 'dueDate'), false);
 });
 
 test('credit sale validation rejects missing produceType', async () => {

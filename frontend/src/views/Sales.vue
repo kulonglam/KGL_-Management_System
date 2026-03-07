@@ -1,8 +1,16 @@
 <template>
   <div class="view-shell">
-    <div class="view-heading">
-      <h2 class="page-title">Record Sale</h2>
-      <p class="page-subtitle">Capture cash sales and review before submission.</p>
+    <div class="view-header">
+      <div class="view-heading">
+        <h2 class="page-title">Record Sale</h2>
+        <p class="page-subtitle">
+          Capture branch cash sales with automatic pricing and a final review step.
+        </p>
+      </div>
+      <div class="view-badges">
+        <span class="view-badge view-badge--success">Manager-set pricing</span>
+        <span class="view-badge view-badge--neutral">Review required</span>
+      </div>
     </div>
 
     <div class="card">
@@ -22,19 +30,27 @@
 
           <FormAlerts :stock-warning="stockWarning" :error="error" :success="success" />
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Record Sale
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              :disabled="loading"
-              @click="resetForm"
-            >
-              Clear
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Cash amount follows the active manager-set price.</strong>
+              <span>
+                Review the transaction before saving. Stock is reduced only after confirmation.
+              </span>
+            </div>
+            <div class="form-action-buttons">
+              <button type="submit" class="btn btn-success" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                Review Sale
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="loading"
+                @click="resetForm"
+              >
+                Clear Form
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -60,7 +76,7 @@
           ></button>
         </div>
         <div class="modal-body">
-          <div class="sale-summary card border-0 mb-3">
+          <div class="review-summary-panel review-summary-panel--cash card border-0 mb-3">
             <div class="card-body py-2 px-3">
               <div class="row g-2">
                 <div class="col-md-6">
@@ -83,7 +99,11 @@
             </div>
           </div>
 
-          <div class="mt-4 d-flex justify-content-end gap-2">
+          <p class="review-summary-note">
+            Confirm only after checking the buyer, tonnage, and computed amount for this branch.
+          </p>
+
+          <div class="modal-action-row mt-4">
             <button
               type="button"
               class="btn btn-outline-secondary"
@@ -115,11 +135,14 @@
  * File: frontend/src/views/Sales.vue
  */
 
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onMounted, ref } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
+import { useAutoClearFieldErrors } from '../composables/useAutoClearFieldErrors';
 import { useFormFeedback } from '../composables/useFormFeedback';
+import { useModalFocusTrap } from '../composables/useModalFocusTrap';
 import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
+import { formatUgx } from '../utils/numberFormat';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import FormAlerts from '../components/common/FormAlerts.vue';
@@ -136,14 +159,22 @@ const form = ref(createInitialForm());
 const showReviewModal = ref(false);
 // DOM ref used for review modal focus management.
 const reviewModalRef = ref(null);
-// Element that had focus before modal opened, restored on close.
-const lastFocusedElement = ref(null);
 const authStore = useAuthStore(pinia);
 
-const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
+const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
+  useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(salesValidationSchema);
+useAutoClearFieldErrors(form, clearFieldError);
+
+const { captureTriggerFocus } = useModalFocusTrap({
+  isOpen: showReviewModal,
+  modalRef: reviewModalRef,
+  onRequestClose: () => {
+    closeReviewModal();
+  }
+});
 
 // Build a fresh cash-sale form with current date/time defaults.
 function createInitialForm() {
@@ -185,10 +216,13 @@ const updatePrice = () => {
 };
 
 // Reset form, warnings, and validation errors.
-const resetForm = () => {
+const resetForm = ({ preserveFeedback = false } = {}) => {
   form.value = createInitialForm();
   stockWarning.value = '';
   resetErrors();
+  if (!preserveFeedback) {
+    resetFeedback();
+  }
 };
 
 // Validate form then open review modal for final confirmation.
@@ -204,7 +238,7 @@ const openReviewModal = () => {
     return;
   }
 
-  lastFocusedElement.value = document.activeElement;
+  captureTriggerFocus();
   showReviewModal.value = true;
 };
 
@@ -212,73 +246,6 @@ const openReviewModal = () => {
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
-};
-
-// Focus first interactive control when the review modal becomes visible.
-const focusReviewModal = async () => {
-  await nextTick();
-  const firstFocusable = getReviewModalFocusableElements()[0];
-  if (firstFocusable) {
-    firstFocusable.focus();
-    return;
-  }
-  reviewModalRef.value?.focus();
-};
-
-// Return focusable controls used to trap tab navigation inside modal.
-const getReviewModalFocusableElements = () =>
-  Array.from(
-    reviewModalRef.value?.querySelectorAll(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    ) || []
-  );
-
-// Keep keyboard tab sequence contained inside the open review modal.
-const trapReviewModalFocus = (event) => {
-  if (!showReviewModal.value || event.key !== 'Tab') return;
-
-  const focusable = getReviewModalFocusableElements();
-  if (focusable.length === 0) {
-    event.preventDefault();
-    reviewModalRef.value?.focus();
-    return;
-  }
-
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const active = document.activeElement;
-
-  if (event.shiftKey && active === first) {
-    event.preventDefault();
-    last.focus();
-    return;
-  }
-
-  if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
-};
-
-// Restore focus to the control that launched the modal.
-const restorePreviousFocus = () => {
-  const element = lastFocusedElement.value;
-  if (element && typeof element.focus === 'function') {
-    element.focus();
-  }
-};
-
-// Process keyboard shortcuts while review modal is open.
-const handleReviewModalKeydown = (event) => {
-  if (!showReviewModal.value) return;
-
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeReviewModal();
-    return;
-  }
-
-  trapReviewModalFocus(event);
 };
 
 // Final submit action after review confirmation.
@@ -300,7 +267,7 @@ const confirmSaveSale = async () => {
     await salesAPI.create(form.value);
     setSuccess('Sale recorded successfully!');
     showReviewModal.value = false;
-    resetForm();
+    resetForm({ preserveFeedback: true });
     await loadInventory();
   } catch (submitError) {
     setError(submitError.response?.data?.message || 'Failed to record sale');
@@ -309,39 +276,7 @@ const confirmSaveSale = async () => {
   }
 };
 
-// Format UGX values for review card display.
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0
-  }).format(Number(amount || 0));
-
-watch(showReviewModal, (isOpen) => {
-  if (isOpen) {
-    focusReviewModal();
-    window.addEventListener('keydown', handleReviewModalKeydown);
-    return;
-  }
-  window.removeEventListener('keydown', handleReviewModalKeydown);
-  restorePreviousFocus();
-});
-
-watch(
-  form,
-  (next, previous) => {
-    Object.keys(next).forEach((fieldName) => {
-      if (next[fieldName] !== previous[fieldName]) {
-        clearFieldError(fieldName);
-      }
-    });
-  },
-  { deep: true }
-);
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleReviewModalKeydown);
-});
+const formatCurrency = (amount) => formatUgx(amount);
 
 onMounted(async () => {
   user.value = authStore.user || {};
@@ -350,14 +285,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Component styles */
 .sale-review-modal {
   max-width: 760px;
-}
-
-.sale-summary {
-  background: linear-gradient(180deg, #f8fafc, #eef2ff);
-  border: 1px solid #e2e8f0;
 }
 </style>
 

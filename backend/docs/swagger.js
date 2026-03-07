@@ -163,7 +163,7 @@ const swaggerSpec = {
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           sourceType: { type: 'string', enum: ['individual', 'company', 'kgl_farm'] },
           dateReceived: { type: 'string', format: 'date' },
@@ -182,6 +182,7 @@ const swaggerSpec = {
       },
       ProcurementCreateRequest: {
         type: 'object',
+        description: 'Manager pricing is resolved from Price Management; clients do not submit sellingPrice.',
         required: [
           'produceName',
           'produceType',
@@ -197,7 +198,7 @@ const swaggerSpec = {
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           sourceType: { type: 'string', enum: ['individual', 'company', 'kgl_farm'] },
           dateReceived: { type: 'string', format: 'date' },
@@ -219,7 +220,7 @@ const swaggerSpec = {
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           tonnageKg: { type: 'number' },
           amountPaidUgx: { type: 'number' },
@@ -231,12 +232,13 @@ const swaggerSpec = {
       },
       SaleCreateRequest: {
         type: 'object',
+        description: 'Cash-sale amount is computed from the active managed selling price.',
         required: ['produceName', 'tonnageKg', 'buyerName', 'date', 'time'],
         properties: {
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'],
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
             nullable: true
           },
           tonnageKg: { type: 'number', minimum: 1 },
@@ -269,7 +271,7 @@ const swaggerSpec = {
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           tonnageKg: { type: 'number' },
           dateOfDispatch: { type: 'string', format: 'date' },
@@ -278,14 +280,16 @@ const swaggerSpec = {
       },
       CreditSaleCreateRequest: {
         type: 'object',
+        description:
+          'Trusted buyer is selected by trustedBuyerId and amountDue is computed from the active managed selling price.',
         required: ['trustedBuyerId', 'dueDate', 'produceName', 'tonnageKg', 'dateOfDispatch'],
         properties: {
-          trustedBuyerId: { type: 'string' },
-          dueDate: { type: 'string', format: 'date' },
+          trustedBuyerId: { type: 'string', description: 'ID of an existing trusted buyer in the same branch.' },
+          dueDate: { type: 'string', format: 'date', description: 'Any valid due date.' },
           produceName: { type: 'string' },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'],
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
             nullable: true
           },
           tonnageKg: { type: 'number', minimum: 1 },
@@ -315,21 +319,6 @@ const swaggerSpec = {
           statistics: { type: 'object', additionalProperties: true }
         }
       },
-      InventoryCheckRequest: {
-        type: 'object',
-        required: ['produceName', 'tonnage'],
-        properties: {
-          produceName: { type: 'string' },
-          tonnage: { type: 'number' }
-        }
-      },
-      InventoryCheckResult: {
-        type: 'object',
-        properties: {
-          available: { type: 'boolean' },
-          currentStock: { type: 'number' }
-        }
-      },
       TrustedBuyer: {
         type: 'object',
         properties: {
@@ -355,21 +344,56 @@ const swaggerSpec = {
         type: 'object',
         properties: {
           _id: { type: 'string', nullable: true },
+          produceName: { type: 'string', nullable: true },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           priceUgx: { type: 'number', nullable: true },
-          source: { type: 'string', enum: ['managed', 'inferred', 'unset'], nullable: true }
+          source: { type: 'string', enum: ['managed', 'inferred'], nullable: true },
+          scope: { type: 'string', enum: ['specific', 'type_default'], nullable: true }
+        }
+      },
+      PriceHistoryEntry: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          branch: { type: 'string', enum: ['Maganjo', 'Matugga'] },
+          priceSettingId: { type: 'string' },
+          action: { type: 'string', enum: ['create', 'update', 'delete'] },
+          previousProduceName: { type: 'string', nullable: true },
+          previousProduceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
+            nullable: true
+          },
+          previousPriceUgx: { type: 'number', nullable: true },
+          nextProduceName: { type: 'string', nullable: true },
+          nextProduceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
+            nullable: true
+          },
+          nextPriceUgx: { type: 'number', nullable: true },
+          changedBy: {
+            allOf: [{ $ref: '#/components/schemas/UserPublic' }],
+            nullable: true
+          },
+          createdAt: { type: 'string', format: 'date-time' }
         }
       },
       PriceUpsertRequest: {
         type: 'object',
         required: ['produceType', 'priceUgx'],
         properties: {
+          produceName: {
+            type: 'string',
+            nullable: true,
+            description: 'Optional. Leave empty to create a type-default price for all produce names.'
+          },
           produceType: {
             type: 'string',
-            enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
           },
           priceUgx: { type: 'number', minimum: 10000 }
         }
@@ -788,24 +812,6 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/inventory/check-stock': {
-      post: {
-        tags: ['Inventory'],
-        summary: 'Check stock',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': { schema: { $ref: '#/components/schemas/InventoryCheckRequest' } }
-          }
-        },
-        responses: {
-          200: successResponse({ $ref: '#/components/schemas/InventoryCheckResult' }),
-          401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' }
-        }
-      }
-    },
     '/api/trusted-buyers': {
       get: {
         tags: ['Trusted Buyers'],
@@ -945,6 +951,24 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         responses: {
           200: successResponse({ $ref: '#/components/schemas/MessageObject' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/api/prices/{id}/history': {
+      get: {
+        tags: ['Prices'],
+        summary: 'Get price history',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({
+            type: 'array',
+            items: { $ref: '#/components/schemas/PriceHistoryEntry' }
+          }),
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' },

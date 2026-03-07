@@ -151,6 +151,37 @@ describe('Forms Validation E2E', () => {
     );
   });
 
+  it('applies a produce-specific procurement price before submit', async () => {
+    priceAPI.getAll.mockResolvedValueOnce({
+      data: [
+        { source: 'managed', produceType: 'Beans', priceUgx: 22000 },
+        { source: 'managed', produceName: 'Red Beans', produceType: 'Beans', priceUgx: 25000 }
+      ]
+    });
+
+    const wrapper = mount(Procurement);
+    await flushPromises();
+
+    await wrapper.find('#procurement-produce-name').setValue('red bean');
+    await wrapper.find('#procurement-produce-type').setValue('Beans');
+    await wrapper.find('#procurement-source-type').setValue('company');
+    await wrapper.find('#procurement-tonnage').setValue('500');
+    await wrapper.find('#procurement-cost').setValue('15000');
+    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
+    await wrapper.find('#procurement-dealer-contact').setValue('+256700000002');
+    await wrapper.find('form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(procurementAPI.create).toHaveBeenCalledTimes(1);
+    expect(procurementAPI.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        produceName: 'red bean',
+        produceType: 'Beans',
+        sellingPrice: 25000
+      })
+    );
+  });
+
   it('blocks procurement when individual source tonnage is below 1000 kg', async () => {
     const wrapper = mount(Procurement);
     await flushPromises();
@@ -185,6 +216,16 @@ describe('Forms Validation E2E', () => {
 
     expect(wrapper.text()).toContain('Dealer contact must be a valid Ugandan phone number.');
     expect(procurementAPI.create).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes non-phone characters from dealer contact input', async () => {
+    const wrapper = mount(Procurement);
+    await flushPromises();
+
+    const contactInput = wrapper.find('#procurement-dealer-contact');
+    await contactInput.setValue('07ab0-12x34');
+
+    expect(contactInput.element.value).toBe('0701234');
   });
 
   it('shows per-field errors and blocks invalid sale submission', async () => {
@@ -280,7 +321,7 @@ describe('Forms Validation E2E', () => {
     );
   });
 
-  it('blocks credit sale when due date is in the past', async () => {
+  it('allows credit sale when due date is in the past but otherwise valid', async () => {
     const wrapper = mount(CreditSales);
     await flushPromises();
 
@@ -291,8 +332,12 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Due date must be today or a future date.');
-    expect(creditSalesAPI.create).not.toHaveBeenCalled();
+    const saveButton = findButtonByText(wrapper, 'Save Credit Sale');
+    expect(saveButton).toBeTruthy();
+    await saveButton.trigger('click');
+    await flushPromises();
+
+    expect(creditSalesAPI.create).toHaveBeenCalledTimes(1);
   });
 
   it('shows per-field errors and blocks invalid trusted-buyer submission', async () => {

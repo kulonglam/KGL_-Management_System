@@ -18,7 +18,7 @@ Core business domains:
 
 ## Shared Domain Rules
 - Branches: `Maganjo`, `Matugga`
-- Produce types: `Beans`, `Grain Maize`, `Cow peas`, `G-nuts`, `Soybeans`
+- Produce types: `Beans`, `Grain Maize`, `Cow peas`, `Groundnuts`, `Soybeans`
 - Uganda phone format: `^(\+256|0)[0-9]{9}$`
 - Uganda NIN format: `^(CM|CF)[0-9]{12}$`
 
@@ -35,7 +35,7 @@ Source: `backend/models/User.js`
 | profileImage | String | default `''` |
 | role | String | enum: `director`, `manager`, `sales_agent` |
 | branch | String | enum: `Maganjo`, `Matugga`; required for non-director |
-| canViewCrossBranchTotals | Boolean | default `false` |
+| canViewCrossBranchTotals | Boolean | default `false`; synchronized for the reserved director account `orban` |
 | tokenVersion | Number | default `0`, min `0` |
 | loginAttempts | Number | default `0`, min `0` |
 | lockUntil | Date | nullable |
@@ -51,14 +51,37 @@ Source: `backend/models/PriceSetting.js`
 | Field | Type | Constraints |
 |---|---|---|
 | branch | String | required, enum branches |
+| produceName | String | optional, min 2, normalized, alphanumeric+spaces; blank means type default |
 | produceType | String | required, enum produce types |
 | priceUgx | Number | required, min `10000` |
 | createdAt / updatedAt | Date | auto timestamps |
 
 Indexes:
-- Unique `{ branch: 1, produceType: 1 }`
+- Unique `{ branch: 1, produceType: 1, produceName: 1 }`
+- `{ branch: 1, produceType: 1, priceUgx: 1 }`
 
-### 3) procurements
+### 3) price history
+Source: `backend/models/PriceHistory.js`
+
+| Field | Type | Constraints |
+|---|---|---|
+| branch | String | required, enum branches |
+| priceSettingId | ObjectId | required, original managed price row id |
+| action | String | required, enum: `create`, `update`, `delete` |
+| previousProduceName | String | optional, normalized |
+| previousProduceType | String | optional, enum produce types |
+| previousPriceUgx | Number | optional |
+| nextProduceName | String | optional, normalized |
+| nextProduceType | String | optional, enum produce types |
+| nextPriceUgx | Number | optional |
+| changedBy | ObjectId | ref `User`, required |
+| createdAt / updatedAt | Date | auto timestamps |
+
+Indexes:
+- `{ branch: 1, priceSettingId: 1, createdAt: -1 }`
+- `{ changedBy: 1, createdAt: -1 }`
+
+### 4) procurements
 Source: `backend/models/Procurement.js`
 
 | Field | Type | Constraints |
@@ -82,7 +105,7 @@ Indexes:
 - `{ branch: 1, dateReceived: -1 }`
 - `{ branch: 1, produceType: 1, sourceType: 1 }`
 
-### 4) sales
+### 5) sales
 Source: `backend/models/Sale.js`
 
 | Field | Type | Constraints |
@@ -104,7 +127,7 @@ Indexes:
 - `{ branch: 1, date: -1 }`
 - `{ branch: 1, produceName: 1, produceType: 1 }`
 
-### 5) trusted buyers
+### 6) trusted buyers
 Source: `backend/models/TrustedBuyer.js`
 
 | Field | Type | Constraints |
@@ -121,7 +144,7 @@ Indexes:
 - Unique `{ nationalId: 1, branch: 1 }`
 - `{ branch: 1, createdAt: -1 }`
 
-### 6) credit sales
+### 7) credit sales
 Source: `backend/models/CreditSale.js`
 
 | Field | Type | Constraints |
@@ -152,7 +175,7 @@ Indexes:
 - `{ branch: 1, dueDate: 1, isPaid: 1 }`
 - `{ trustedBuyer: 1, createdAt: -1 }`
 
-### 7) stock notifications
+### 8) stock notifications
 Source: `backend/models/StockNotification.js`
 
 | Field | Type | Constraints |
@@ -169,7 +192,7 @@ Source: `backend/models/StockNotification.js`
 Indexes:
 - `{ branch: 1, category: 1, produceName: 1, produceType: 1, isRead: 1 }`
 
-### 8) stock locks
+### 9) stock locks
 Source: `backend/models/StockLock.js`
 
 | Field | Type | Constraints |
@@ -187,6 +210,7 @@ Indexes:
 - `User` 1 -> many `Sale` via `recordedBy`
 - `User` 1 -> many `TrustedBuyer` via `recordedBy`
 - `User` 1 -> many `CreditSale` via `recordedBy`
+- `User` 1 -> many `PriceHistory` via `changedBy`
 - `TrustedBuyer` 1 -> many `CreditSale` via `trustedBuyer`
 - `User` 1 -> many `CreditSale.payments.receivedBy`
 
@@ -195,7 +219,7 @@ Source: `backend/seedData.js`
 
 Seed inserts a clean baseline:
 - Users: 7
-- Price settings: 10 (2 branches x 5 produce types)
+- Price settings: 10 type-default rows (2 branches x 5 produce types)
 - Trusted buyers: 2
 - Procurements: 6
 - Sales: 4

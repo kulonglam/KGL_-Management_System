@@ -146,6 +146,7 @@ import { authAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { getHomeRouteForUser } from '../utils/directorAccess.mjs';
 
 export default {
   name: 'Login',
@@ -202,14 +203,8 @@ export default {
           localStorage.removeItem('rememberedUsername');
         }
 
-        // Route user to the dashboard permitted by their assigned role.
-        if (user.role === 'director') {
-          this.$router.push('/dashboard/director');
-        } else if (user.role === 'manager') {
-          this.$router.push('/dashboard/manager');
-        } else {
-          this.$router.push('/dashboard/sales-agent');
-        }
+        // Route user to the dashboard permitted by their role and identity rules.
+        this.$router.push(getHomeRouteForUser(user));
       } catch (error) {
         this.error = error.response?.data?.message || error.message || 'Login failed';
       } finally {

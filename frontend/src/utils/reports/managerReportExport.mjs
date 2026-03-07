@@ -3,6 +3,8 @@
  * File: frontend/src/utils/reports/managerReportExport.mjs
  */
 
+import { formatDisplayTimestamp } from '../dateFormat.mjs';
+
 // Coerce nullable metric values into safe numeric output.
 const toNumber = (value) => Number(value || 0);
 
@@ -174,7 +176,7 @@ export const buildManagerReportHtml = (state) => {
   const stockRows = getStockRows(state, true);
   const agentRows = getAgentRows(state, true);
   const dealerRows = getDealerRows(state, true);
-  const generatedAt = new Date().toLocaleString('en-UG');
+  const generatedAt = formatDisplayTimestamp(new Date());
 
   const summaryBody = summaryRows
     .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)

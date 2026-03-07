@@ -6,6 +6,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { getHomeRouteForUser, isDirectorOrban } from '../utils/directorAccess.mjs';
 
 const Login = () => import('../views/Login.vue');
 const DashboardLayout = () => import('../views/DashboardLayout.vue');
@@ -23,6 +24,7 @@ const Users = () => import('../views/Users.vue');
 const TrustedBuyers = () => import('../views/TrustedBuyers.vue');
 const PriceManagement = () => import('../views/PriceManagement.vue');
 const Profile = () => import('../views/Profile.vue');
+const NotFound = () => import('../views/NotFound.vue');
 
 // Route table grouped under dashboard layout with per-route role metadata.
 const routes = [
@@ -40,7 +42,7 @@ const routes = [
         path: 'director',
         name: 'DirectorDashboard',
         component: DirectorDashboard,
-        meta: { role: 'director' }
+        meta: { role: 'director', requiresOrbanDirector: true }
       },
       {
         path: 'manager',
@@ -118,8 +120,19 @@ const routes = [
         path: 'profile',
         name: 'Profile',
         component: Profile
+      },
+      {
+        path: ':pathMatch(.*)*',
+        name: 'DashboardNotFound',
+        component: NotFound,
+        meta: { requiresAuth: true }
       }
     ]
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound
   }
 ];
 
@@ -140,6 +153,8 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/');
+  } else if (to.meta.requiresOrbanDirector && !isDirectorOrban(authStore.user)) {
+    next(getHomeRouteForUser(authStore.user));
   } else if (to.meta.role && userRole !== to.meta.role) {
     next('/');
   } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {

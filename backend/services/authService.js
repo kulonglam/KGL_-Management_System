@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import { getJwtClaimOptions } from '../config/security.js';
 
 // Maximum allowed profile image payload size (1 MB).
 const MAX_PROFILE_IMAGE_SIZE = 1024 * 1024;
@@ -26,13 +27,14 @@ const PASSWORD_POLICY = {
   hasNumber: /[0-9]/,
   hasSymbol: /[^A-Za-z0-9]/
 };
+const ORBAN_DIRECTOR_USERNAME = 'orban';
 
-// Return true when the user matches the legacy Orban identity used for totals-permission backfill.
-const isLegacyOrbanIdentity = (user) => {
-  const username = String(user?.username || '').toLowerCase();
-  const name = String(user?.name || '').toLowerCase();
-  return username === 'orban' || name === 'mr. orban';
-};
+// Normalize usernames for exact account-identity comparisons.
+const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
+
+// Return true only for the director account reserved for Mr. Orban.
+const isDirectorOrbanAccount = (user) =>
+  user?.role === 'director' && normalizeUsername(user?.username) === ORBAN_DIRECTOR_USERNAME;
 
 // Validate and normalize profile image input; returns update metadata or a validation error string.
 const parseProfileImageUpdate = (rawValue) => {
@@ -70,9 +72,14 @@ const parseProfileImageUpdate = (rawValue) => {
 
 // Create a signed JWT for a user, embedding tokenVersion and a unique JTI claim.
 const generateToken = (id, tokenVersion = 0) => {
-  return jwt.sign({ id, tokenVersion, jti: randomUUID() }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '12h'
-  });
+  return jwt.sign(
+    { id, tokenVersion, jti: randomUUID() },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '12h',
+      ...getJwtClaimOptions()
+    }
+  );
 };
 
 // Enforce password complexity policy and return a human-readable error when a rule fails.
@@ -114,14 +121,12 @@ const toUserPayload = (user, includeToken = false) => {
   return payload;
 };
 
-// Backfill cross-branch totals permission for legacy Orban director records at login time.
+// Keep the stored cross-branch flag aligned with the reserved Orban director account.
 const ensureLegacyDirectorTotalsAccess = async (user) => {
-  if (
-    user.role === 'director' &&
-    user.canViewCrossBranchTotals !== true &&
-    isLegacyOrbanIdentity(user)
-  ) {
-    user.canViewCrossBranchTotals = true;
+  const shouldHaveTotalsAccess = isDirectorOrbanAccount(user);
+
+  if (user.canViewCrossBranchTotals !== shouldHaveTotalsAccess) {
+    user.canViewCrossBranchTotals = shouldHaveTotalsAccess;
     await user.save();
   }
 };
@@ -205,6 +210,7 @@ const createServiceError = (statusCode, message) => {
 // Create a new user after validating profile image, password policy, branch assignment, and role limits.
 const registerUser = async ({ actorUser, payload }) => {
   const { name, username, password, role, branch, profileImage } = payload;
+  const normalizedUsername = normalizeUsername(username);
 
   const parsedProfileImage = parseProfileImageUpdate(profileImage);
   if (parsedProfileImage.error) {
@@ -237,6 +243,9 @@ const registerUser = async ({ actorUser, payload }) => {
   if (role !== 'director' && !assignedBranch) {
     throw createServiceError(400, 'Branch is required');
   }
+  if (role === 'director' && normalizedUsername !== ORBAN_DIRECTOR_USERNAME) {
+    throw createServiceError(400, 'Director role is reserved for the orban account');
+  }
 
   const limitError = await checkRoleLimits(role, assignedBranch);
   if (limitError) {
@@ -249,7 +258,8 @@ const registerUser = async ({ actorUser, payload }) => {
     password: hashedPassword,
     profileImage: parsedProfileImage.hasUpdate ? parsedProfileImage.value : '',
     role,
-    branch: assignedBranch
+    branch: assignedBranch,
+    canViewCrossBranchTotals: role === 'director' && normalizedUsername === ORBAN_DIRECTOR_USERNAME
   });
 
   if (!user) {
@@ -276,6 +286,7 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
   const currentBranch = user.branch;
   let nextRole = currentRole;
   let nextBranch = currentBranch;
+  let nextUsername = user.username;
 
   if (actorUser.role === 'manager') {
     const allowedRoles = ['manager', 'sales_agent'];
@@ -289,6 +300,9 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
 
   if (name !== undefined) user.name = name;
   if (username !== undefined) {
+    if (isDirectorOrbanAccount(user) && normalizeUsername(username) !== ORBAN_DIRECTOR_USERNAME) {
+      throw createServiceError(400, 'Mr. Orban account username cannot be changed');
+    }
     const existing = await User.findOne({
       username,
       _id: mongoose.trusted({ $ne: user._id })
@@ -297,8 +311,12 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
       throw createServiceError(400, 'Username already exists');
     }
     user.username = username;
+    nextUsername = username;
   }
   if (role !== undefined) nextRole = role;
+  if (nextRole === 'director' && normalizeUsername(nextUsername) !== ORBAN_DIRECTOR_USERNAME) {
+    throw createServiceError(400, 'Director role is reserved for the orban account');
+  }
 
   const roleOrBranchChanged = nextRole !== currentRole || nextBranch !== currentBranch;
   if (roleOrBranchChanged) {
@@ -315,6 +333,7 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
 
   user.role = nextRole;
   user.branch = nextBranch;
+  user.canViewCrossBranchTotals = nextRole === 'director' && normalizeUsername(nextUsername) === ORBAN_DIRECTOR_USERNAME;
 
   if (password) {
     const passwordPolicyError = validatePasswordStrength(password);
@@ -332,6 +351,7 @@ export {
   parseProfileImageUpdate,
   toUserPayload,
   ensureLegacyDirectorTotalsAccess,
+  isDirectorOrbanAccount,
   checkRoleLimits,
   checkRoleMinimumAfterRemoval,
   hashPassword,

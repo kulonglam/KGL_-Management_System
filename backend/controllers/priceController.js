@@ -6,17 +6,41 @@
 import PriceSetting from '../models/PriceSetting.js';
 import mongoose from 'mongoose';
 import {
+  buildPriceIdentityQuery,
   parseAndValidatePriceInput,
   getBranchPriceRows,
   syncProcurementPrices
 } from '../services/priceService.js';
-// GET /api/prices: return manager price settings merged with inferred/unset produce rows for the branch.
+import { getPriceHistoryEntries, recordPriceHistory } from '../services/priceHistoryService.js';
+// GET /api/prices: return manager price settings plus inferred produce rows for the branch.
 const getPrices = async (req, res) => {
   try {
     const prices = await getBranchPriceRows(req.user.branch);
     res.json(prices);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// GET /api/prices/:id/history: return immutable audit history for one managed price setting.
+const getPriceHistory = async (req, res) => {
+  try {
+    const setting = await PriceSetting.findById(req.params.id);
+    if (!setting) {
+      return res.status(404).json({ message: 'Price setting not found' });
+    }
+    if (setting.branch !== req.user.branch) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+
+    const history = await getPriceHistoryEntries({
+      branch: req.user.branch,
+      priceSettingId: setting._id
+    });
+
+    res.json(history);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -40,28 +64,41 @@ const getPriceById = async (req, res) => {
 // POST /api/prices: create a branch price rule and synchronize affected procurement selling prices.
 const createPrice = async (req, res) => {
   try {
-    const { produceType, priceUgx } = req.body;
-    const validation = parseAndValidatePriceInput(produceType, priceUgx);
+    const { produceName, produceType, priceUgx } = req.body;
+    const validation = parseAndValidatePriceInput(produceName, produceType, priceUgx);
     if (validation.error) {
       return res.status(400).json({ message: validation.error });
     }
 
-    const exists = await PriceSetting.findOne({
-      branch: req.user.branch,
-      produceType
-    });
+    const exists = await PriceSetting.findOne(
+      buildPriceIdentityQuery(
+        req.user.branch,
+        validation.produceName,
+        validation.produceType
+      )
+    );
     if (exists) {
-      return res.status(409).json({ message: 'Price already exists for this produce type' });
+      return res.status(409).json({ message: 'Price already exists for this produce setting' });
     }
 
     const setting = await PriceSetting.create({
       branch: req.user.branch,
-      produceType,
+      produceName: validation.produceName,
+      produceType: validation.produceType,
       priceUgx: validation.price
+    });
+    await recordPriceHistory({
+      branch: req.user.branch,
+      priceSettingId: setting._id,
+      action: 'create',
+      previousState: null,
+      nextState: setting,
+      changedBy: req.user._id
     });
     const updatedProcurements = await syncProcurementPrices(
       req.user.branch,
-      produceType,
+      validation.produceName,
+      validation.produceType,
       validation.price
     );
 
@@ -85,30 +122,52 @@ const updatePrice = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
+    const nextProduceName = req.body.produceName ?? setting.produceName ?? '';
     const nextProduceType = req.body.produceType || setting.produceType;
     const nextPriceInput = req.body.priceUgx ?? setting.priceUgx;
-    const validation = parseAndValidatePriceInput(nextProduceType, nextPriceInput);
+    const validation = parseAndValidatePriceInput(nextProduceName, nextProduceType, nextPriceInput);
     if (validation.error) {
       return res.status(400).json({ message: validation.error });
     }
 
-    if (nextProduceType !== setting.produceType) {
+    if (
+      validation.produceType !== setting.produceType ||
+      validation.produceName !== (setting.produceName || undefined)
+    ) {
       const duplicate = await PriceSetting.findOne({
         _id: mongoose.trusted({ $ne: setting._id }),
-        branch: req.user.branch,
-        produceType: nextProduceType
+        ...buildPriceIdentityQuery(
+          req.user.branch,
+          validation.produceName,
+          validation.produceType
+        )
       });
       if (duplicate) {
-        return res.status(409).json({ message: 'Another price exists for this produce type' });
+        return res.status(409).json({ message: 'Another price exists for this produce setting' });
       }
     }
-    setting.produceType = nextProduceType;
+    const previousState = {
+      produceName: setting.produceName,
+      produceType: setting.produceType,
+      priceUgx: setting.priceUgx
+    };
+    setting.produceName = validation.produceName;
+    setting.produceType = validation.produceType;
     setting.priceUgx = validation.price;
     const saved = await setting.save();
+    await recordPriceHistory({
+      branch: req.user.branch,
+      priceSettingId: setting._id,
+      action: 'update',
+      previousState,
+      nextState: saved,
+      changedBy: req.user._id
+    });
 
     const updatedProcurements = await syncProcurementPrices(
       req.user.branch,
-      nextProduceType,
+      validation.produceName,
+      validation.produceType,
       validation.price
     );
 
@@ -132,14 +191,27 @@ const deletePrice = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
+    const previousState = {
+      produceName: setting.produceName,
+      produceType: setting.produceType,
+      priceUgx: setting.priceUgx
+    };
     await setting.deleteOne();
+    await recordPriceHistory({
+      branch: req.user.branch,
+      priceSettingId: setting._id,
+      action: 'delete',
+      previousState,
+      nextState: null,
+      changedBy: req.user._id
+    });
     res.json({ message: 'Price setting deleted' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-export { getPrices, getPriceById, createPrice, updatePrice, deletePrice };
+export { getPrices, getPriceHistory, getPriceById, createPrice, updatePrice, deletePrice };
 
 
 

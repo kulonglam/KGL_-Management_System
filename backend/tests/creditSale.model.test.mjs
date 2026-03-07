@@ -22,7 +22,7 @@ const basePayload = () => ({
   trustedBuyer: new mongoose.Types.ObjectId()
 });
 
-test('CreditSale accepts produceType with hyphen (G-nuts)', () => {
+test('CreditSale accepts legacy produceType aliases and stores canonical Groundnuts', () => {
   const doc = new CreditSale({
     ...basePayload(),
     produceType: 'G-nuts'
@@ -30,23 +30,24 @@ test('CreditSale accepts produceType with hyphen (G-nuts)', () => {
 
   const error = doc.validateSync();
   assert.equal(error?.errors?.produceType, undefined);
+  assert.equal(doc.produceType, 'Groundnuts');
 });
 
-test('CreditSale normalizes unicode hyphen variants to canonical G-nuts', () => {
+test('CreditSale normalizes spacing variants to canonical Groundnuts', () => {
   const doc = new CreditSale({
     ...basePayload(),
-    produceType: 'G‑nuts'
+    produceType: 'Ground nuts'
   });
 
   const error = doc.validateSync();
   assert.equal(error?.errors?.produceType, undefined);
-  assert.equal(doc.produceType, 'G-nuts');
+  assert.equal(doc.produceType, 'Groundnuts');
 });
 
 test('CreditSale still rejects unsupported produceType values', () => {
   const doc = new CreditSale({
     ...basePayload(),
-    produceType: 'Groundnuts'
+    produceType: 'Ground Nutz'
   });
 
   const error = doc.validateSync();

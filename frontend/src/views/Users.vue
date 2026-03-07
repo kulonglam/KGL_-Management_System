@@ -21,12 +21,21 @@
       </button>
     </div>
 
+    <div v-if="error" class="alert alert-danger" role="alert">
+      {{ error }}
+    </div>
+    <div v-if="success" class="alert alert-success" role="status">
+      {{ success }}
+    </div>
+
+    <InsightStrip label="Staff overview" :items="overviewItems" />
+
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Users</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm" @click="toggleForm">
-            {{ showForm ? (editingId ? 'Close Edit' : 'Hide Form') : 'New User' }}
+            {{ showForm ? 'Close' : 'New User' }}
           </button>
           <button class="btn btn-outline-primary btn-sm" @click="loadUsers" :disabled="loadingList">
             <span v-if="loadingList" class="spinner-border spinner-border-sm me-2"></span>
@@ -82,7 +91,7 @@
           No users match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle table-sticky table-row-hover">
+          <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -94,17 +103,19 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedUsers" :key="item._id">
-                <td>{{ item.name }}</td>
-                <td>{{ item.username }}</td>
-                <td>{{ formatRole(item.role) }}</td>
-                <td>{{ item.branch || '-' }}</td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="startEdit(item)">
-                    Edit
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
-                    Delete
-                  </button>
+                <td data-label="Name">{{ item.name }}</td>
+                <td data-label="Username">{{ item.username }}</td>
+                <td data-label="Role">{{ formatRole(item.role) }}</td>
+                <td data-label="Branch">{{ item.branch || '-' }}</td>
+                <td data-label="Actions" class="text-end">
+                  <div class="record-row-actions justify-content-end">
+                    <button class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
+                      Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -123,11 +134,16 @@
       </div>
     </div>
 
-    <div v-if="showForm" class="card mt-4">
-      <div class="card-header">
-        <h5 class="mb-0">{{ editingId ? 'Update User' : 'Create New User' }}</h5>
-      </div>
-      <div class="card-body">
+    <div v-if="showForm" class="modal-mask" @click.self="toggleForm">
+      <div class="modal-card user-editor-modal" role="dialog" aria-modal="true" aria-labelledby="user-form-title">
+        <div class="modal-header">
+          <h5 id="user-form-title" class="mb-0">{{ editingId ? 'Update User' : 'Create New User' }}</h5>
+          <button type="button" class="btn-close" aria-label="Close user form" :disabled="loading" @click="toggleForm"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Create staff accounts for your branch or update the details of an existing user.
+          </p>
         <form @submit.prevent="handleSubmit">
           <div class="row g-3">
             <div class="col-md-6">
@@ -157,7 +173,13 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="user-branch">Branch</label>
-              <input id="user-branch" type="text" class="form-control" :value="user.branch" disabled />
+              <input
+                id="user-branch"
+                type="text"
+                class="form-control readonly-display"
+                :value="user.branch"
+                disabled
+              />
             </div>
             <div class="col-md-6">
               <label class="form-label" for="user-password">Password {{ editingId ? '' : '*' }}</label>
@@ -172,25 +194,31 @@
             </div>
           </div>
 
-          <div v-if="error" class="alert alert-danger mt-3">{{ error }}</div>
-          <div v-if="success" class="alert alert-success mt-3">{{ success }}</div>
+          <div v-if="error" class="alert alert-danger mt-3 mb-0">{{ error }}</div>
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              {{ editingId ? 'Update User' : 'Create User' }}
-            </button>
-            <button
-              v-if="editingId"
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              @click="cancelEdit"
-            >
-              Cancel Edit
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Branch staffing stays role-based and branch-specific.</strong>
+              <span>Create a new user or update account details for the selected staff member.</span>
+            </div>
+            <div class="form-action-buttons">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="loading"
+                @click="toggleForm"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-success" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ editingId ? 'Update User' : 'Create User' }}
+              </button>
+            </div>
           </div>
         </form>
       </div>
+    </div>
     </div>
 
     <ConfirmDialog
@@ -213,6 +241,7 @@
 
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
@@ -221,6 +250,7 @@ export default {
   name: 'Users',
   components: {
     ConfirmDialog,
+    InsightStrip,
     TablePagination
   },
   data() {
@@ -288,6 +318,41 @@ export default {
     paginatedUsers() {
       const start = (this.currentPage - 1) * this.pageSize;
       return this.displayedUsers.slice(start, start + this.pageSize);
+    },
+    managerCount() {
+      return this.users.filter((item) => item.role === 'manager').length;
+    },
+    salesAgentCount() {
+      return this.users.filter((item) => item.role === 'sales_agent').length;
+    },
+    overviewItems() {
+      const visibleMeta =
+        this.displayedUsers.length === this.users.length
+          ? 'No filters applied'
+          : `${this.displayedUsers.length.toLocaleString('en-UG')} visible after filters`;
+
+      return [
+        {
+          label: 'Branch',
+          value: this.user.branch || 'Unassigned',
+          meta: 'Current staff workspace'
+        },
+        {
+          label: 'Total Staff',
+          value: this.users.length.toLocaleString('en-UG'),
+          meta: visibleMeta
+        },
+        {
+          label: 'Managers',
+          value: this.managerCount.toLocaleString('en-UG'),
+          meta: 'One manager required per branch'
+        },
+        {
+          label: 'Sales Agents',
+          value: this.salesAgentCount.toLocaleString('en-UG'),
+          meta: 'Two attendants allowed per branch'
+        }
+      ];
     }
   },
   watch: {
@@ -386,9 +451,6 @@ export default {
       this.error = '';
       this.success = '';
     },
-    cancelEdit() {
-      this.resetForm();
-    },
     openDeleteDialog(item) {
       this.deleteDialog = {
         show: true,
@@ -430,6 +492,7 @@ export default {
       };
     },
     toggleForm() {
+      if (this.loading) return;
       if (this.showForm && this.editingId) {
         this.resetForm();
       } else {
@@ -447,4 +510,10 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.user-editor-modal {
+  max-width: 760px;
+}
+</style>
 

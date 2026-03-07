@@ -1,6 +1,6 @@
 <template>
-  <fieldset class="credit-section mb-3">
-    <legend class="section-legend">
+  <fieldset class="form-section mb-0">
+    <legend class="form-section-legend">
       <i class="bi bi-box-seam"></i>
       <span>Produce Information</span>
     </legend>
@@ -25,13 +25,14 @@
           </option>
         </select>
         <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
+        <small class="field-note">Only produce with stock in this branch is listed.</small>
       </div>
       <div class="col-md-6">
         <label class="form-label" for="credit-produce-type">Produce Type</label>
         <input
           id="credit-produce-type"
           type="text"
-          :class="['form-control branch-display', { 'is-invalid': errors.produceType }]"
+          :class="['form-control readonly-display', { 'is-invalid': errors.produceType }]"
           v-model="form.produceType"
           disabled
         />
@@ -55,14 +56,14 @@
         <input
           id="credit-amount-due"
           type="number"
-          :class="['form-control', { 'is-invalid': errors.amountDueUgx }]"
+          :class="['form-control readonly-display', { 'is-invalid': errors.amountDueUgx }]"
           v-model="form.amountDueUgx"
           min="10000"
           required
           readonly
         />
         <div v-if="errors.amountDueUgx" class="invalid-feedback">{{ errors.amountDueUgx }}</div>
-        <small class="text-muted">Price is determined by manager.</small>
+        <small class="field-note">Auto-calculated from the manager-set price.</small>
       </div>
     </div>
   </fieldset>
@@ -95,43 +96,3 @@ defineProps({
   }
 });
 </script>
-
-<style scoped>
-/* Component styles */
-.credit-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 0.95rem 0.95rem 1rem;
-  background: #fbfcfd;
-  min-width: 0;
-}
-
-.section-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1f2937;
-  margin: 0 auto 0.8rem;
-  padding: 0 0.45rem;
-  text-align: center;
-}
-
-.section-legend i {
-  color: #198754;
-}
-
-.credit-section .form-label {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1f2937;
-}
-
-.branch-display {
-  background-color: #f1f5f9;
-  color: #334155;
-  font-weight: 500;
-}
-</style>

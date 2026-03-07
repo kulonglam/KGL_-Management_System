@@ -20,7 +20,7 @@ const saleSchema = new mongoose.Schema(
       type: String,
       required: true,
       set: normalizeProduceType,
-      enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+      enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
     },
     tonnageKg: { type: Number, required: true, min: 1 },
     amountPaidUgx: { type: Number, required: true, min: 10000 },

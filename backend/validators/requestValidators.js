@@ -6,7 +6,7 @@
 import { body, param, query } from 'express-validator';
 
 // Configure produce types.
-const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans'];
+const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
 // Configure source types.
 const SOURCE_TYPES = ['individual', 'company', 'kgl_farm'];
 // Configure branches.
@@ -41,7 +41,6 @@ const FORM_VALIDATION_RULES = {
       }
     },
     costUgx: { min: VALIDATION_LIMITS.moneyMinUgx },
-    sellingPrice: { min: VALIDATION_LIMITS.moneyMinUgx },
     dealerName: { minLength: VALIDATION_LIMITS.textMinLength }
   },
   sale: {
@@ -222,11 +221,6 @@ const procurementCreateValidation = [
     .withMessage('costUgx is required')
     .isFloat({ min: procurementRules.costUgx.min })
     .withMessage(`costUgx must be at least ${procurementRules.costUgx.min}`),
-  body('sellingPrice')
-    .notEmpty()
-    .withMessage('sellingPrice is required')
-    .isFloat({ min: procurementRules.sellingPrice.min })
-    .withMessage(`sellingPrice must be at least ${procurementRules.sellingPrice.min}`),
   body('dealerName')
     .trim()
     .notEmpty()
@@ -279,10 +273,6 @@ const procurementUpdateValidation = [
     .optional()
     .isFloat({ min: procurementRules.costUgx.min })
     .withMessage(`costUgx must be at least ${procurementRules.costUgx.min}`),
-  body('sellingPrice')
-    .optional()
-    .isFloat({ min: procurementRules.sellingPrice.min })
-    .withMessage(`sellingPrice must be at least ${procurementRules.sellingPrice.min}`),
   body('dealerName')
     .optional()
     .trim()
@@ -380,19 +370,7 @@ const creditSaleCreateValidation = [
     .notEmpty()
     .withMessage('dueDate is required')
     .isISO8601()
-    .withMessage('dueDate must be a valid date')
-    .custom((value) => {
-      const dueDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDate.setHours(0, 0, 0, 0);
-
-      if (Number.isNaN(dueDate.getTime()) || dueDate < today) {
-        throw new Error('dueDate must be today or a future date');
-      }
-
-      return true;
-    }),
+    .withMessage('dueDate must be a valid date'),
   body('dateOfDispatch')
     .notEmpty()
     .withMessage('dateOfDispatch is required')
@@ -425,17 +403,7 @@ const creditSaleUpdateValidation = [
   body('dueDate')
     .optional()
     .isISO8601()
-    .withMessage('dueDate must be a valid date')
-    .custom((value) => {
-      const dueDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      dueDate.setHours(0, 0, 0, 0);
-      if (Number.isNaN(dueDate.getTime()) || dueDate < today) {
-        throw new Error('dueDate must be today or a future date');
-      }
-      return true;
-    }),
+    .withMessage('dueDate must be a valid date'),
   body('dateOfDispatch')
     .optional()
     .isISO8601()
@@ -520,6 +488,13 @@ const trustedBuyerUpdateValidation = [
 
 // Configure price create validation.
 const priceCreateValidation = [
+  body('produceName')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: VALIDATION_LIMITS.textMinLength })
+    .withMessage(`produceName must be at least ${VALIDATION_LIMITS.textMinLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('produceName must be alphanumeric'),
   body('produceType').trim().isIn(PRODUCE_TYPES).withMessage('Invalid produceType'),
   body('priceUgx')
     .isFloat({ min: VALIDATION_LIMITS.moneyMinUgx })
@@ -529,20 +504,18 @@ const priceCreateValidation = [
 // Configure price update validation.
 const priceUpdateValidation = [
   ...mongoIdParamValidation,
+  body('produceName')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ min: VALIDATION_LIMITS.textMinLength })
+    .withMessage(`produceName must be at least ${VALIDATION_LIMITS.textMinLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('produceName must be alphanumeric'),
   body('produceType').optional().trim().isIn(PRODUCE_TYPES).withMessage('Invalid produceType'),
   body('priceUgx')
     .optional()
     .isFloat({ min: VALIDATION_LIMITS.moneyMinUgx })
     .withMessage(`priceUgx must be at least ${VALIDATION_LIMITS.moneyMinUgx}`)
-];
-
-// Configure stock check validation.
-const stockCheckValidation = [
-  body('produceName')
-    .trim()
-    .isLength({ min: VALIDATION_LIMITS.textMinLength })
-    .withMessage('produceName is required'),
-  body('tonnage').isFloat({ gt: 0 }).withMessage('tonnage must be greater than 0')
 ];
 
 // Configure notification read validation.
@@ -567,7 +540,6 @@ export {
   trustedBuyerUpdateValidation,
   priceCreateValidation,
   priceUpdateValidation,
-  stockCheckValidation,
   notificationReadValidation
 };
 

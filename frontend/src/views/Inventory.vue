@@ -23,54 +23,27 @@
       </div>
     </div>
 
-    <!-- Low Stock Alert -->
-    <div v-if="lowStockItems.length > 0" class="alert alert-warning">
-      <i class="bi bi-exclamation-triangle me-2"></i>
-      <strong>Low Stock Alert!</strong> {{ lowStockAlertMessage }}
-    </div>
-    <div v-if="outOfStockItems.length > 0" class="alert alert-danger">
-      <i class="bi bi-x-octagon me-2"></i>
-      <strong>Out of Stock!</strong> {{ outOfStockAlertMessage }}
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-3">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-box text-primary" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Total Items</h6>
-            <h3>{{ statistics.totalItems }}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-box-seam text-success" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Total Weight</h6>
-            <h3 class="stats-value">{{ formatCompactNumber(statistics.totalWeight) }} kg</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-currency-exchange text-info" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Total Value</h6>
-            <h3 class="stats-value">{{ formatStatCurrency(statistics.totalValue) }}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Low Stock</h6>
-            <h3>{{ statistics.lowStockCount }}</h3>
-          </div>
-        </div>
-      </div>
+    <div class="summary-strip">
+      <article class="summary-tile">
+        <span class="summary-tile-label">Total Items</span>
+        <strong class="summary-tile-value">{{ statistics.totalItems }}</strong>
+        <span class="summary-tile-meta">Distinct stocked produce lines</span>
+      </article>
+      <article class="summary-tile">
+        <span class="summary-tile-label">Total Weight</span>
+        <strong class="summary-tile-value">{{ formatCompactNumber(statistics.totalWeight) }} kg</strong>
+        <span class="summary-tile-meta">Available stock across visible branches</span>
+      </article>
+      <article class="summary-tile">
+        <span class="summary-tile-label">Total Value</span>
+        <strong class="summary-tile-value">{{ formatStatCurrency(statistics.totalValue) }}</strong>
+        <span class="summary-tile-meta">Manager-controlled selling value</span>
+      </article>
+      <article class="summary-tile">
+        <span class="summary-tile-label">Attention Needed</span>
+        <strong class="summary-tile-value">{{ statistics.lowStockCount + outOfStockItems.length }}</strong>
+        <span class="summary-tile-meta">{{ outOfStockItems.length }} out of stock, {{ statistics.lowStockCount }} low stock</span>
+      </article>
     </div>
 
     <!-- Inventory Table -->
@@ -121,14 +94,14 @@
         </div>
 
         <div v-if="inventory.length === 0" class="text-center py-5">
-          <i class="bi bi-box" style="font-size: 4rem; color: #ccc"></i>
+          <i class="bi bi-box fs-1 text-secondary"></i>
           <p class="text-muted mt-3">No inventory items</p>
         </div>
         <div v-else-if="filteredInventory.length === 0" class="empty-state">
           No inventory items match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table table-hover table-sticky table-row-hover">
+          <table class="table table-hover table-sticky table-row-hover responsive-stack-table">
             <thead class="table-light">
               <tr>
                 <th>Produce Name</th>
@@ -142,12 +115,13 @@
             </thead>
             <tbody>
               <tr v-for="(item, idx) in paginatedInventory" :key="idx">
-                <td>
+                <td data-label="Produce Name">
                   <strong>{{ item.produceName }}</strong>
                 </td>
-                <td>{{ item.produceType }}</td>
-                <td>{{ item.branch }}</td>
+                <td data-label="Type">{{ item.produceType }}</td>
+                <td data-label="Branch">{{ item.branch }}</td>
                 <td
+                  data-label="Stock (kg)"
                   class="text-end fw-bold"
                   :class="{
                     'text-danger': item.totalTonnageKg < 500,
@@ -156,11 +130,11 @@
                 >
                   {{ item.totalTonnageKg.toLocaleString() }}
                 </td>
-                <td class="text-end">{{ formatCurrency(item.sellingPrice) }}</td>
-                <td class="text-end">
+                <td data-label="Price/kg" class="text-end">{{ formatCurrency(item.sellingPrice) }}</td>
+                <td data-label="Total Value" class="text-end">
                   {{ formatCurrency(item.totalTonnageKg * item.sellingPrice) }}
                 </td>
-                <td class="text-center">
+                <td data-label="Status" class="text-center">
                   <span v-if="item.totalTonnageKg === 0" class="badge bg-danger">Out of Stock</span>
                   <span v-else-if="item.totalTonnageKg < 500" class="badge bg-warning"
                     >Low Stock</span
@@ -192,7 +166,7 @@
       </div>
       <div class="card-body">
         <div class="table-responsive">
-          <table class="table table-hover">
+          <table class="table table-hover responsive-stack-table">
             <thead class="table-light">
               <tr>
                 <th>Produce Name</th>
@@ -204,15 +178,15 @@
             </thead>
             <tbody>
               <tr v-for="(item, idx) in outOfStockItems" :key="`out-${idx}`">
-                <td>
+                <td data-label="Produce Name">
                   <strong>{{ item.produceName }}</strong>
                 </td>
-                <td>{{ item.produceType }}</td>
-                <td>{{ item.branch }}</td>
-                <td class="text-end fw-bold text-danger">
+                <td data-label="Type">{{ item.produceType }}</td>
+                <td data-label="Branch">{{ item.branch }}</td>
+                <td data-label="Stock (kg)" class="text-end fw-bold text-danger">
                   {{ Number(item.totalTonnageKg || 0).toLocaleString('en-UG') }}
                 </td>
-                <td class="text-center">
+                <td data-label="Status" class="text-center">
                   <span class="badge bg-danger">Out of Stock</span>
                 </td>
               </tr>
@@ -413,14 +387,4 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-/* Component styles */
-.stats-value {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: clamp(1.4rem, 1.8vw, 1.95rem);
-}
-</style>
 

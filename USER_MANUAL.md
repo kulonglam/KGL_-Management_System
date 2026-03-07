@@ -43,7 +43,7 @@ The system supports:
 - Beans
 - Grain Maize
 - Cow peas
-- G-nuts
+- Groundnuts
 - Soybeans
 
 ## 4. Login and Session
@@ -78,14 +78,19 @@ Before recording procurement, configure managed prices.
 
 Path: `Administration > Price Management`
 
-1. Locate produce type.
-2. Enter `Price per kg (UGX)`.
-3. Click `Create` (first time) or `Update`.
+1. Add a price row or edit an existing one.
+2. Enter `Produce Type`.
+3. Optional: enter `Produce Name` if you need a price for one specific produce, for example `Red Beans`.
+4. Enter `Price per kg (UGX)`.
+5. Click `Create` (first time) or `Update`.
 
 Notes:
 - Minimum price is 10,000 UGX.
-- Price status can be `Managed`, `Inferred`, or `Unset`.
+- Leave `Produce Name` blank to create one type-default price for all produce names in that type.
+- Add a `Produce Name` to create a specific override, for example separate prices for `Red Beans` and `Yellow Beans`.
+- Price status can be `Managed` or `Suggested`.
 - Updating a managed price synchronizes related procurement selling prices for that branch.
+- Use `History` on a managed row to see who changed the price, when it changed, and the old/new amount.
 - If no managed price exists, procurement creation is blocked.
 
 ## 6.2 Record Procurement
@@ -143,7 +148,7 @@ Path: `Operations > Credit Sales`
 
 System behavior:
 - Amount due is auto-calculated from managed price.
-- Due date must be today or future.
+- Due date is required.
 - Stock must be available.
 - Buyer must belong to your branch.
 - New credit sale is blocked if the buyer has outstanding unpaid balance.
@@ -278,7 +283,7 @@ Main actions:
 4. Export reports as CSV, Excel, or PDF.
 
 Access note:
-- Cross-branch aggregation is restricted to director accounts configured with cross-branch permission.
+- Cross-branch aggregation is restricted to the director account `orban` (Mr. Orban).
 
 ## 9. Profile Management (All Roles)
 
@@ -306,24 +311,23 @@ Password constraints:
 4. Low-stock alert threshold is below 500 kg.
 5. Out-of-stock notifications are generated when stock reaches zero.
 6. Credit sales require a trusted buyer.
-7. Credit due date cannot be in the past.
+7. Credit sales must include a due date.
 8. A trusted buyer cannot start new credit with outstanding unpaid balance.
-9. Procurement requires managed pricing per produce type.
+9. Procurement requires managed pricing for the selected produce, either through a produce-specific price or a type default.
 10. Branch staffing controls enforce manager/attendant limits.
 
 ## 11. Common Errors and Fixes
 
-## "Manager price is required for this produce type"
-- Go to `Price Management` and create/update the produce type price.
+## "Manager price is required for this produce"
+- Go to `Price Management` and create/update either:
+  - a produce-specific price for that produce name, or
+  - a type-default price for its produce type.
 
 ## "Insufficient stock"
 - Reduce tonnage or replenish stock through procurement.
 
 ## "Trusted buyer already exists for this branch"
 - Search buyer list and edit existing record instead of creating duplicate.
-
-## "Due date must be today or a future date"
-- Select today or a future date.
 
 ## "Payment exceeds balance"
 - Enter an amount less than or equal to remaining balance.

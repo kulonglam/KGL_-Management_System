@@ -1,8 +1,10 @@
 <template>
   <div class="view-shell">
-    <div class="view-heading">
+    <div class="view-header">
+      <div class="view-heading">
       <h2 class="page-title">Sales Agent Dashboard</h2>
       <p class="page-subtitle">{{ user.name }} - {{ user.branch }}</p>
+      </div>
     </div>
     <div
       v-if="loadError"
@@ -21,6 +23,8 @@
       </div>
     </div>
 
+    <InsightStrip label="Sales agent summary" :items="summaryItems" />
+
     <QuickActionsPanel
       class="mb-4"
       title="Quick Actions"
@@ -28,44 +32,18 @@
       :items="quickActions"
     />
 
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="mb-0">Today's Sales Summary</h5>
-      <span class="badge bg-light text-muted">{{ todayLabel }}</span>
-    </div>
-
-    <div v-if="stats.cashCount === 0 && stats.creditCount === 0" class="alert alert-secondary">
-      No sales recorded today.
-    </div>
-
-    <div v-else class="row g-4">
-      <div class="col-md-4">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-cash-coin text-success" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Cash Sales Today</h6>
-            <h3 class="stats-value">{{ formatStatCurrency(stats.cashSales) }}</h3>
-            <small class="text-muted">{{ stats.cashCount }} transactions</small>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-credit-card text-warning" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Credit Sales Today</h6>
-            <h3 class="stats-value">{{ formatStatCurrency(stats.creditSales) }}</h3>
-            <small class="text-muted">{{ stats.creditCount }} transactions</small>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card stats-card">
-          <div class="card-body text-center">
-            <i class="bi bi-box text-info" style="font-size: 2rem"></i>
-            <h6 class="text-muted mt-2">Total Produce Today</h6>
-            <h3 class="stats-value">{{ formatCompactNumber(stats.totalKg) }} kg</h3>
-            <small class="text-muted">Cash + Credit</small>
-          </div>
+    <div class="card metric-card">
+      <div class="card-body">
+        <span class="metric-badge"><i class="bi bi-stars"></i></span>
+        <p class="metric-title">Today's Focus</p>
+        <h3 class="metric-value">{{ activityHeadline }}</h3>
+        <small class="metric-meta">
+          {{ stats.cashCount === 0 && stats.creditCount === 0 ? 'No sales recorded yet. Use quick actions above to start the day.' : focusMessage }}
+        </small>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+          <router-link class="btn btn-sm btn-primary" to="/dashboard/sales">Record Cash Sale</router-link>
+          <router-link class="btn btn-sm btn-outline-primary" to="/dashboard/credit-sales">Record Credit Sale</router-link>
+          <router-link class="btn btn-sm btn-outline-secondary" to="/dashboard/inventory">Check Inventory</router-link>
         </div>
       </div>
     </div>
@@ -80,13 +58,16 @@
 
 import { salesAPI, creditSalesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
+import InsightStrip from '../components/common/InsightStrip.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { formatDisplayDate } from '../utils/dateFormat.mjs';
 
 export default {
   name: 'SalesAgentDashboard',
   components: {
+    InsightStrip,
     QuickActionsPanel
   },
   data() {
@@ -124,6 +105,21 @@ export default {
     }
   },
   computed: {
+    activityHeadline() {
+      if (this.stats.cashCount === 0 && this.stats.creditCount === 0) {
+        return 'Waiting for today\'s first sale';
+      }
+      return `${this.stats.cashCount + this.stats.creditCount} sales interactions`;
+    },
+    focusMessage() {
+      if (this.stats.creditCount > this.stats.cashCount) {
+        return 'Monitor buyer balances and due dates closely.';
+      }
+      if (this.stats.totalKg > 0) {
+        return 'Keep inventory checks tight before the next dispatch.';
+      }
+      return 'Use the quick actions to start recording sales.';
+    },
     quickActions() {
       return [
         {
@@ -167,6 +163,30 @@ export default {
           icon: 'bi bi-person-circle',
           label: 'My Profile',
           meta: 'Update personal account details'
+        }
+      ];
+    },
+    summaryItems() {
+      return [
+        {
+          label: 'Today',
+          value: this.todayLabel,
+          meta: 'Current sales day'
+        },
+        {
+          label: 'Branch',
+          value: this.user.branch || 'Unassigned',
+          meta: this.user.name || 'Sales agent workspace'
+        },
+        {
+          label: 'Cash Sales',
+          value: this.formatStatCurrency(this.stats.cashSales),
+          meta: `${this.stats.cashCount} transaction(s)`
+        },
+        {
+          label: 'Credit Sales',
+          value: this.formatStatCurrency(this.stats.creditSales),
+          meta: `${this.stats.creditCount} transaction(s)`
         }
       ];
     }
@@ -213,11 +233,7 @@ export default {
       }
     },
     setTodayLabel() {
-      this.todayLabel = new Date().toLocaleDateString('en-UG', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
+      this.todayLabel = formatDisplayDate(new Date());
     },
     scheduleMidnightRefresh() {
       const now = new Date();
@@ -249,14 +265,4 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-/* Component styles */
-.stats-value {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: clamp(1.45rem, 1.9vw, 2rem);
-}
-</style>
 

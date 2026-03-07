@@ -1,6 +1,6 @@
 <template>
-  <fieldset class="credit-section mb-3">
-    <legend class="section-legend">
+  <fieldset class="form-section mb-0">
+    <legend class="form-section-legend">
       <i class="bi bi-person-vcard"></i>
       <span>Buyer Information</span>
     </legend>
@@ -21,10 +21,12 @@
         </select>
         <div v-if="errors.trustedBuyerId" class="invalid-feedback">{{ errors.trustedBuyerId }}</div>
         <div class="mt-2">
-          <small v-if="canManageBuyers" class="text-muted">
-            Manage trusted buyers in the Trusted Buyers page.
+          <small v-if="canManageBuyers" class="field-note">
+            Buyer details are filled automatically from the Trusted Buyers page.
           </small>
-          <small v-else class="text-muted">Trusted buyers are managed by the manager.</small>
+          <small v-else class="field-note">
+            Select a trusted buyer. The manager maintains this buyer registry.
+          </small>
         </div>
       </div>
       <div class="col-md-6">
@@ -32,7 +34,7 @@
         <input
           id="credit-buyer-nin"
           type="text"
-          :class="['form-control branch-display', { 'is-invalid': errors.nationalId }]"
+          :class="['form-control readonly-display', { 'is-invalid': errors.nationalId }]"
           v-model="form.nationalId"
           disabled
         />
@@ -43,7 +45,7 @@
         <input
           id="credit-buyer-location"
           type="text"
-          :class="['form-control branch-display', { 'is-invalid': errors.location }]"
+          :class="['form-control readonly-display', { 'is-invalid': errors.location }]"
           v-model="form.location"
           disabled
         />
@@ -54,7 +56,7 @@
         <input
           id="credit-buyer-contact"
           type="text"
-          :class="['form-control branch-display', { 'is-invalid': errors.contact }]"
+          :class="['form-control readonly-display', { 'is-invalid': errors.contact }]"
           v-model="form.contact"
           disabled
         />
@@ -88,43 +90,3 @@ defineProps({
 
 defineEmits(['buyer-change']);
 </script>
-
-<style scoped>
-/* Component styles */
-.credit-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 0.95rem 0.95rem 1rem;
-  background: #fbfcfd;
-  min-width: 0;
-}
-
-.section-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1f2937;
-  margin: 0 auto 0.8rem;
-  padding: 0 0.45rem;
-  text-align: center;
-}
-
-.section-legend i {
-  color: #198754;
-}
-
-.credit-section .form-label {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1f2937;
-}
-
-.branch-display {
-  background-color: #f1f5f9;
-  color: #334155;
-  font-weight: 500;
-}
-</style>

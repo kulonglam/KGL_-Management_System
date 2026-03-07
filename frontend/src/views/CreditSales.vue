@@ -1,8 +1,16 @@
 <template>
   <div class="view-shell">
-    <div class="view-heading">
-      <h2 class="page-title">Record Credit Sale</h2>
-      <p class="page-subtitle">Register trusted-buyer credit transactions with dispatch details.</p>
+    <div class="view-header">
+      <div class="view-heading">
+        <h2 class="page-title">Record Credit Sale</h2>
+        <p class="page-subtitle">
+          Register trusted-buyer dispatches with automatic pricing and due-date tracking.
+        </p>
+      </div>
+      <div class="view-badges">
+        <span class="view-badge view-badge--accent">Trusted buyers only</span>
+        <span class="view-badge view-badge--neutral">Review required</span>
+      </div>
     </div>
 
     <div class="card">
@@ -31,19 +39,28 @@
 
           <FormAlerts :stock-warning="stockWarning" :error="error" :success="success" />
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Record Credit Sale
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              :disabled="loading"
-              @click="resetForm"
-            >
-              Clear
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Trusted-buyer details come from the buyer registry.</strong>
+              <span>
+                Amount due is calculated automatically from the active manager-set price before
+                you review and save.
+              </span>
+            </div>
+            <div class="form-action-buttons">
+              <button type="submit" class="btn btn-success" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                Review Credit Sale
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="loading"
+                @click="resetForm"
+              >
+                Clear Form
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -69,9 +86,17 @@
           ></button>
         </div>
         <div class="modal-body">
-          <div class="credit-summary card border-0 mb-3">
+          <div class="review-summary-panel review-summary-panel--credit card border-0 mb-3">
             <div class="card-body py-2 px-3">
-              <div class="row g-2">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Trusted Buyer</small>
+                  <strong>{{ form.buyerName || '-' }}</strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Produce</small>
+                  <strong>{{ form.produceName || '-' }} <span v-if="form.produceType">({{ form.produceType }})</span></strong>
+                </div>
                 <div class="col-md-4">
                   <small class="text-muted d-block">Amount Due</small>
                   <strong>{{ formatCurrency(form.amountDueUgx) }}</strong>
@@ -82,104 +107,30 @@
                 </div>
                 <div class="col-md-4">
                   <small class="text-muted d-block">Due Date</small>
-                  <strong>{{ form.dueDate || '-' }}</strong>
+                  <strong>{{ formatDisplayDate(form.dueDate) }}</strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Dispatch Date</small>
+                  <strong>{{ formatDisplayDate(form.dateOfDispatch) }}</strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Buyer Contact</small>
+                  <strong>{{ form.contact || '-' }}</strong>
+                </div>
+                <div class="col-md-4">
+                  <small class="text-muted d-block">Sales Agent</small>
+                  <strong>{{ user.name || '-' }}</strong>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-buyer">Trusted Buyer</label>
-              <select
-                id="credit-review-buyer"
-                :class="['form-select', { 'is-invalid': fieldErrors.trustedBuyerId }]"
-                v-model="form.trustedBuyerId"
-                @change="handleBuyerSelect"
-              >
-                <option value="">Select trusted buyer</option>
-                <option v-for="buyer in trustedBuyers" :key="buyer._id" :value="buyer._id">
-                  {{ buyer.name }} ({{ buyer.nationalId }})
-                </option>
-              </select>
-              <div v-if="fieldErrors.trustedBuyerId" class="invalid-feedback">
-                {{ fieldErrors.trustedBuyerId }}
-              </div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-produce">Produce Name</label>
-              <select
-                id="credit-review-produce"
-                :class="['form-select', { 'is-invalid': fieldErrors.produceName }]"
-                v-model="form.produceName"
-                @change="handleReviewProduceChange"
-              >
-                <option value="">Select produce</option>
-                <option
-                  v-for="item in inventory"
-                  :key="`${item.produceName}-${item.produceType}`"
-                  :value="item.produceName"
-                  :data-produce-type="item.produceType"
-                >
-                  {{ item.produceName }}
-                </option>
-              </select>
-              <div v-if="fieldErrors.produceName" class="invalid-feedback">
-                {{ fieldErrors.produceName }}
-              </div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-tonnage">Tonnage (kg)</label>
-              <input
-                id="credit-review-tonnage"
-                type="number"
-                :class="['form-control', { 'is-invalid': fieldErrors.tonnageKg }]"
-                v-model="form.tonnageKg"
-                min="1"
-                @input="updatePrice"
-                required
-              />
-              <div v-if="fieldErrors.tonnageKg" class="invalid-feedback">{{ fieldErrors.tonnageKg }}</div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-amount">Amount Due (UGX)</label>
-              <input
-                id="credit-review-amount"
-                type="number"
-                :class="['form-control', { 'is-invalid': fieldErrors.amountDueUgx }]"
-                :value="form.amountDueUgx"
-                readonly
-              />
-              <div v-if="fieldErrors.amountDueUgx" class="invalid-feedback">{{ fieldErrors.amountDueUgx }}</div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-due-date">Due Date</label>
-              <input
-                id="credit-review-due-date"
-                type="date"
-                :class="['form-control', { 'is-invalid': fieldErrors.dueDate }]"
-                v-model="form.dueDate"
-                :min="todayIsoDate"
-                required
-              />
-              <div v-if="fieldErrors.dueDate" class="invalid-feedback">{{ fieldErrors.dueDate }}</div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-bold" for="credit-review-dispatch-date">Dispatch Date</label>
-              <input
-                id="credit-review-dispatch-date"
-                type="date"
-                :class="['form-control', { 'is-invalid': fieldErrors.dateOfDispatch }]"
-                v-model="form.dateOfDispatch"
-                required
-              />
-              <div v-if="fieldErrors.dateOfDispatch" class="invalid-feedback">
-                {{ fieldErrors.dateOfDispatch }}
-              </div>
-            </div>
-          </div>
+          <p class="review-summary-note">
+            Confirm only after checking the trusted buyer, due date, tonnage, and computed
+            balance.
+          </p>
 
-          <div class="mt-4 d-flex justify-content-end gap-2">
+          <div class="modal-action-row mt-4">
             <button
               type="button"
               class="btn btn-outline-secondary"
@@ -210,9 +161,11 @@
  * File: frontend/src/views/CreditSales.vue
  */
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { creditSalesAPI, inventoryAPI, trustedBuyersAPI } from '../services/api';
+import { useAutoClearFieldErrors } from '../composables/useAutoClearFieldErrors';
 import { useFormFeedback } from '../composables/useFormFeedback';
+import { useModalFocusTrap } from '../composables/useModalFocusTrap';
 import { useFormValidation } from '../composables/useFormValidation';
 import { useStockValidation } from '../composables/useStockValidation';
 import { pinia } from '../stores';
@@ -221,6 +174,8 @@ import FormAlerts from '../components/common/FormAlerts.vue';
 import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
+import { formatDisplayDate } from '../utils/dateFormat.mjs';
+import { formatUgx } from '../utils/numberFormat';
 import { creditSaleValidationSchema } from '../utils/formSchemas.mjs';
 
 // Authenticated user context for agent/branch-specific fields.
@@ -235,19 +190,24 @@ const form = ref(createInitialForm());
 const showReviewModal = ref(false);
 // DOM ref used for keyboard focus handling in review modal.
 const reviewModalRef = ref(null);
-// Restores keyboard focus after modal closes.
-const lastFocusedElement = ref(null);
-// Used as min value for due-date pickers.
-const todayIsoDate = new Date().toISOString().split('T')[0];
 const authStore = useAuthStore(pinia);
 
-const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess } = useFormFeedback();
+const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
+  useFormFeedback();
 const { stockWarning, evaluateStock } = useStockValidation();
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(creditSaleValidationSchema);
+useAutoClearFieldErrors(form, clearFieldError);
 
 // Managers can navigate and maintain trusted buyers list.
 const canManageBuyers = computed(() => user.value.role === 'manager');
+const { captureTriggerFocus } = useModalFocusTrap({
+  isOpen: showReviewModal,
+  modalRef: reviewModalRef,
+  onRequestClose: () => {
+    closeReviewModal();
+  }
+});
 
 // Build a fresh credit-sale form with dispatch date defaulted to today.
 function createInitialForm() {
@@ -331,13 +291,6 @@ const updateProduceDetails = () => {
   updatePrice();
 };
 
-// Keep review-modal produce selection synchronized with produce type metadata.
-const handleReviewProduceChange = (event) => {
-  const selected = event?.target?.options?.[event.target.selectedIndex];
-  form.value.produceType = selected?.dataset?.produceType || '';
-  updateProduceDetails();
-};
-
 // Compute amount due from selected produce stock price and tonnage.
 const updatePrice = () => {
   const { amount } = evaluateStock(
@@ -350,10 +303,13 @@ const updatePrice = () => {
 };
 
 // Reset form fields plus validation and warning state.
-const resetForm = () => {
+const resetForm = ({ preserveFeedback = false } = {}) => {
   form.value = createInitialForm();
   stockWarning.value = '';
   resetErrors();
+  if (!preserveFeedback) {
+    resetFeedback();
+  }
 };
 
 // Validate data before opening final confirmation modal.
@@ -369,7 +325,7 @@ const openReviewModal = () => {
     return;
   }
 
-  lastFocusedElement.value = document.activeElement;
+  captureTriggerFocus();
   showReviewModal.value = true;
 };
 
@@ -377,73 +333,6 @@ const openReviewModal = () => {
 const closeReviewModal = () => {
   if (loading.value) return;
   showReviewModal.value = false;
-};
-
-// Focus first interactive element after review modal renders.
-const focusReviewModal = async () => {
-  await nextTick();
-  const firstFocusable = getReviewModalFocusableElements()[0];
-  if (firstFocusable) {
-    firstFocusable.focus();
-    return;
-  }
-  reviewModalRef.value?.focus();
-};
-
-// Return focusable controls used to trap tab navigation in modal.
-const getReviewModalFocusableElements = () =>
-  Array.from(
-    reviewModalRef.value?.querySelectorAll(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    ) || []
-  );
-
-// Keep keyboard focus cycling inside the review modal.
-const trapReviewModalFocus = (event) => {
-  if (!showReviewModal.value || event.key !== 'Tab') return;
-
-  const focusable = getReviewModalFocusableElements();
-  if (focusable.length === 0) {
-    event.preventDefault();
-    reviewModalRef.value?.focus();
-    return;
-  }
-
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const active = document.activeElement;
-
-  if (event.shiftKey && active === first) {
-    event.preventDefault();
-    last.focus();
-    return;
-  }
-
-  if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
-};
-
-// Restore focus to the element that launched the review modal.
-const restorePreviousFocus = () => {
-  const element = lastFocusedElement.value;
-  if (element && typeof element.focus === 'function') {
-    element.focus();
-  }
-};
-
-// Process keyboard shortcuts while the review modal is open.
-const handleReviewModalKeydown = (event) => {
-  if (!showReviewModal.value) return;
-
-  if (event.key === 'Escape') {
-    event.preventDefault();
-    closeReviewModal();
-    return;
-  }
-
-  trapReviewModalFocus(event);
 };
 
 // Submit credit sale after modal confirmation and validation.
@@ -465,7 +354,7 @@ const confirmSaveCreditSale = async () => {
     await creditSalesAPI.create(form.value);
     setSuccess('Credit sale recorded successfully!');
     showReviewModal.value = false;
-    resetForm();
+    resetForm({ preserveFeedback: true });
     await loadInventory();
   } catch (submitError) {
     setError(submitError.response?.data?.message || 'Failed to record credit sale');
@@ -474,39 +363,7 @@ const confirmSaveCreditSale = async () => {
   }
 };
 
-// Format UGX values in review summary.
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0
-  }).format(Number(amount || 0));
-
-watch(showReviewModal, (isOpen) => {
-  if (isOpen) {
-    focusReviewModal();
-    window.addEventListener('keydown', handleReviewModalKeydown);
-    return;
-  }
-  window.removeEventListener('keydown', handleReviewModalKeydown);
-  restorePreviousFocus();
-});
-
-watch(
-  form,
-  (next, previous) => {
-    Object.keys(next).forEach((fieldName) => {
-      if (next[fieldName] !== previous[fieldName]) {
-        clearFieldError(fieldName);
-      }
-    });
-  },
-  { deep: true }
-);
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleReviewModalKeydown);
-});
+const formatCurrency = (amount) => formatUgx(amount);
 
 onMounted(async () => {
   user.value = authStore.user || {};
@@ -515,14 +372,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Component styles */
 .credit-review-modal {
   max-width: 760px;
-}
-
-.credit-summary {
-  background: linear-gradient(180deg, #f8fafc, #ecfdf5);
-  border: 1px solid #dcfce7;
 }
 </style>
 

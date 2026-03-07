@@ -5,7 +5,10 @@
 
 import Procurement from '../models/Procurement.js';
 import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';
-import { resolveSellingPrice, canManagerAccessBranch } from '../services/procurementService.js';
+import {
+  resolveSellingPriceDetails,
+  canManagerAccessBranch
+} from '../services/procurementService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import {
   normalizeProduceName,
@@ -83,13 +86,13 @@ const createProcurement = async (req, res) => {
       dealerContact
     } = req.body;
 
-    const produceName = normalizeProduceName(rawProduceName);
-    const produceType = normalizeProduceType(rawProduceType);
-
-    const finalPrice = await resolveSellingPrice({
+    const priceResolution = await resolveSellingPriceDetails({
       branch: req.user.branch,
-      produceType
+      produceName: normalizeProduceName(rawProduceName),
+      produceType: normalizeProduceType(rawProduceType)
     });
+    const produceName = priceResolution.produceName;
+    const produceType = priceResolution.produceType;
 
     const procurement = await Procurement.create({
       produceName,
@@ -102,7 +105,7 @@ const createProcurement = async (req, res) => {
       dealerName,
       dealerContact,
       branch: req.user.branch,
-      sellingPrice: finalPrice,
+      sellingPrice: priceResolution.priceUgx,
       recordedBy: req.user._id
     });
 
@@ -154,10 +157,10 @@ const updateProcurement = async (req, res) => {
 
     const currentProduceName = procurement.produceName || procurement.name || '';
     const currentProduceType = procurement.produceType || procurement.type || '';
-    const nextProduceType = normalizeProduceType(req.body.produceType || currentProduceType);
-    const finalPrice = await resolveSellingPrice({
+    const priceResolution = await resolveSellingPriceDetails({
       branch: procurement.branch,
-      produceType: nextProduceType
+      produceName: normalizeProduceName(req.body.produceName || currentProduceName),
+      produceType: normalizeProduceType(req.body.produceType || currentProduceType)
     });
 
     const allowedUpdateFields = [
@@ -185,20 +188,20 @@ const updateProcurement = async (req, res) => {
     const updatePayload = {
       ...fieldsToApply,
       sourceType: normalizeSourceType(fieldsToApply.sourceType || procurement.sourceType),
-      sellingPrice: finalPrice,
+      sellingPrice: priceResolution.priceUgx,
       branch: procurement.branch
     };
 
     // Backfill legacy records on update so future reads are clean.
     if (!updatePayload.produceName && currentProduceName) {
-      updatePayload.produceName = normalizeProduceName(currentProduceName);
+      updatePayload.produceName = priceResolution.produceName || normalizeProduceName(currentProduceName);
     } else {
-      updatePayload.produceName = normalizeProduceName(updatePayload.produceName);
+      updatePayload.produceName = priceResolution.produceName || normalizeProduceName(updatePayload.produceName);
     }
     if (!updatePayload.produceType && currentProduceType) {
-      updatePayload.produceType = normalizeProduceType(currentProduceType);
+      updatePayload.produceType = priceResolution.produceType || normalizeProduceType(currentProduceType);
     } else {
-      updatePayload.produceType = normalizeProduceType(updatePayload.produceType);
+      updatePayload.produceType = priceResolution.produceType || normalizeProduceType(updatePayload.produceType);
     }
 
     const updatedProcurement = await Procurement.findByIdAndUpdate(

@@ -134,23 +134,34 @@
         <!-- Main Content -->
         <main id="main-content-region" class="main-content px-md-4 py-4" tabindex="-1">
           <div class="main-content-body">
-            <div
-              v-if="user.role === 'manager' && stockNotifications.length > 0"
-              class="alert alert-warning d-flex align-items-start justify-content-between gap-3"
-            >
-              <div class="w-100">
-                <strong>Stock Notifications:</strong>
-                <div class="mt-2">
-                  <div
-                    v-for="notification in stockNotifications"
-                    :key="notification._id"
-                    class="d-flex flex-wrap align-items-center justify-content-between border-top pt-2 mt-2"
-                  >
-                    <span>{{ notification.message }}</span>
-                    <div class="d-flex align-items-center gap-2">
-                      <small class="text-muted">{{
-                        formatNotificationTime(notification.createdAt)
-                      }}</small>
+            <div v-if="user.role === 'manager'" class="notice-stack mb-3">
+              <div v-if="stockNotifications.length > 0" class="card notice-card">
+                <div class="card-body">
+                  <div class="notice-header">
+                    <div>
+                      <h5 class="notice-title">Stock Notifications</h5>
+                      <p class="notice-copy">Recent branch alerts that need acknowledgement.</p>
+                    </div>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      @click="markAllNotificationsRead"
+                    >
+                      Acknowledge All
+                    </button>
+                  </div>
+                  <div class="notice-list">
+                    <div
+                      v-for="notification in stockNotifications"
+                      :key="notification._id"
+                      class="notice-item d-flex flex-wrap align-items-start justify-content-between gap-3"
+                    >
+                      <div class="flex-grow-1">
+                        <div>{{ notification.message }}</div>
+                        <small class="notice-item-meta">{{
+                          formatNotificationTime(notification.createdAt)
+                        }}</small>
+                      </div>
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-secondary"
@@ -162,32 +173,29 @@
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                class="btn btn-sm btn-outline-dark"
-                @click="markAllNotificationsRead"
+              <div
+                v-if="outOfStockCount > 0 && !stockAlertDismissed"
+                class="card notice-card notice-card--danger"
               >
-                Acknowledge All
-              </button>
-            </div>
-
-            <div
-              v-if="user.role === 'manager' && outOfStockCount > 0 && !stockAlertDismissed"
-              class="alert alert-danger d-flex align-items-center justify-content-between mt-3"
-            >
-              <div>
-                <strong>Out of Stock:</strong> {{ outOfStockCount }} item(s) need restocking.
-              </div>
-              <div class="d-flex align-items-center gap-2">
-                <router-link class="btn btn-light btn-sm" to="/dashboard/inventory">
-                  View Inventory
-                </router-link>
-                <button
-                  type="button"
-                  class="btn-close"
-                  aria-label="Dismiss out-of-stock alert"
-                  @click="dismissStockAlert"
-                ></button>
+                <div class="card-body">
+                  <div class="notice-header mb-0">
+                    <div>
+                      <h5 class="notice-title">Out of Stock</h5>
+                      <p class="notice-copy">{{ outOfStockCount }} item(s) need restocking.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <router-link class="btn btn-sm btn-outline-danger" to="/dashboard/inventory">
+                        View Inventory
+                      </router-link>
+                      <button
+                        type="button"
+                        class="btn-close"
+                        aria-label="Dismiss out-of-stock alert"
+                        @click="dismissStockAlert"
+                      ></button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -248,6 +256,8 @@ import { inventoryAPI, notificationsAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { formatDisplayTimestamp } from '../utils/dateFormat.mjs';
+import { isDirectorOrban } from '../utils/directorAccess.mjs';
 
 export default {
   name: 'DashboardLayout',
@@ -290,11 +300,13 @@ export default {
     navItems() {
       const items = [];
 
-      if (this.user.role === 'director') {
+      if (isDirectorOrban(this.user)) {
         items.push(
           { path: '/dashboard/director', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
+      } else if (this.user.role === 'director') {
+        items.push({ path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' });
       } else if (this.user.role === 'manager') {
         items.push(
           { path: '/dashboard/manager', icon: 'bi bi-grid', label: 'Dashboard' },
@@ -650,15 +662,7 @@ export default {
       }
     },
     formatNotificationTime(value) {
-      if (!value) return '';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toLocaleString('en-UG', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      return value ? formatDisplayTimestamp(value) : '';
     }
   }
 };

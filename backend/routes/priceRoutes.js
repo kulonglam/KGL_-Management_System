@@ -8,6 +8,7 @@ import express from 'express';
 const router = express.Router();
 import {
   getPrices,
+  getPriceHistory,
   getPriceById,
   createPrice,
   updatePrice,
@@ -34,6 +35,16 @@ router.post(
   priceCreateValidation,
   validateRequest,
   createPrice
+);
+
+// GET /api/prices/:id/history: return immutable price change history for one row.
+router.get(
+  '/:id/history',
+  protect,
+  authorize('manager'),
+  mongoIdParamValidation,
+  validateRequest,
+  getPriceHistory
 );
 
 // GET /api/prices/:id: return one price rule by id after access checks.

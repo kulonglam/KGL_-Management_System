@@ -24,7 +24,7 @@ const PRODUCE_PRICES = {
   Beans: 35000,
   'Grain Maize': 28000,
   'Cow peas': 32000,
-  'G-nuts': 55000,
+  Groundnuts: 55000,
   Soybeans: 40000
 };
 
@@ -152,7 +152,7 @@ const procurementSeed = [
   },
   {
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     sourceType: 'individual',
     dateReceived: '2026-03-05',
     timeReceived: '11:20',
@@ -166,7 +166,7 @@ const procurementSeed = [
   },
   {
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     sourceType: 'individual',
     dateReceived: '2026-03-05',
     timeReceived: '11:20',
@@ -289,7 +289,7 @@ const creditSalesSeed = [
     trustedBuyerNationalId: 'CF987654321098',
     salesAgentUsername: 'wuol',
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     tonnageKg: 200,
     amountDueUgx: 11000000,
     amountPaidUgx: 11000000,
@@ -319,7 +319,7 @@ const creditSalesSeed = [
     trustedBuyerNationalId: 'CF987654321099',
     salesAgentUsername: 'makhol',
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     tonnageKg: 200,
     amountDueUgx: 11000000,
     amountPaidUgx: 11000000,
@@ -349,7 +349,7 @@ const creditSalesSeed = [
     trustedBuyerNationalId: 'CF987654321097',
     salesAgentUsername: 'wuol',
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     tonnageKg: 200,
     amountDueUgx: 11000000,
     amountPaidUgx: 11000000,
@@ -379,7 +379,7 @@ const creditSalesSeed = [
     trustedBuyerNationalId: 'CF987654321096',
     salesAgentUsername: 'wuol',
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     tonnageKg: 200,
     amountDueUgx: 11000000,
     amountPaidUgx: 11000000,
@@ -409,7 +409,7 @@ const creditSalesSeed = [
     trustedBuyerNationalId: 'CF987654321095',
     salesAgentUsername: 'wuol',
     produceName: 'Ground Nuts',
-    produceType: 'G-nuts',
+    produceType: 'Groundnuts',
     tonnageKg: 200,
     amountDueUgx: 11000000,
     amountPaidUgx: 11000000,
@@ -620,7 +620,6 @@ main()
     await mongoose.disconnect();
     process.exit(1);
   });
-
 
 
 

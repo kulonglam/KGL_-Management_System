@@ -21,6 +21,8 @@ const PRODUCE_NAME_ALIASES = {
   'red beans': 'Red Beans',
   'brown bean': 'Brown Beans',
   'brown beans': 'Brown Beans',
+  'ground nut': 'Groundnuts',
+  'ground nuts': 'Groundnuts',
   'groundnut': 'Groundnuts',
   'groundnuts': 'Groundnuts',
   'cow pea': 'Cow Peas',
@@ -34,7 +36,11 @@ const PRODUCE_TYPE_ALIASES = {
   beans: 'Beans',
   'grain maize': 'Grain Maize',
   'cow peas': 'Cow peas',
-  'g-nuts': 'G-nuts',
+  'g-nuts': 'Groundnuts',
+  'g nuts': 'Groundnuts',
+  groundnut: 'Groundnuts',
+  groundnuts: 'Groundnuts',
+  'ground nuts': 'Groundnuts',
   soybeans: 'Soybeans'
 };
 
@@ -75,7 +81,7 @@ const normalizeSourceType = (value) => {
 const normalizeProduceNameKey = (value) =>
   normalizeProduceName(value)
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, '')
     .trim();
 
 export {

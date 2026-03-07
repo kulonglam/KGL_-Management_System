@@ -1,8 +1,8 @@
 <template>
-  <div class="procurement-form">
-    <fieldset class="procurement-section mb-3">
-      <legend class="section-legend">
-        
+  <div class="procurement-form form-shell">
+    <fieldset class="form-section mb-0">
+      <legend class="form-section-legend">
+        <i class="bi bi-basket2"></i>
         <span>Produce Details</span>
       </legend>
       <div class="row g-3">
@@ -20,7 +20,7 @@
             required
           />
           <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
-          <small class="text-muted">Letters, numbers and spaces are allowed.</small>
+          <small class="field-note">Letters, numbers and spaces are allowed.</small>
         </div>
 
         <div class="col-md-6">
@@ -36,7 +36,7 @@
             <option value="Beans">Beans</option>
             <option value="Grain Maize">Grain Maize</option>
             <option value="Cow peas">Cow peas</option>
-            <option value="G-nuts">G-nuts</option>
+            <option value="Groundnuts">Groundnuts</option>
             <option value="Soybeans">Soybeans</option>
           </select>
           <div v-if="errors.produceType" class="invalid-feedback">{{ errors.produceType }}</div>
@@ -84,9 +84,9 @@
       </div>
     </fieldset>
 
-    <fieldset class="procurement-section mb-3">
-      <legend class="section-legend">
-        
+    <fieldset class="form-section mb-0">
+      <legend class="form-section-legend">
+        <i class="bi bi-cash-coin"></i>
         <span>Quantity & Pricing</span>
       </legend>
       <div class="row g-3">
@@ -101,7 +101,7 @@
             required
           />
           <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
-          <small class="text-muted">
+          <small class="field-note">
             {{
               form.sourceType === 'individual'
                 ? 'Minimum 1000 kg for individual dealers.'
@@ -131,21 +131,28 @@
             :class="['form-control', { 'is-invalid': errors.sellingPrice }]"
             v-model.number="form.sellingPrice"
             min="10000"
-            required
             :readonly="priceLocked"
           />
           <div v-if="errors.sellingPrice" class="invalid-feedback">{{ errors.sellingPrice }}</div>
-          <small v-if="!hasManagedPrice && form.produceType" class="text-danger">
-            Set a manager price in Price Management before saving procurement.
+          <small
+            v-if="!hasManagedPrice && form.produceType && availableProduceNames.length > 0 && !hasTypeDefaultPrice"
+            class="field-note text-danger"
+          >
+            Available {{ form.produceType }} prices in this branch: {{ availableProduceNames.join(', ') }}.
+            Use one of those exact produce names or create a {{ form.produceType }} type default in Price Management.
           </small>
-          <small v-else-if="priceLocked" class="text-muted">{{ priceLockHint }}</small>
+          <small v-else-if="!hasManagedPrice && form.produceType" class="field-note text-danger">
+            No manager price is available for this produce yet. Create an exact produce price or a type default in Price Management before saving procurement.
+          </small>
+          <small v-else-if="priceLocked" class="field-note">{{ priceLockHint }}</small>
+          <small v-else class="field-note">Select a produce type to load the manager-set selling price.</small>
         </div>
       </div>
     </fieldset>
 
-    <fieldset class="procurement-section">
-      <legend class="section-legend">
-        
+    <fieldset class="form-section">
+      <legend class="form-section-legend">
+        <i class="bi bi-person-vcard"></i>
         <span>Dealer Information</span>
       </legend>
       <div class="row g-3">
@@ -169,19 +176,24 @@
           <label class="form-label" for="procurement-dealer-contact">Dealer Contact</label>
           <input
             id="procurement-dealer-contact"
-            type="text"
+            type="tel"
             :class="['form-control', { 'is-invalid': errors.dealerContact }]"
             v-model="form.dealerContact"
+            inputmode="tel"
+            autocomplete="tel"
+            maxlength="13"
             pattern="^(\+256|0)[0-9]{9}$"
             placeholder="+256700000000 or 0700000000"
+            @input="sanitizePhoneField('dealerContact')"
             required
           />
           <div v-if="errors.dealerContact" class="invalid-feedback">{{ errors.dealerContact }}</div>
+          <small class="field-note">Use digits only. Accepted formats are 0700000000 or +256700000000.</small>
         </div>
 
         <div class="col-md-6">
           <label class="form-label" for="procurement-branch">Branch</label>
-          <input id="procurement-branch" type="text" class="form-control branch-display" :value="user.branch" disabled />
+          <input id="procurement-branch" type="text" class="form-control readonly-display" :value="user.branch" disabled />
         </div>
       </div>
     </fieldset>
@@ -191,8 +203,20 @@
 <script setup>
 import { computed } from 'vue';
 
-// Trim and collapse repeated whitespace for name/contact text fields.
+// Trim and collapse repeated whitespace for free-text fields.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
+const sanitizePhoneValue = (value) => {
+  const normalized = String(value || '').replace(/[^\d+]/g, '');
+  const withoutExtraPlus = normalized.startsWith('+')
+    ? `+${normalized.slice(1).replace(/\+/g, '')}`
+    : normalized.replace(/\+/g, '');
+
+  if (withoutExtraPlus.startsWith('+')) {
+    return withoutExtraPlus.slice(0, 13);
+  }
+
+  return withoutExtraPlus.slice(0, 10);
+};
 
 // Shared procurement form model passed from parent views.
 const form = defineModel('form', {
@@ -204,6 +228,11 @@ const form = defineModel('form', {
 const normalizeText = (field) => {
   if (typeof form.value[field] !== 'string') return;
   form.value[field] = normalizeTextValue(form.value[field]);
+};
+
+const sanitizePhoneField = (field) => {
+  if (typeof form.value[field] !== 'string') return;
+  form.value[field] = sanitizePhoneValue(form.value[field]);
 };
 
 // Enforce business minimum tonnage by source type.
@@ -222,53 +251,21 @@ defineProps({
   },
   priceLockHint: {
     type: String,
-    default: 'Price is controlled in Price Management.'
+    default: 'Selling price comes from Price Management.'
   },
   errors: {
     type: Object,
     default: () => ({})
+  },
+  availableProduceNames: {
+    type: Array,
+    default: () => []
+  },
+  hasTypeDefaultPrice: {
+    type: Boolean,
+    default: false
   }
 });
 
 defineEmits(['type-change']);
 </script>
-
-<style scoped>
-/* Component styles */
-.procurement-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 0.95rem 0.95rem 1rem;
-  background: #fbfcfd;
-  min-width: 0;
-}
-
-.section-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1f2937;
-  margin: 0 auto 0.8rem;
-  padding: 0 0.45rem;
-  text-align: center;
-}
-
-.section-legend i {
-  color: #198754;
-}
-
-.procurement-form .form-label {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1f2937;
-}
-
-.branch-display {
-  background-color: #f1f5f9;
-  color: #334155;
-  font-weight: 500;
-}
-</style>

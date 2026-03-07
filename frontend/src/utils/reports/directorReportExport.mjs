@@ -3,6 +3,8 @@
  * File: frontend/src/utils/reports/directorReportExport.mjs
  */
 
+import { formatDisplayTimestamp } from '../dateFormat.mjs';
+
 // Coerce nullable numeric fields from dashboard state into numbers.
 const toNumber = (value) => Number(value || 0);
 
@@ -179,7 +181,7 @@ export const buildDirectorReportHtml = (state) => {
   const summaryRows = getDirectorSummaryRows(state, true);
   const branchSection = getDirectorBranchSection(state, true);
   const trendSection = getDirectorTrendSection(state, true);
-  const generatedAt = new Date().toLocaleString('en-UG');
+  const generatedAt = formatDisplayTimestamp(new Date());
 
   const summaryBody = summaryRows
     .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)

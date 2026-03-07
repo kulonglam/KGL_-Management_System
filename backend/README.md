@@ -57,7 +57,7 @@ Seeded password for all users: `Karibu@2026!`
 - `GET|POST|PUT|DELETE /api/procurement/*`
 - `GET|POST|DELETE /api/sales/*`
 - `GET|POST|PUT|DELETE /api/credit-sales/*`
-- `GET|POST /api/inventory/*`
+- `GET /api/inventory`
 - `GET|POST|PUT|DELETE /api/trusted-buyers/*`
 - `GET|POST|PUT|DELETE /api/prices/*`
 - `GET|PUT /api/notifications/*`

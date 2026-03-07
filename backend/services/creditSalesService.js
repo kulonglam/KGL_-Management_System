@@ -1,5 +1,5 @@
 /**
- * Implements credit-sale business workflows: stock-safe creation, due-date enforcement,
+ * Implements credit-sale business workflows: stock-safe creation, due-date validation,
  * outstanding-balance checks, payment-status transitions, and repayment posting.
  * File: backend/services/creditSalesService.js
  */
@@ -49,18 +49,11 @@ const resolveProduceTypeForCreditSale = (inventory, produceName, requestedProduc
   return { produceType: candidates[0].produceType };
 };
 
-// Validate due date format and enforce policy: due date must be today or in the future.
+// Validate due date format only; business rules require a due date but do not restrict its range.
 const validateDueDate = (dueDate) => {
   const dueDateValue = new Date(dueDate);
   if (Number.isNaN(dueDateValue.getTime())) {
     return { error: 'Invalid due date' };
-  }
-
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  dueDateValue.setHours(0, 0, 0, 0);
-  if (dueDateValue < startOfToday) {
-    return { error: 'Due date must be today or a future date' };
   }
 
   return { dueDateValue };

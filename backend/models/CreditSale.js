@@ -36,7 +36,7 @@ const creditSaleSchema = new mongoose.Schema(
       required: true,
       minlength: 2,
       set: normalizeProduceType,
-      enum: ['Beans', 'Grain Maize', 'Cow peas', 'G-nuts', 'Soybeans']
+      enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
     },
     tonnageKg: { type: Number, required: true, min: 1 },
     dateOfDispatch: { type: Date, required: true },

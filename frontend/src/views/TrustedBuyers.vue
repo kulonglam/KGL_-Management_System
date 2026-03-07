@@ -28,12 +28,14 @@
       {{ success }}
     </div>
 
+    <InsightStrip label="Trusted buyer overview" :items="overviewItems" />
+
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Trusted Buyers List</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm" @click="toggleForm">
-            {{ showForm ? (editingId ? 'Close Edit' : 'Hide Form') : 'Add Buyer' }}
+            {{ showForm ? 'Close' : 'Add Buyer' }}
           </button>
           <button
             class="btn btn-outline-primary btn-sm"
@@ -85,7 +87,7 @@
           No trusted buyers match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle table-sticky table-row-hover">
+          <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -98,18 +100,20 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedBuyers" :key="item._id">
-                <td>{{ item.name }}</td>
-                <td>{{ item.nationalId }}</td>
-                <td>{{ item.location }}</td>
-                <td>{{ item.contact }}</td>
-                <td>{{ item.branch }}</td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary me-2" @click="startEdit(item)">
-                    Edit
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
-                    Delete
-                  </button>
+                <td data-label="Name">{{ item.name }}</td>
+                <td data-label="National ID">{{ item.nationalId }}</td>
+                <td data-label="Location">{{ item.location }}</td>
+                <td data-label="Contact">{{ item.contact }}</td>
+                <td data-label="Branch">{{ item.branch }}</td>
+                <td data-label="Actions" class="text-end">
+                  <div class="record-row-actions justify-content-end">
+                    <button class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
+                      Edit
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -128,11 +132,22 @@
       </div>
     </div>
 
-    <div v-if="showForm" class="card mt-4">
-      <div class="card-header">
-        <h5 class="mb-0">{{ editingId ? 'Update Buyer' : 'Add Trusted Buyer' }}</h5>
-      </div>
-      <div class="card-body">
+    <div v-if="showForm" class="modal-mask" @click.self="toggleForm">
+      <div class="modal-card buyer-editor-modal" role="dialog" aria-modal="true" aria-labelledby="trusted-buyer-title">
+        <div class="modal-header">
+          <h5 id="trusted-buyer-title" class="mb-0">{{ editingId ? 'Update Buyer' : 'Add Trusted Buyer' }}</h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Close trusted buyer form"
+            :disabled="loading"
+            @click="toggleForm"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Use trusted buyers for approved credit-sale customers within your branch.
+          </p>
         <form @submit.prevent="handleSubmit">
           <div class="row g-3">
             <div class="col-md-6">
@@ -199,26 +214,39 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="trusted-buyer-branch">Branch</label>
-              <input id="trusted-buyer-branch" type="text" class="form-control" :value="user.branch" disabled />
+              <input
+                id="trusted-buyer-branch"
+                type="text"
+                class="form-control readonly-display"
+                :value="user.branch"
+                disabled
+              />
             </div>
           </div>
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              {{ editingId ? 'Update Buyer' : 'Add Buyer' }}
-            </button>
-            <button
-              v-if="editingId"
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              @click="cancelEdit"
-            >
-              Cancel Edit
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Trusted buyers define who can receive produce on credit.</strong>
+              <span>Add a new approved buyer or update the selected buyer's saved details.</span>
+            </div>
+            <div class="form-action-buttons">
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                :disabled="loading"
+                @click="toggleForm"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-success" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ editingId ? 'Update Buyer' : 'Add Buyer' }}
+              </button>
+            </div>
           </div>
         </form>
       </div>
+    </div>
     </div>
 
     <ConfirmDialog
@@ -241,6 +269,7 @@
 
 import { trustedBuyersAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { trustedBuyerValidationSchema } from '../utils/formSchemas.mjs';
 import { validateValues } from '../utils/formValidation.mjs';
@@ -251,6 +280,7 @@ export default {
   name: 'TrustedBuyers',
   components: {
     ConfirmDialog,
+    InsightStrip,
     TablePagination
   },
   data() {
@@ -313,6 +343,43 @@ export default {
     paginatedBuyers() {
       const start = (this.currentPage - 1) * this.pageSize;
       return this.displayedBuyers.slice(start, start + this.pageSize);
+    },
+    uniqueLocations() {
+      return new Set(this.buyers.map((item) => item.location).filter(Boolean)).size;
+    },
+    overviewItems() {
+      const visibleMeta =
+        this.displayedBuyers.length === this.buyers.length
+          ? 'No filters applied'
+          : `${this.displayedBuyers.length.toLocaleString('en-UG')} visible after filters`;
+
+      return [
+        {
+          label: 'Branch',
+          value: this.user.branch || 'Unassigned',
+          meta: 'Approved credit-buyer registry'
+        },
+        {
+          label: 'Approved Buyers',
+          value: this.buyers.length.toLocaleString('en-UG'),
+          meta: visibleMeta
+        },
+        {
+          label: 'Locations',
+          value: this.uniqueLocations.toLocaleString('en-UG'),
+          meta: 'Distinct buyer locations on file'
+        },
+        {
+          label: 'Sort Mode',
+          value:
+            this.sortBy === 'recent'
+              ? 'Recently added'
+              : this.sortBy === 'name_desc'
+                ? 'Name Z-A'
+                : 'Name A-Z',
+          meta: this.searchQuery ? 'Search filter active' : 'Full registry view'
+        }
+      ];
     }
   },
   watch: {
@@ -418,9 +485,6 @@ export default {
       this.error = '';
       this.success = '';
     },
-    cancelEdit() {
-      this.resetForm();
-    },
     openDeleteDialog(item) {
       this.deleteDialog = {
         show: true,
@@ -462,6 +526,7 @@ export default {
       };
     },
     toggleForm() {
+      if (this.loading) return;
       if (this.showForm && this.editingId) {
         this.resetForm();
       } else {
@@ -484,4 +549,10 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.buyer-editor-modal {
+  max-width: 760px;
+}
+</style>
 

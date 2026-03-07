@@ -7,7 +7,9 @@ import express from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 
+import { getAllowedOrigins, shouldEnableSwagger } from './config/security.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
+import { docsAuth } from './middleware/docsAuth.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import { responseFormatter } from './middleware/responseFormatter.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
@@ -29,35 +31,24 @@ import priceRoutes from './routes/priceRoutes.js';
 import stockNotificationRoutes from './routes/stockNotificationRoutes.js';
 import opsRoutes from './routes/opsRoutes.js';
 
-// Parse allowed origins.
-const parseAllowedOrigins = () => {
-  const fallbackOrigins = ['http://localhost:5173'];
-  const raw = process.env.ALLOWED_ORIGINS;
-  if (!raw) return fallbackOrigins;
-
-  const origins = raw
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  return origins.length > 0 ? origins : fallbackOrigins;
-};
-
 // Create app.
 const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  const allowedOrigins = parseAllowedOrigins();
+  const allowedOrigins = getAllowedOrigins();
   const requestBodyLimit = process.env.REQUEST_BODY_LIMIT || '2mb';
-  const enableSwagger =
-    process.env.ENABLE_SWAGGER === 'true' ||
-    (process.env.NODE_ENV !== 'production' && process.env.ENABLE_SWAGGER !== 'false');
+  const enableSwagger = shouldEnableSwagger();
 
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Origin is not allowed by CORS'));
+      },
       credentials: true
     })
   );
@@ -76,7 +67,7 @@ const createApp = () => {
 
   // Swagger
   if (enableSwagger) {
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.use('/api-docs', docsAuth, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   }
   app.use('/', opsRoutes);
 

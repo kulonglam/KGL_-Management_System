@@ -64,14 +64,14 @@ test('authorize returns 401 when req.user is missing', () => {
   assert.match(res.body.message, /not authorized/i);
 });
 
-test('authorizeDirectorOrban allows director with cross-branch permission', () => {
+test('authorizeDirectorOrban allows only the orban director account', () => {
   // Configure req.
   const req = {
     user: {
       username: 'orban',
       name: 'Mr. Orban',
       role: 'director',
-      canViewCrossBranchTotals: true
+      canViewCrossBranchTotals: false
     }
   };
   const res = createRes();
@@ -85,8 +85,15 @@ test('authorizeDirectorOrban allows director with cross-branch permission', () =
   assert.equal(res.statusCode, 200);
 });
 
-test('authorizeDirectorOrban rejects non-Orban users', () => {
-  const req = { user: { username: 'director1', name: 'Director One', role: 'director' } };
+test('authorizeDirectorOrban rejects non-Orban directors even with legacy permission flags', () => {
+  const req = {
+    user: {
+      username: 'director1',
+      name: 'Director One',
+      role: 'director',
+      canViewCrossBranchTotals: true
+    }
+  };
   const res = createRes();
   let nextCalled = false;
 

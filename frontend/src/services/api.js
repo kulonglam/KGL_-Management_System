@@ -160,6 +160,7 @@ export const trustedBuyersAPI = {
 // Branch produce-price management endpoints.
 export const priceAPI = {
   getAll: () => api.get('/prices'),
+  getHistory: (id) => api.get(`/prices/${id}/history`),
   create: (data) => api.post('/prices', data),
   update: (id, data) => api.put(`/prices/${id}`, data),
   delete: (id) => api.delete(`/prices/${id}`)

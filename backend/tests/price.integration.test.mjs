@@ -4,9 +4,11 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
 import createApp from '../app.js';
+import { getJwtClaimOptions } from '../config/security.js';
 import User from '../models/User.js';
 import PriceSetting from '../models/PriceSetting.js';
 import Procurement from '../models/Procurement.js';
+import PriceHistory from '../models/PriceHistory.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 
@@ -17,9 +19,12 @@ const app = createApp();
 const originals = {
   userFindById: User.findById,
   priceFind: PriceSetting.find,
+  priceDistinct: PriceSetting.distinct,
   priceFindOne: PriceSetting.findOne,
   priceCreate: PriceSetting.create,
   priceFindById: PriceSetting.findById,
+  historyCreate: PriceHistory.create,
+  historyFind: PriceHistory.find,
   procurementFind: Procurement.find,
   procurementUpdateMany: Procurement.updateMany
 };
@@ -27,9 +32,12 @@ const originals = {
 afterEach(() => {
   User.findById = originals.userFindById;
   PriceSetting.find = originals.priceFind;
+  PriceSetting.distinct = originals.priceDistinct;
   PriceSetting.findOne = originals.priceFindOne;
   PriceSetting.create = originals.priceCreate;
   PriceSetting.findById = originals.priceFindById;
+  PriceHistory.create = originals.historyCreate;
+  PriceHistory.find = originals.historyFind;
   Procurement.find = originals.procurementFind;
   Procurement.updateMany = originals.procurementUpdateMany;
 });
@@ -43,7 +51,7 @@ const setAuthenticatedUser = (user) => {
 
 // Handle auth header for.
 const authHeaderFor = (userId = 'u1') => {
-  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
+  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, getJwtClaimOptions());
   return `Bearer ${token}`;
 };
 
@@ -56,10 +64,13 @@ test('manager can get price list', async () => {
   });
 
   PriceSetting.find = () => ({
-    sort: async () => [{ _id: 'p1', produceType: 'Beans', priceUgx: 37000 }]
+    sort: async () => [
+      { _id: 'p1', produceType: 'Beans', priceUgx: 37000 },
+      { _id: 'p2', produceName: 'Red Beans', produceType: 'Beans', priceUgx: 41000 }
+    ]
   });
   Procurement.find = () => ({
-    sort: async () => [{ produceType: 'Grain Maize', sellingPrice: 28000 }]
+    sort: async () => [{ produceName: 'Yellow Beans', produceType: 'Beans', sellingPrice: 39000 }]
   });
 
   const response = await request(app)
@@ -69,10 +80,23 @@ test('manager can get price list', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.success, true);
   assert.equal(Array.isArray(response.body.data), true);
-  assert.equal(response.body.data.length, 5);
+  assert.equal(response.body.data.length, 3);
 
-  const beans = response.body.data.find((entry) => entry.produceType === 'Beans');
-  assert.equal(beans.source, 'managed');
+  const beansDefault = response.body.data.find(
+    (entry) => entry.produceType === 'Beans' && !entry.produceName
+  );
+  const redBeans = response.body.data.find(
+    (entry) => entry.produceType === 'Beans' && entry.produceName === 'Red Beans'
+  );
+  const yellowBeans = response.body.data.find(
+    (entry) => entry.produceType === 'Beans' && entry.produceName === 'Yellow Beans'
+  );
+
+  assert.equal(beansDefault.source, 'managed');
+  assert.equal(beansDefault.scope, 'type_default');
+  assert.equal(redBeans.source, 'managed');
+  assert.equal(redBeans.scope, 'specific');
+  assert.equal(yellowBeans.source, 'inferred');
 });
 
 test('manager can create price', async () => {
@@ -85,12 +109,14 @@ test('manager can create price', async () => {
 
   PriceSetting.findOne = async () => null;
   PriceSetting.create = async (payload) => ({ _id: 'new-price', ...payload });
+  PriceHistory.create = async (payload) => payload;
   Procurement.updateMany = async () => ({ modifiedCount: 2 });
 
   const response = await request(app)
     .post('/api/prices')
     .set('Authorization', authHeaderFor('manager-1'))
     .send({
+      produceName: 'Red Beans',
       produceType: 'Beans',
       priceUgx: 42000
     });
@@ -98,6 +124,7 @@ test('manager can create price', async () => {
   assert.equal(response.status, 201);
   assert.equal(response.body.success, true);
   assert.equal(response.body.data.setting._id, 'new-price');
+  assert.equal(response.body.data.setting.produceName, 'Red Beans');
   assert.equal(response.body.data.setting.produceType, 'Beans');
   assert.equal(response.body.data.setting.priceUgx, 42000);
   assert.equal(response.body.data.updatedProcurements, 2);
@@ -115,6 +142,7 @@ test('manager can update price', async () => {
   const setting = {
     _id: '65f44c553f02d6f0bbad3f8f',
     branch: 'Maganjo',
+    produceName: 'Red Beans',
     produceType: 'Beans',
     priceUgx: 35000,
     async save() {
@@ -123,6 +151,7 @@ test('manager can update price', async () => {
   };
 
   PriceSetting.findById = async () => setting;
+  PriceHistory.create = async (payload) => payload;
   Procurement.updateMany = async () => ({ modifiedCount: 4 });
 
   const response = await request(app)
@@ -135,6 +164,7 @@ test('manager can update price', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.success, true);
   assert.equal(response.body.data.setting._id, '65f44c553f02d6f0bbad3f8f');
+  assert.equal(response.body.data.setting.produceName, 'Red Beans');
   assert.equal(response.body.data.setting.priceUgx, 39000);
   assert.equal(response.body.data.updatedProcurements, 4);
 });
@@ -152,6 +182,7 @@ test('manager can get and delete price by id', async () => {
   const setting = {
     _id: '65f44c553f02d6f0bbad3f90',
     branch: 'Maganjo',
+    produceName: 'Soy Mix',
     produceType: 'Soybeans',
     priceUgx: 31000,
     async deleteOne() {
@@ -160,6 +191,7 @@ test('manager can get and delete price by id', async () => {
   };
 
   PriceSetting.findById = async () => setting;
+  PriceHistory.create = async (payload) => payload;
 
   const getResponse = await request(app)
     .get('/api/prices/65f44c553f02d6f0bbad3f90')
@@ -168,6 +200,32 @@ test('manager can get and delete price by id', async () => {
   assert.equal(getResponse.status, 200);
   assert.equal(getResponse.body.success, true);
   assert.equal(getResponse.body.data._id, '65f44c553f02d6f0bbad3f90');
+
+  PriceHistory.find = () => ({
+    populate() {
+      return this;
+    },
+    sort() {
+      return this;
+    },
+    lean: async () => [
+      {
+        action: 'update',
+        previousPriceUgx: 30000,
+        nextPriceUgx: 31000,
+        changedBy: { name: 'ManagerA' }
+      }
+    ]
+  });
+
+  const historyResponse = await request(app)
+    .get('/api/prices/65f44c553f02d6f0bbad3f90/history')
+    .set('Authorization', authHeaderFor('manager-1'));
+
+  assert.equal(historyResponse.status, 200);
+  assert.equal(historyResponse.body.success, true);
+  assert.equal(Array.isArray(historyResponse.body.data), true);
+  assert.equal(historyResponse.body.data[0].action, 'update');
 
   const deleteResponse = await request(app)
     .delete('/api/prices/65f44c553f02d6f0bbad3f90')

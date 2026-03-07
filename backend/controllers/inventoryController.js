@@ -3,7 +3,7 @@
  * File: backend/controllers/inventoryController.js
  */
 
-import { getInventoryOverview, getStockForProduce } from '../services/inventoryService.js';
+import { getInventoryOverview } from '../services/inventoryService.js';
 
 // GET /api/inventory: return inventory overview (stock buckets, alerts, and summary statistics).
 const getInventory = async (req, res) => {
@@ -22,24 +22,7 @@ const getInventory = async (req, res) => {
   }
 };
 
-// POST /api/inventory/check-stock: evaluate availability for a requested produce + tonnage.
-const checkStock = async (req, res) => {
-  try {
-    const { produceName, tonnage } = req.body;
-    const branch = req.user.branch;
-    const requestedTonnage = Number(tonnage);
-    const totalStock = await getStockForProduce(branch, produceName);
-
-    res.json({
-      available: totalStock >= requestedTonnage,
-      currentStock: totalStock
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export { getInventory, checkStock };
+export { getInventory };
 
 
 

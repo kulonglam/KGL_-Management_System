@@ -150,21 +150,11 @@ const getInventoryOverview = async (filter = {}) => {
   };
 };
 
-// Return total available stock for a produce name within a branch across all matching types.
-const getStockForProduce = async (branch, produceName) => {
-  const snapshot = await calculateInventoryByFilter({ branch });
-  const requestedNameKey = normalizeProduceNameKey(produceName);
-  return snapshot
-    .filter((item) => normalizeProduceNameKey(item.produceName) === requestedNameKey)
-    .reduce((sum, item) => sum + item.totalTonnageKg, 0);
-};
-
 export {
   buildInventorySnapshot,
   calculateInventoryByBranch,
   calculateInventoryByFilter,
-  getInventoryOverview,
-  getStockForProduce
+  getInventoryOverview
 };
 
 

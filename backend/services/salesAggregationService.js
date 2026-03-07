@@ -8,6 +8,7 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+import { formatDisplayDate } from '../utils/dateFormat.js';
 
 // Branch identifiers supported by aggregation endpoints.
 const BRANCHES = ['Maganjo', 'Matugga'];
@@ -105,11 +106,7 @@ const buildTrendBuckets = (period, specificDate = null) => {
       {
         start,
         end,
-        label: start.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }),
+        label: formatDisplayDate(start),
         total: 0
       }
     ];
@@ -125,7 +122,7 @@ const buildTrendBuckets = (period, specificDate = null) => {
       buckets.push({
         start,
         end,
-        label: start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        label: formatDisplayDate(start),
         total: 0
       });
     }
@@ -141,10 +138,7 @@ const buildTrendBuckets = (period, specificDate = null) => {
     buckets.push({
       start,
       end,
-      label:
-        period === 'weekly'
-          ? start.toLocaleDateString('en-US', { weekday: 'short' })
-          : start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      label: formatDisplayDate(start),
       total: 0
     });
   }

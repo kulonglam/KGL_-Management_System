@@ -3,20 +3,11 @@
  * File: backend/middleware/securityHeaders.js
  */
 
-const getAllowedConnectSources = () => {
-  // Local frontend origin used when ALLOWED_ORIGINS is not provided.
-  const fallback = ['http://localhost:5173'];
-  const raw = process.env.ALLOWED_ORIGINS || '';
-  // Parse comma-separated CORS origins into trimmed CSP connect-src entries.
-  const parsed = raw.split(',').map((origin) => origin.trim())
-    .filter(Boolean);
-
-  return parsed.length > 0 ? parsed : fallback;
-};
+import { getAllowedOrigins } from '../config/security.js';
 
 const buildCspValue = () => {
   // Allow API/XHR/WebSocket connections only to self + configured client origins.
-  const connectSources = ["'self'", ...getAllowedConnectSources()].join(' ');
+  const connectSources = ["'self'", ...getAllowedOrigins()].join(' ');
   return [
     // Restrict all unspecified resource types to same-origin by default.
     "default-src 'self'",
@@ -57,6 +48,8 @@ const securityHeaders = (req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   // Restrict loading of resources by other origins.
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  // Keep renderer process isolated per-origin.
+  res.setHeader('Origin-Agent-Cluster', '?1');
 
   if (process.env.NODE_ENV === 'production') {
     // Enforce HTTPS for one year (plus subdomains) in production deployments.

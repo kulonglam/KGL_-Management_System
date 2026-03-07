@@ -1,7 +1,7 @@
 <template>
-  <div class="sales-form">
-    <fieldset class="sales-section mb-3">
-      <legend class="section-legend">
+  <div class="sales-form form-shell">
+    <fieldset class="form-section mb-0">
+      <legend class="form-section-legend">
         <i class="bi bi-cart-check"></i>
         <span>Sale Details</span>
       </legend>
@@ -21,12 +21,13 @@
               :key="`${item.produceName}-${item.produceType}`"
               :value="item.produceName"
               :data-produce-type="item.produceType"
-            >
-              {{ item.produceName }}
-            </option>
-          </select>
-          <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
-        </div>
+          >
+            {{ item.produceName }}
+          </option>
+        </select>
+        <div v-if="errors.produceName" class="invalid-feedback">{{ errors.produceName }}</div>
+        <small class="field-note">Only produce with stock in this branch is listed.</small>
+      </div>
         <div class="col-md-6">
           <label class="form-label" for="sales-tonnage-kg">Tonnage (kg)</label>
           <input
@@ -41,18 +42,18 @@
           <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-amount-paid">Amount Paid (UGX)</label>
-          <input
-            id="sales-amount-paid"
-            type="number"
-            :class="['form-control', { 'is-invalid': errors.amountPaidUgx }]"
-            v-model="form.amountPaidUgx"
-            min="10000"
-            required
-            readonly
+        <label class="form-label" for="sales-amount-paid">Amount Paid (UGX)</label>
+        <input
+          id="sales-amount-paid"
+          type="number"
+          :class="['form-control readonly-display', { 'is-invalid': errors.amountPaidUgx }]"
+          v-model="form.amountPaidUgx"
+          min="10000"
+          required
+          readonly
           />
           <div v-if="errors.amountPaidUgx" class="invalid-feedback">{{ errors.amountPaidUgx }}</div>
-          <small class="text-muted">Price is determined by manager.</small>
+          <small class="field-note">Auto-calculated from the manager-set price.</small>
         </div>
         <div class="col-md-6">
           <label class="form-label" for="sales-buyer-name">Buyer Name</label>
@@ -71,8 +72,8 @@
       </div>
     </fieldset>
 
-    <fieldset class="sales-section">
-      <legend class="section-legend">
+    <fieldset class="form-section">
+      <legend class="form-section-legend">
         <i class="bi bi-calendar2-week"></i>
         <span>Transaction Information</span>
       </legend>
@@ -101,11 +102,11 @@
         </div>
         <div class="col-md-6">
           <label class="form-label" for="sales-agent-name">Sales Agent</label>
-          <input id="sales-agent-name" type="text" class="form-control branch-display" :value="user.name" disabled />
+          <input id="sales-agent-name" type="text" class="form-control readonly-display" :value="user.name" disabled />
         </div>
         <div class="col-md-6">
           <label class="form-label" for="sales-branch">Branch</label>
-          <input id="sales-branch" type="text" class="form-control branch-display" :value="user.branch" disabled />
+          <input id="sales-branch" type="text" class="form-control readonly-display" :value="user.branch" disabled />
         </div>
       </div>
     </fieldset>
@@ -152,43 +153,3 @@ defineProps({
   }
 });
 </script>
-
-<style scoped>
-/* Component styles */
-.sales-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 0.95rem 0.95rem 1rem;
-  background: #fbfcfd;
-  min-width: 0;
-}
-
-.section-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: #1f2937;
-  margin: 0 auto 0.8rem;
-  padding: 0 0.45rem;
-  text-align: center;
-}
-
-.section-legend i {
-  color: #198754;
-}
-
-.sales-form .form-label {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: #1f2937;
-}
-
-.branch-display {
-  background-color: #f1f5f9;
-  color: #334155;
-  font-weight: 500;
-}
-</style>

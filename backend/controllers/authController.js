@@ -11,6 +11,7 @@ import {
   parseProfileImageUpdate,
   toUserPayload,
   ensureLegacyDirectorTotalsAccess,
+  isDirectorOrbanAccount,
   checkRoleMinimumAfterRemoval,
   hashPassword,
   validatePasswordStrength,
@@ -99,6 +100,9 @@ const updateMe = async (req, res) => {
     }
 
     if (username !== undefined) {
+      if (isDirectorOrbanAccount(user) && String(username).trim().toLowerCase() !== 'orban') {
+        return res.status(400).json({ message: 'Mr. Orban account username cannot be changed' });
+      }
       const existing = await User.findOne({
         username,
         _id: mongoose.trusted({ $ne: user._id })
@@ -110,6 +114,10 @@ const updateMe = async (req, res) => {
 
       user.username = username;
     }
+    user.canViewCrossBranchTotals = isDirectorOrbanAccount({
+      role: user.role,
+      username: username !== undefined ? username : user.username
+    });
 
     let passwordUpdated = false;
     if (password) {

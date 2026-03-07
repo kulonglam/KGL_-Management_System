@@ -5,12 +5,11 @@
 
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
+import { isDirectorOrbanAccount } from '../services/authService.js';
 import logger from '../utils/logger.js';
 
-const ALLOWED_JWT_ALGORITHMS = (process.env.JWT_ALLOWED_ALGS || 'HS256')
-  .split(',')
-  .map((entry) => entry.trim())
-  .filter(Boolean);
+const ALLOWED_JWT_ALGORITHMS = getJwtAlgorithms();
 
 // Protect routes - verify JWT token
 const protect = async (req, res, next) => {
@@ -28,7 +27,8 @@ const protect = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
-      algorithms: ALLOWED_JWT_ALGORITHMS
+      algorithms: ALLOWED_JWT_ALGORITHMS,
+      ...getJwtClaimOptions()
     });
 
     // Get user from token
@@ -83,12 +83,16 @@ const authorizeDirectorOrban = (req, res, next) => {
     return res.status(401).json({ message: 'Not authorized' });
   }
 
-  const hasTotalsPermission = req.user.canViewCrossBranchTotals === true;
-
-  if (req.user.role === 'director' && hasTotalsPermission) {
+  if (isDirectorOrbanAccount(req.user)) {
     return next();
   }
 
+  logger.warn('auth.access.denied', {
+    reason: 'orban_identity_required',
+    userId: req.user?._id ? String(req.user._id) : null,
+    username: req.user?.username || null,
+    role: req.user?.role || null
+  });
   return res.status(403).json({
     message: 'Only Mr. Orban can access this route'
   });

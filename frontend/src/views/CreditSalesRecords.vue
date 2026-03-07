@@ -5,6 +5,8 @@
       <p class="page-subtitle">Track amount due, repayment status, and due dates.</p>
     </div>
 
+    <InsightStrip label="Credit records overview" :items="overviewItems" />
+
     <div v-if="canRepay && repayId" class="card mb-4">
       <div class="card-header">
         <h5 class="mb-0">Record Repayment</h5>
@@ -17,7 +19,7 @@
               <input
                 id="repay-buyer"
                 type="text"
-                class="form-control"
+                class="form-control readonly-display"
                 :value="selectedCreditSale?.buyerName"
                 disabled
               />
@@ -27,7 +29,7 @@
               <input
                 id="repay-balance"
                 type="text"
-                class="form-control"
+                class="form-control readonly-display"
                 :value="formatCurrency(balanceForSelected)"
                 disabled
               />
@@ -53,14 +55,20 @@
           <div v-if="repayError" class="alert alert-danger mt-3">{{ repayError }}</div>
           <div v-if="repaySuccess" class="alert alert-success mt-3">{{ repaySuccess }}</div>
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary" :disabled="repayLoading">
-              <span v-if="repayLoading" class="spinner-border spinner-border-sm me-2"></span>
-              Record Payment
-            </button>
-            <button type="button" class="btn btn-outline-secondary ms-2" @click="cancelRepay">
-              Cancel
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Payments reduce the selected buyer's outstanding balance immediately.</strong>
+              <span>Record the collected amount and payment date, then save the repayment.</span>
+            </div>
+            <div class="form-action-buttons">
+              <button type="submit" class="btn btn-primary" :disabled="repayLoading">
+                <span v-if="repayLoading" class="spinner-border spinner-border-sm me-2"></span>
+                Record Payment
+              </button>
+              <button type="button" class="btn btn-outline-secondary" @click="cancelRepay">
+                Cancel
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -145,7 +153,7 @@
           No credit sales records match your current filters.
         </div>
         <div v-else class="table-responsive">
-          <table class="table align-middle table-sticky table-row-hover">
+          <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
               <tr>
                 <th>Buyer</th>
@@ -163,17 +171,18 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedCreditSales" :key="item._id" :class="{ 'table-active': repayId === item._id }">
-                <td>{{ item.buyerName }}</td>
-                <td>{{ item.nationalId || '-' }}</td>
-                <td>{{ item.location || '-' }}</td>
-                <td>{{ item.contact || '-' }}</td>
+                <td data-label="Buyer">{{ item.buyerName }}</td>
+                <td data-label="NIN">{{ item.nationalId || '-' }}</td>
+                <td data-label="Location">{{ item.location || '-' }}</td>
+                <td data-label="Contact">{{ item.contact || '-' }}</td>
                 <td
+                  data-label="Amount Due (UGX)"
                   class="text-end fw-semibold"
                   :class="{ 'text-danger': getBalance(item) > 0, 'text-success': getBalance(item) === 0 }"
                 >
                   {{ formatCurrency(getBalance(item)) }}
                 </td>
-                <td>
+                <td data-label="Status">
                   <span
                     class="badge"
                     :class="getBalance(item) > 0 ? 'bg-warning text-dark' : 'bg-success'"
@@ -181,12 +190,12 @@
                     {{ getBalance(item) > 0 ? 'Outstanding' : 'Paid' }}
                   </span>
                 </td>
-                <td>{{ item.produceName }} ({{ item.produceType }})</td>
-                <td>{{ item.salesAgentName || '-' }}</td>
-                <td>{{ formatDate(item.dueDate) }}</td>
-                <td>{{ formatDate(item.dateOfDispatch) }}</td>
-                <td v-if="canRepay" class="text-end">
-                  <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                <td data-label="Produce">{{ item.produceName }} ({{ item.produceType }})</td>
+                <td data-label="Sales Agent">{{ item.salesAgentName || '-' }}</td>
+                <td data-label="Due Date">{{ formatDate(item.dueDate) }}</td>
+                <td data-label="Dispatch Date">{{ formatDate(item.dateOfDispatch) }}</td>
+                <td v-if="canRepay" data-label="Actions" class="text-end">
+                  <div class="record-row-actions justify-content-end">
                     <button
                       v-if="getBalance(item) > 0"
                       type="button"
@@ -263,7 +272,7 @@
                   id="edit-credit-produce"
                   :value="`${editForm.produceName || '-'} (${editForm.produceType || '-'})`"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -273,7 +282,7 @@
                   id="edit-credit-tonnage"
                   :value="Number(editForm.tonnageKg || 0).toLocaleString()"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -283,7 +292,7 @@
                   id="edit-credit-buyer"
                   :value="editForm.buyerName || '-'"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -293,7 +302,7 @@
                   id="edit-credit-agent"
                   :value="editForm.salesAgentName || '-'"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -303,7 +312,7 @@
                   id="edit-credit-amount-due"
                   :value="formatCurrency(editForm.amountDueUgx)"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -313,7 +322,7 @@
                   id="edit-credit-balance"
                   :value="formatCurrency(editForm.balanceUgx)"
                   type="text"
-                  class="form-control"
+                  class="form-control readonly-display"
                   disabled
                 />
               </div>
@@ -342,14 +351,25 @@
             <div v-if="editError" class="alert alert-danger mt-3">{{ editError }}</div>
             <div v-if="editSuccess" class="alert alert-success mt-3">{{ editSuccess }}</div>
 
-            <div class="mt-4 d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-outline-secondary" :disabled="editLoading" @click="cancelEdit">
-                Cancel
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="editLoading">
-                <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
-                Save Changes
-              </button>
+            <div class="form-action-bar">
+              <div class="form-action-copy">
+                <strong>Buyer and produce details stay read-only in credit-sale updates.</strong>
+                <span>Use this editor to correct due date or dispatch date for the selected record.</span>
+              </div>
+              <div class="form-action-buttons">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="editLoading"
+                  @click="cancelEdit"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="editLoading">
+                  <span v-if="editLoading" class="spinner-border spinner-border-sm me-2"></span>
+                  Save Changes
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -376,15 +396,18 @@
 
 import { creditSalesAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.mjs';
+import { formatDisplayDate } from '../utils/dateFormat.mjs';
 
 export default {
   name: 'CreditSalesRecords',
   components: {
     ConfirmDialog,
+    InsightStrip,
     TablePagination
   },
   data() {
@@ -494,6 +517,51 @@ export default {
     balanceForSelected() {
       if (!this.selectedCreditSale) return 0;
       return this.getBalance(this.selectedCreditSale);
+    },
+    outstandingCount() {
+      return this.creditSales.filter((item) => this.getBalance(item) > 0).length;
+    },
+    paidCount() {
+      return this.creditSales.filter((item) => this.getBalance(item) === 0).length;
+    },
+    outstandingBalance() {
+      return this.creditSales.reduce((sum, item) => sum + this.getBalance(item), 0);
+    },
+    activeFilterCount() {
+      let count = 0;
+      if (this.searchQuery) count += 1;
+      if (this.statusFilter !== 'all') count += 1;
+      if (this.sortBy !== 'newest') count += 1;
+      return count;
+    },
+    overviewItems() {
+      const modeMeta = this.canRepay ? 'Manager credit workspace' : 'Sales agent credit workspace';
+      const visibleMeta = this.activeFilterCount
+        ? `${this.activeFilterCount} filter(s) applied`
+        : 'No filters applied';
+
+      return [
+        {
+          label: 'Branch',
+          value: this.user.branch || 'Unassigned',
+          meta: modeMeta
+        },
+        {
+          label: 'Credit Records',
+          value: this.creditSales.length.toLocaleString('en-UG'),
+          meta: `${this.filteredCreditSales.length.toLocaleString('en-UG')} visible`
+        },
+        {
+          label: 'Outstanding',
+          value: this.outstandingCount.toLocaleString('en-UG'),
+          meta: `Paid: ${this.paidCount.toLocaleString('en-UG')}`
+        },
+        {
+          label: 'Open Balance',
+          value: `UGX ${this.formatCurrency(this.outstandingBalance)}`,
+          meta: visibleMeta
+        }
+      ];
     }
   },
   watch: {
@@ -685,10 +753,7 @@ export default {
       return getCreditSaleBalance(item);
     },
     formatDate(value) {
-      if (!value) return '-';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '-';
-      return date.toLocaleDateString();
+      return formatDisplayDate(value);
     },
     formatCurrency(amount) {
       return Number(amount || 0).toLocaleString('en-UG', {

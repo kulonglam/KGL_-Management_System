@@ -1,8 +1,16 @@
 <template>
   <div class="view-shell">
-    <div class="view-heading">
-      <h2 class="page-title">Record Procurement</h2>
-      <p class="page-subtitle">Capture inbound produce, cost, and dealer details.</p>
+    <div class="view-header">
+      <div class="view-heading">
+        <h2 class="page-title">Record Procurement</h2>
+        <p class="page-subtitle">
+          Capture inbound stock, dealer details, and manager-controlled selling price.
+        </p>
+      </div>
+      <div class="view-badges">
+        <span class="view-badge view-badge--success">Manager-only entry</span>
+        <span class="view-badge view-badge--neutral">Price Management linked</span>
+      </div>
     </div>
 
     <div class="card">
@@ -16,25 +24,36 @@
             :user="user"
             :price-locked="priceLocked"
             :errors="fieldErrors"
-            price-lock-hint="Price is controlled in Price Management."
+            :available-produce-names="availablePriceNames"
+            :has-type-default-price="hasManagedTypeDefault"
+            price-lock-hint="Selling price comes from Price Management."
             @type-change="handleTypeChange"
           />
 
           <FormAlerts :error="error" :success="success" />
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-success" :disabled="loading">
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              Record Procurement
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary ms-2"
-              @click="resetForm"
-              :disabled="loading"
-            >
-              Clear
-            </button>
+          <div class="form-action-bar">
+            <div class="form-action-copy">
+              <strong>Saving adds stock to {{ user.branch || 'the current' }} branch.</strong>
+              <span>
+                Price per kilogram is pulled from Price Management once the produce name and type
+                match an existing manager price or type default.
+              </span>
+            </div>
+            <div class="form-action-buttons">
+              <button type="submit" class="btn btn-success" :disabled="loading">
+                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                Record Procurement
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-secondary"
+                @click="resetForm"
+                :disabled="loading"
+              >
+                Clear Form
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -48,8 +67,9 @@
  * File: frontend/src/views/Procurement.vue
  */
 
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
+import { useAutoClearFieldErrors } from '../composables/useAutoClearFieldErrors';
 import ProcurementFormFields from '../components/procurement/ProcurementFormFields.vue';
 import { useFormFeedback } from '../composables/useFormFeedback';
 import { useFormValidation } from '../composables/useFormValidation';
@@ -70,9 +90,19 @@ const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
-const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
+const {
+  priceLocked,
+  loadPrices,
+  applyPriceSetting,
+  clearPriceLock,
+  getAvailableProduceNames,
+  hasTypeDefaultPrice
+} = useProcurementPricing();
 const { errors: fieldErrors, validateForm, clearFieldError, resetErrors } =
   useFormValidation(procurementValidationSchema);
+useAutoClearFieldErrors(form, clearFieldError);
+const availablePriceNames = computed(() => getAvailableProduceNames(form.value.produceType));
+const hasManagedTypeDefault = computed(() => hasTypeDefaultPrice(form.value.produceType));
 
 // Re-apply manager-controlled price when produce type changes.
 const handleTypeChange = () => {
@@ -111,19 +141,14 @@ const handleSubmit = async () => {
 onMounted(async () => {
   user.value = authStore.user || {};
   await loadPrices();
+  applyPriceSetting(form.value);
 });
 
-// Clear field-specific errors immediately after user edits that field.
 watch(
-  form,
-  (next, previous) => {
-    Object.keys(next).forEach((fieldName) => {
-      if (next[fieldName] !== previous[fieldName]) {
-        clearFieldError(fieldName);
-      }
-    });
-  },
-  { deep: true }
+  [() => form.value.produceName, () => form.value.produceType],
+  () => {
+    applyPriceSetting(form.value);
+  }
 );
 </script>
 

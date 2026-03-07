@@ -40,4 +40,13 @@ const formatCompactNumber = (value) => {
 const formatCompactCurrency = (value, currencyLabel = 'UGX') =>
   `${currencyLabel} ${formatCompactNumber(value)}`;
 
-export { toNumber, formatCompactNumber, formatCompactCurrency };
+// Render a full UGX currency string for forms, modals, and detail views.
+const formatUgx = (value) =>
+  new Intl.NumberFormat('en-UG', {
+    style: 'currency',
+    currency: 'UGX',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(toNumber(value));
+
+export { toNumber, formatCompactNumber, formatCompactCurrency, formatUgx };

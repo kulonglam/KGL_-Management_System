@@ -1,22 +1,53 @@
 <template>
-  <div>
-    <!-- Show low stock or stock-related warnings. -->
-    <div v-if="stockWarning" class="alert alert-warning" role="status" aria-live="polite">
-      <i class="bi bi-exclamation-triangle me-2"></i>{{ stockWarning }}
+  <div v-if="stockWarning || error || success" class="feedback-stack">
+    <div
+      v-if="stockWarning"
+      class="feedback-card feedback-card--warning"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="feedback-card-icon">
+        <i class="bi bi-exclamation-triangle"></i>
+      </span>
+      <div class="feedback-card-copy">
+        <strong class="feedback-card-title">Stock alert</strong>
+        <span>{{ stockWarning }}</span>
+      </div>
     </div>
 
-    <!-- Show general form feedback messages. -->
-    <div v-if="error" class="alert alert-danger mt-3" role="alert" aria-live="assertive">
-      <i class="bi bi-exclamation-octagon me-2"></i>{{ error }}
+    <div
+      v-if="error"
+      class="feedback-card feedback-card--danger"
+      role="alert"
+      aria-live="assertive"
+    >
+      <span class="feedback-card-icon">
+        <i class="bi bi-exclamation-octagon"></i>
+      </span>
+      <div class="feedback-card-copy">
+        <strong class="feedback-card-title">Attention needed</strong>
+        <span>{{ error }}</span>
+      </div>
     </div>
-    <div v-if="success" class="alert alert-success mt-3" role="status" aria-live="polite">
-      <i class="bi bi-check-circle me-2"></i>{{ success }}
+
+    <div
+      v-if="success"
+      class="feedback-card feedback-card--success"
+      role="status"
+      aria-live="polite"
+    >
+      <span class="feedback-card-icon">
+        <i class="bi bi-check-circle"></i>
+      </span>
+      <div class="feedback-card-copy">
+        <strong class="feedback-card-title">Saved</strong>
+        <span>{{ success }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-// Define props for all alert message states.
 defineProps({
   stockWarning: {
     type: String,

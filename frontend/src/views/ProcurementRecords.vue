@@ -28,25 +28,31 @@
               v-model:form="form"
               :user="user"
               :price-locked="priceLocked"
-              price-lock-hint="Price is controlled in Price Management."
+              price-lock-hint="Selling price comes from Price Management."
               @type-change="handleTypeChange"
             />
 
             <FormAlerts :error="error" :success="success" />
 
-            <div class="mt-4 d-flex justify-content-end gap-2">
-              <button
-                type="button"
-                class="btn btn-outline-secondary"
-                :disabled="loading"
-                @click="cancelEdit"
-              >
-                Cancel
-              </button>
-              <button type="submit" class="btn btn-primary" :disabled="loading">
-                <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-                Update Procurement
-              </button>
+            <div class="form-action-bar">
+              <div class="form-action-copy">
+                <strong>Managed pricing stays in sync while you edit procurement.</strong>
+                <span>Update the record details, then save the corrected procurement entry.</span>
+              </div>
+              <div class="form-action-buttons">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="loading"
+                  @click="cancelEdit"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="loading">
+                  <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                  Update Procurement
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -79,7 +85,7 @@
  * File: frontend/src/views/ProcurementRecords.vue
  */
 
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import ProcurementFormFields from '../components/procurement/ProcurementFormFields.vue';
@@ -224,6 +230,13 @@ onMounted(async () => {
   await loadPrices();
   await loadProcurements();
 });
+
+watch(
+  [() => form.value.produceName, () => form.value.produceType],
+  () => {
+    applyPriceSetting(form.value);
+  }
+);
 </script>
 
 <style scoped>

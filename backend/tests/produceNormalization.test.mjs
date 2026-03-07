@@ -18,7 +18,8 @@ test('normalizeProduceName canonicalizes common singular/plural variants', () =>
 test('normalizeProduceType canonicalizes hyphen variants and casing', () => {
   assert.equal(normalizeProduceType('beans'), 'Beans');
   assert.equal(normalizeProduceType('grain maize'), 'Grain Maize');
-  assert.equal(normalizeProduceType('G-nuts'), 'G-nuts');
+  assert.equal(normalizeProduceType('G-nuts'), 'Groundnuts');
+  assert.equal(normalizeProduceType('ground nuts'), 'Groundnuts');
 });
 
 test('normalizeSourceType maps own_farm to kgl_farm', () => {

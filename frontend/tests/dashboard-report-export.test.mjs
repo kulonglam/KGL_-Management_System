@@ -26,7 +26,7 @@ test('buildDirectorCsvContent includes report sections and escapes values', () =
   const csv = buildDirectorCsvContent({
     selectedPeriodLabel: 'Weekly',
     selectedBranchLabel: 'All Branches',
-    formattedRange: 'Jan 1, 2026 - Jan 7, 2026',
+    formattedRange: '01/01/2026 - 07/01/2026',
     totalTransactions: 3,
     totalRevenue: 1200000,
     grandTotal: { cash: 700000, credit: 500000, totalKg: 800 },
@@ -62,7 +62,7 @@ test('buildManagerCsvContent includes key sections', () => {
   const csv = buildManagerCsvContent({
     selectedPeriodLabel: 'Weekly',
     userBranch: 'Maganjo',
-    formattedReportRange: 'Jan 1, 2026 - Jan 7, 2026',
+    formattedReportRange: '01/01/2026 - 07/01/2026',
     totalTransactions: 12,
     stats: {
       cashSales: 500000,
