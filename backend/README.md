@@ -18,10 +18,18 @@ Example defaults:
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/karibu_groceries
-JWT_SECRET=replace_with_secure_secret
+JWT_SECRET=replace_with_secure_random_64+_char_secret
+JWT_ISSUER=http://localhost:5000
+JWT_AUDIENCE=karibu-groceries-api
 NODE_ENV=development
 ALLOWED_ORIGINS=http://localhost:5173
 ```
+
+Production-only requirements:
+- `JWT_ISSUER` must be set
+- `JWT_AUDIENCE` must be set
+- `ALLOWED_ORIGINS` must include your frontend URL(s)
+- If `ENABLE_SWAGGER=true` in production, also set `SWAGGER_USERNAME` and `SWAGGER_PASSWORD`
 
 ## Run
 ```bash
