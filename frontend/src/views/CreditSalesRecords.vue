@@ -559,7 +559,7 @@ export default {
         },
         {
           label: 'Open Balance',
-          value: `UGX ${this.formatCurrency(this.outstandingBalance)}`,
+          value: this.formatOverviewBalance(this.outstandingBalance),
           meta: visibleMeta
         }
       ];
@@ -763,6 +763,29 @@ export default {
       return Number(amount || 0).toLocaleString('en-UG', {
         maximumFractionDigits: 0
       });
+    },
+    formatOverviewBalance(amount) {
+      const numericAmount = Number(amount || 0);
+      const absoluteAmount = Math.abs(numericAmount);
+      const sign = numericAmount < 0 ? '-' : '';
+      const compactValue = (value, divisor, suffix) => {
+        const formatted = (value / divisor)
+          .toFixed(2)
+          .replace(/\.00$/, '')
+          .replace(/(\.\d)0$/, '$1');
+
+        return `UGX ${sign}${formatted}${suffix}`;
+      };
+
+      if (absoluteAmount >= 1_000_000_000) {
+        return compactValue(absoluteAmount, 1_000_000_000, 'B');
+      }
+
+      if (absoluteAmount >= 1_000_000) {
+        return compactValue(absoluteAmount, 1_000_000, 'M');
+      }
+
+      return `UGX ${this.formatCurrency(numericAmount)}`;
     }
   }
 };

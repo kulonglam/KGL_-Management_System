@@ -82,8 +82,9 @@
           <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
               <tr>
-                <th>Produce</th>
-                <th class="text-end">Quantity (kg)</th>
+                <th>Produce Name</th>
+                <th>Produce Type</th>
+                <th class="text-end">Tonnage (kg)</th>
                 <th class="text-end">Amount Paid (UGX)</th>
                 <th>Buyer</th>
                 <th>Sales Agent</th>
@@ -93,8 +94,9 @@
             </thead>
             <tbody>
               <tr v-for="item in paginatedSalesRecords" :key="item._id">
-                <td data-label="Produce">{{ item.produceName }} ({{ item.produceType }})</td>
-                <td data-label="Quantity (kg)" class="text-end">
+                <td data-label="Produce Name">{{ item.produceName || '-' }}</td>
+                <td data-label="Produce Type">{{ item.produceType || '-' }}</td>
+                <td data-label="Tonnage (kg)" class="text-end">
                   {{ Number(item.tonnageKg || 0).toLocaleString() }}
                 </td>
                 <td data-label="Amount Paid (UGX)" class="text-end">
@@ -180,7 +182,7 @@
                 </select>
               </div>
               <div class="col-md-6">
-                <label class="form-label" for="edit-sale-tonnage">Quantity (kg)</label>
+                <label class="form-label" for="edit-sale-tonnage">Tonnage (kg)</label>
                 <input
                   id="edit-sale-tonnage"
                   v-model.number="editForm.tonnageKg"
