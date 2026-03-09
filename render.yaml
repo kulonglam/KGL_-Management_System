@@ -31,7 +31,7 @@
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://kgl-backend.onrender.com/api
+        value: https://kgl-backend-7mow.onrender.com/api
     headers:
       - path: /*
         name: Content-Security-Policy-Report-Only
