@@ -1,7 +1,4 @@
-/**
- * Stores authenticated user session state and keeps it synchronized with sessionStorage.
- * File: frontend/src/stores/auth.js
- */
+// Stores authenticated user session state and keeps it synchronized with sessionStorage.
 
 import { defineStore } from 'pinia';
 

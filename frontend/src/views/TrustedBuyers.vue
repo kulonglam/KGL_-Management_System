@@ -151,7 +151,7 @@
         <form @submit.prevent="handleSubmit">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label" for="trusted-buyer-name">Buyer Name *</label>
+              <label class="form-label" for="trusted-buyer-name">Buyer Name</label>
               <input
                 id="trusted-buyer-name"
                 type="text"
@@ -166,12 +166,13 @@
               <div v-if="fieldErrors.name" class="invalid-feedback">{{ fieldErrors.name }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="trusted-buyer-nin">National ID (NIN) *</label>
+              <label class="form-label" for="trusted-buyer-nin">National ID (NIN)</label>
               <input
                 id="trusted-buyer-nin"
                 type="text"
                 :class="['form-control', { 'is-invalid': fieldErrors.nationalId }]"
                 v-model="form.nationalId"
+                data-validation-label="National ID"
                 pattern="(CM|CF)[0-9]{12}"
                 maxlength="14"
                 placeholder="CM123456789012"
@@ -184,7 +185,7 @@
               </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="trusted-buyer-location">Location *</label>
+              <label class="form-label" for="trusted-buyer-location">Location</label>
               <input
                 id="trusted-buyer-location"
                 type="text"
@@ -199,18 +200,22 @@
               <div v-if="fieldErrors.location" class="invalid-feedback">{{ fieldErrors.location }}</div>
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="trusted-buyer-contact">Contact *</label>
+              <label class="form-label" for="trusted-buyer-contact">Contact</label>
               <input
                 id="trusted-buyer-contact"
-                type="text"
+                type="tel"
                 :class="['form-control', { 'is-invalid': fieldErrors.contact }]"
                 v-model="form.contact"
-                pattern="^(\\+256|0)[0-9]{9}$"
-                placeholder="+256700000000"
-                @input="clearFieldError('contact')"
+                inputmode="tel"
+                autocomplete="tel"
+                maxlength="10"
+                pattern="^07[0-9]{8}$"
+                placeholder="0700000000"
+                @input="sanitizeContactField"
                 required
               />
               <div v-if="fieldErrors.contact" class="invalid-feedback">{{ fieldErrors.contact }}</div>
+              <small class="field-note">Use the 07XXXXXXXX format only.</small>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="trusted-buyer-branch">Branch</label>
@@ -262,17 +267,14 @@
 </template>
 
 <script>
-/**
- * Trusted-buyer administration page used to manage approved credit-sale customers.
- * File: frontend/src/views/TrustedBuyers.vue
- */
-
-import { trustedBuyersAPI } from '../services/api';
+// Trusted-buyer administration page used to manage approved credit-sale customers.
+ import { trustedBuyersAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
-import { trustedBuyerValidationSchema } from '../utils/formSchemas.mjs';
-import { validateValues } from '../utils/formValidation.mjs';
+import { trustedBuyerValidationSchema } from '../utils/formSchemas.js';
+import { validateValues } from '../utils/formValidation.js';
+import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
@@ -410,7 +412,10 @@ export default {
       this.loadError = '';
       try {
         const response = await trustedBuyersAPI.getAll();
-        this.buyers = response.data;
+        this.buyers = response.data.map((item) => ({
+          ...item,
+          contact: normalizeLocalPhone(item.contact) || item.contact
+        }));
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Failed to load trusted buyers.';
       } finally {
@@ -441,8 +446,10 @@ export default {
           .trim()
           .toUpperCase(),
         location: this.normalizeText(this.form.location),
-        contact: this.normalizeText(this.form.contact)
+        contact: normalizeLocalPhone(this.form.contact)
       };
+
+      this.form.contact = payload.contact;
 
       const validation = validateValues(payload, trustedBuyerValidationSchema);
       if (!validation.valid) {
@@ -479,7 +486,7 @@ export default {
         name: item.name,
         nationalId: item.nationalId,
         location: item.location,
-        contact: item.contact
+        contact: normalizeLocalPhone(item.contact) || item.contact
       };
       this.fieldErrors = {};
       this.error = '';
@@ -541,6 +548,10 @@ export default {
         .trim()
         .replace(/\s+/g, ' ');
     },
+    sanitizeContactField() {
+      this.form.contact = normalizeLocalPhone(this.form.contact);
+      this.clearFieldError('contact');
+    },
     clearFieldError(fieldName) {
       if (this.fieldErrors[fieldName]) {
         delete this.fieldErrors[fieldName];
@@ -555,4 +566,3 @@ export default {
   max-width: 760px;
 }
 </style>
-

@@ -7,14 +7,14 @@ import {
   buildManagerFileName,
   buildManagerReportHtml,
   downloadReportFile
-} from '../utils/reports/managerReportExport.mjs';
+} from '../utils/reports/managerReportExport.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatDisplayDate, formatDisplayRange } from '../utils/dateFormat.mjs';
+import { formatDisplayDate, formatDisplayRange } from '../utils/dateFormat.js';
 import {
   buildTonalPalette,
   dashboardChartColors
-} from '../utils/charts/dashboardChartTheme.mjs';
+} from '../utils/charts/dashboardChartTheme.js';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },

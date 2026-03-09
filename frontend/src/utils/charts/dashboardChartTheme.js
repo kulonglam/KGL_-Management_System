@@ -58,9 +58,9 @@ const tonalPalettes = {
   sky: ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd']
 };
 
-export const toNumber = (value) => Number(value || 0);
+const toNumber = (value) => Number(value || 0);
 
-export const formatCompact = (value) =>
+const formatCompact = (value) =>
   new Intl.NumberFormat('en-UG', {
     notation: 'compact',
     maximumFractionDigits: 1
@@ -73,9 +73,6 @@ export const formatCurrencyValue = (value) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(toNumber(value));
-
-export const buildPalette = (count) =>
-  Array.from({ length: count }, (_, index) => chartPalette[index % chartPalette.length]);
 
 export const buildTonalPalette = (count, tone = 'forest') => {
   const palette = tonalPalettes[tone] || chartPalette;

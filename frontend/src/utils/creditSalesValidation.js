@@ -1,8 +1,5 @@
-/**
- * Helper utilities used by credit-sales records to compute balances and validate repayments.
- * File: frontend/src/utils/creditSalesValidation.mjs
- */
-
+// Helper utilities used by credit-sales records to compute balances and validate repayments.
+ 
 // Resolve remaining balance from normalized API data or derived fields.
 export const getCreditSaleBalance = (item) => {
   if (!item) return 0;

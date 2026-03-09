@@ -7,7 +7,6 @@ import PriceHistory from '../models/PriceHistory.js';
 import {
   getPrices,
   getPriceHistory,
-  getPriceById,
   createPrice,
   updatePrice,
   deletePrice
@@ -146,27 +145,6 @@ test('createPrice rejects duplicate produce setting in same branch', async () =>
 
   assert.equal(res.statusCode, 409);
   assert.match(res.body.message, /already exists/i);
-});
-
-test('getPriceById returns setting for same branch and blocks other branches', async () => {
-  PriceSetting.findById = async () => ({
-    _id: 'ps2',
-    branch: 'Maganjo',
-    produceName: 'Soy Mix',
-    produceType: 'Soybeans',
-    priceUgx: 30000
-  });
-
-  const okReq = { user: { branch: 'Maganjo' }, params: { id: 'ps2' } };
-  const okRes = createRes();
-  await getPriceById(okReq, okRes);
-  assert.equal(okRes.statusCode, 200);
-  assert.equal(okRes.body._id, 'ps2');
-
-  const denyReq = { user: { branch: 'Matugga' }, params: { id: 'ps2' } };
-  const denyRes = createRes();
-  await getPriceById(denyReq, denyRes);
-  assert.equal(denyRes.statusCode, 403);
 });
 
 test('getPriceHistory returns audit rows for same-branch price setting', async () => {

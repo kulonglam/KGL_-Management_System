@@ -287,7 +287,7 @@ import TablePagination from '../components/common/TablePagination.vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatDisplayDateTime } from '../utils/dateFormat.mjs';
+import { formatDisplayDateTime } from '../utils/dateFormat.js';
 
 const authStore = useAuthStore(pinia);
 const user = ref({});

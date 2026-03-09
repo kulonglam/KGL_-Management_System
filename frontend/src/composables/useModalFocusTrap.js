@@ -1,7 +1,5 @@
-/**
- * Traps keyboard focus within a modal and restores focus after close.
- * File: frontend/src/composables/useModalFocusTrap.js
- */
+// Traps keyboard focus within a modal and restores focus after close.
+ 
 
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 

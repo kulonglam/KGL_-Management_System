@@ -1,7 +1,4 @@
-/**
- * Numeric formatting helpers for compact dashboard/table display values.
- * File: frontend/src/utils/numberFormat.js
- */
+//Numeric formatting helpers for compact dashboard/table display values.
 
 // Convert unknown input into a finite number, defaulting invalid values to zero.
 const toNumber = (value) => {
@@ -49,4 +46,4 @@ const formatUgx = (value) =>
     maximumFractionDigits: 0
   }).format(toNumber(value));
 
-export { toNumber, formatCompactNumber, formatCompactCurrency, formatUgx };
+export { formatCompactNumber, formatCompactCurrency, formatUgx };

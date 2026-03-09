@@ -99,6 +99,7 @@ import {
 import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Authenticated user metadata used for branch-aware display.
 const user = ref({});
@@ -158,7 +159,7 @@ const startEdit = (item) => {
     tonnageKg: item.tonnageKg || '',
     costUgx: item.costUgx || '',
     dealerName: item.dealerName || '',
-    dealerContact: item.dealerContact || '',
+    dealerContact: normalizeLocalPhone(item.dealerContact) || item.dealerContact || '',
     sellingPrice: item.sellingPrice || ''
   };
   // Re-apply price rule on loaded values so locked/inferred pricing state matches current produce type.

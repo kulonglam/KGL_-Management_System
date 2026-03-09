@@ -80,7 +80,7 @@ import {
 import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { procurementValidationSchema } from '../utils/formSchemas.mjs';
+import { procurementValidationSchema } from '../utils/formSchemas.js';
 
 // Authenticated user metadata used for branch context in the form.
 const user = ref({});

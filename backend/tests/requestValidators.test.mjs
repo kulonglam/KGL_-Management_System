@@ -38,7 +38,7 @@ const validProcurementPayload = () => ({
   costUgx: 15000,
   sellingPrice: 18000,
   dealerName: 'Dealer 1',
-  dealerContact: '+256700000001'
+  dealerContact: '0700000001'
 });
 
 const validSalePayload = () => ({
@@ -63,7 +63,7 @@ const validTrustedBuyerPayload = () => ({
   name: 'Buyer 12',
   nationalId: 'CF120000000000',
   location: 'Kampala 1',
-  contact: '+256700000001'
+  contact: '0700000001'
 });
 
 test('procurement validation accepts a valid strict payload', async () => {
@@ -97,6 +97,25 @@ test('procurement validation rejects invalid dealer contact', async () => {
   });
 
   assert.equal(hasFieldError(errors, 'dealerContact'), true);
+});
+
+test('procurement validation normalizes +256 dealer contact to 07 format', async () => {
+  const req = {
+    body: {
+      ...validProcurementPayload(),
+      dealerContact: '+256700000001'
+    },
+    params: {},
+    query: {}
+  };
+
+  for (const rule of procurementCreateValidation) {
+    await rule.run(req);
+  }
+
+  const errors = validationResult(req).array();
+  assert.equal(errors.length, 0);
+  assert.equal(req.body.dealerContact, '0700000001');
 });
 
 test('procurement validation enforces individual minimum tonnage', async () => {
@@ -199,6 +218,25 @@ test('trusted buyer validation rejects invalid NIN and contact', async () => {
 
   assert.equal(hasFieldError(errors, 'nationalId'), true);
   assert.equal(hasFieldError(errors, 'contact'), true);
+});
+
+test('trusted buyer validation normalizes +256 contact to 07 format', async () => {
+  const req = {
+    body: {
+      ...validTrustedBuyerPayload(),
+      contact: '+256700000001'
+    },
+    params: {},
+    query: {}
+  };
+
+  for (const rule of trustedBuyerCreateValidation) {
+    await rule.run(req);
+  }
+
+  const errors = validationResult(req).array();
+  assert.equal(errors.length, 0);
+  assert.equal(req.body.contact, '0700000001');
 });
 
 test('trusted buyer validation rejects non-Uganda NIN prefix', async () => {

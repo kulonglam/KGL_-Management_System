@@ -1,7 +1,5 @@
-/**
- * Primitive reusable validators and schema runners for frontend form validation.
- * File: frontend/src/utils/formValidation.mjs
- */
+// Primitive reusable validators and schema runners for frontend form validation.
+ 
 const isEmpty = (value) => {
   if (value === undefined || value === null) return true;
   if (typeof value === 'string') return value.trim() === '';

@@ -1,12 +1,8 @@
-/**
- * Declares application routes and enforces authentication/role-based access rules.
- * File: frontend/src/router/index.js
- */
-
-import { createRouter, createWebHistory } from 'vue-router';
+// Declares application routes and enforces authentication/role-based access rules.
+ import { createRouter, createWebHistory } from 'vue-router';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { getHomeRouteForUser, isDirectorOrban } from '../utils/directorAccess.mjs';
+import { getHomeRouteForUser, isDirectorOrban } from '../utils/directorAccess.js';
 
 const Login = () => import('../views/Login.vue');
 const DashboardLayout = () => import('../views/DashboardLayout.vue');

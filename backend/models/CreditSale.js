@@ -5,6 +5,7 @@
 
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
+import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define credit sale schema.
 const creditSaleSchema = new mongoose.Schema(
@@ -12,7 +13,7 @@ const creditSaleSchema = new mongoose.Schema(
     buyerName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
     nationalId: { type: String, required: true, match: /^(CM|CF)[0-9]{12}$/ },
     location: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
-    contact: { type: String, required: true, match: /^(\+256|0)[0-9]{9}$/ },
+    contact: { type: String, required: true, set: normalizeLocalPhone, match: LOCAL_PHONE_PATTERN },
     amountDueUgx: { type: Number, required: true, min: 10000 },
     amountPaidUgx: { type: Number, default: 0, min: 0 },
     balanceUgx: {

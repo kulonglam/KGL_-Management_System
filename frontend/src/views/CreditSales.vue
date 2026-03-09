@@ -41,11 +41,11 @@
 
           <div class="form-action-bar">
             <div class="form-action-copy">
-              <strong>Trusted-buyer details come from the buyer registry.</strong>
-              <span>
+              
+              <strong>
                 Amount due is calculated automatically from the active manager-set price before
                 you review and save.
-              </span>
+              </strong>
             </div>
             <div class="form-action-buttons">
               <button type="submit" class="btn btn-success" :disabled="loading">
@@ -174,9 +174,10 @@ import FormAlerts from '../components/common/FormAlerts.vue';
 import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
-import { formatDisplayDate } from '../utils/dateFormat.mjs';
+import { formatDisplayDate } from '../utils/dateFormat.js';
 import { formatUgx } from '../utils/numberFormat';
-import { creditSaleValidationSchema } from '../utils/formSchemas.mjs';
+import { creditSaleValidationSchema } from '../utils/formSchemas.js';
+import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Authenticated user context for agent/branch-specific fields.
 const user = ref({});
@@ -240,7 +241,10 @@ const loadInventory = async () => {
 const loadTrustedBuyers = async () => {
   try {
     const response = await trustedBuyersAPI.getAll();
-    trustedBuyers.value = response.data;
+    trustedBuyers.value = response.data.map((item) => ({
+      ...item,
+      contact: normalizeLocalPhone(item.contact) || item.contact
+    }));
   } catch (fetchError) {
     console.error('Error loading trusted buyers:', fetchError);
   }
@@ -260,7 +264,7 @@ const handleBuyerSelect = () => {
   form.value.buyerName = buyer.name;
   form.value.nationalId = buyer.nationalId;
   form.value.location = buyer.location;
-  form.value.contact = buyer.contact;
+  form.value.contact = normalizeLocalPhone(buyer.contact) || buyer.contact;
 };
 
 // Sync produce type and amount when produce selection changes.

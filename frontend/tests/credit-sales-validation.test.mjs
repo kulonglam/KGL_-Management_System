@@ -1,7 +1,7 @@
 /** Unit tests for credit-sales balance and repayment validation helper functions. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getCreditSaleBalance, validateRepaymentAmount } from '../src/utils/creditSalesValidation.mjs';
+import { getCreditSaleBalance, validateRepaymentAmount } from '../src/utils/creditSalesValidation.js';
 
 test('getCreditSaleBalance uses explicit balance when provided', () => {
   const balance = getCreditSaleBalance({

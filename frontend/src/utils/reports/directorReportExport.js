@@ -1,9 +1,6 @@
-/**
- * Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
- * File: frontend/src/utils/reports/directorReportExport.mjs
- */
-
-import { formatDisplayTimestamp } from '../dateFormat.mjs';
+//  Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
+ 
+import { formatDisplayTimestamp } from '../dateFormat.js';
 
 // Coerce nullable numeric fields from dashboard state into numbers.
 const toNumber = (value) => Number(value || 0);

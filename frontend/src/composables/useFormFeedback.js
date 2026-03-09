@@ -1,7 +1,4 @@
-/**
- * Manages submit-state feedback (loading/error/success) for form-driven views.
- * File: frontend/src/composables/useFormFeedback.js
- */
+// Manages submit-state feedback (loading/error/success) for form-driven views.
 
 import { ref } from 'vue';
 

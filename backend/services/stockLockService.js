@@ -104,7 +104,7 @@ const withStockLock = async (input, task, options) => {
   }
 };
 
-export { buildStockLockKey, acquireStockLock, releaseStockLock, withStockLock };
+export { withStockLock };
 
 
 

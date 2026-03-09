@@ -7,13 +7,13 @@ import {
   buildDirectorFileName,
   buildDirectorReportHtml,
   downloadReportFile
-} from '../utils/reports/directorReportExport.mjs';
-import { formatDisplayRange } from '../utils/dateFormat.mjs';
+} from '../utils/reports/directorReportExport.js';
+import { formatDisplayRange } from '../utils/dateFormat.js';
 import {
   buildTonalPalette,
   dashboardChartColors,
   formatCurrencyValue
-} from '../utils/charts/dashboardChartTheme.mjs';
+} from '../utils/charts/dashboardChartTheme.js';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },

@@ -58,7 +58,7 @@
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { getHomeRouteForUser } from '../utils/directorAccess.mjs';
+import { getHomeRouteForUser } from '../utils/directorAccess.js';
 
 export default {
   name: 'NotFound',

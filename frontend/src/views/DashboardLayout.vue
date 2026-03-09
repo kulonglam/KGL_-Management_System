@@ -247,17 +247,15 @@
 </template>
 
 <script>
-/**
- * Shared authenticated layout: sidebar/navigation, stock alerts, and logout modal controls.
- * File: frontend/src/views/DashboardLayout.vue
- */
+// Shared authenticated layout: sidebar/navigation, stock alerts, and logout modal controls.
+ 
 
 import { inventoryAPI, notificationsAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatDisplayTimestamp } from '../utils/dateFormat.mjs';
-import { isDirectorOrban } from '../utils/directorAccess.mjs';
+import { formatDisplayTimestamp } from '../utils/dateFormat.js';
+import { isDirectorOrban } from '../utils/directorAccess.js';
 
 export default {
   name: 'DashboardLayout',
@@ -312,7 +310,7 @@ export default {
           { path: '/dashboard/manager', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
-          { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
+          { path: '/dashboard/sales', icon: 'bi bi-grid', label: 'Cash Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
             path: '/dashboard/sales-records',
@@ -340,9 +338,9 @@ export default {
         );
       } else if (this.user.role === 'sales_agent') {
         items.push(
-          { path: '/dashboard/sales-agent', icon: 'bi bi-graph-up', label: 'Dashboard' },
+          { path: '/dashboard/sales-agent', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
-          { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Sales' },
+          { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Cash Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
             path: '/dashboard/sales-records',

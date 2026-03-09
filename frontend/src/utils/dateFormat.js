@@ -1,9 +1,6 @@
-/**
- * Shared frontend date formatting helpers for consistent DD/MM/YYYY display.
- * File: frontend/src/utils/dateFormat.mjs
- */
+// Shared frontend date formatting helpers for consistent DD/MM/YYYY display.
 
-export const DISPLAY_DATE_SEPARATOR = '/';
+const DISPLAY_DATE_SEPARATOR = '/';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_ONLY_PATTERN = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;

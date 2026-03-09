@@ -1,10 +1,7 @@
-/**
- * Wraps schema-based field/form validation with a reactive error object for Vue forms.
- * File: frontend/src/composables/useFormValidation.js
- */
-
+// Wraps schema-based field/form validation with a reactive error object for Vue forms.
+ 
 import { reactive } from 'vue';
-import { validateFieldValue, validateValues } from '../utils/formValidation.mjs';
+import { validateFieldValue, validateValues } from '../utils/formValidation.js';
 
 // Build validation helpers bound to one schema instance.
 const useFormValidation = (schema) => {

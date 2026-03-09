@@ -9,6 +9,7 @@ import {
   normalizeProduceType,
   normalizeSourceType
 } from '../utils/produceNormalization.js';
+import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define procurement schema.
 const procurementSchema = new mongoose.Schema(
@@ -52,7 +53,12 @@ const procurementSchema = new mongoose.Schema(
     },
     costUgx: { type: Number, required: true, min: 10000 },
     dealerName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
-    dealerContact: { type: String, required: true, match: /^(\+256|0)[0-9]{9}$/ },
+    dealerContact: {
+      type: String,
+      required: true,
+      set: normalizeLocalPhone,
+      match: LOCAL_PHONE_PATTERN
+    },
     branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
     sellingPrice: { type: Number, required: true, min: 10000 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }

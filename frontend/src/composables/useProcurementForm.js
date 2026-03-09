@@ -1,7 +1,5 @@
-/**
- * Provides procurement-form defaults and managed-price synchronization helpers.
- * File: frontend/src/composables/useProcurementForm.js
- */
+// Provides procurement-form defaults and managed-price synchronization helpers.
+ 
 
 import { ref } from 'vue';
 import { priceAPI } from '../services/api';

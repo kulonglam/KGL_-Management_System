@@ -1,4 +1,10 @@
-import { formatDisplayTimestamp } from '../dateFormat.mjs';
+import { formatDisplayTimestamp } from '../dateFormat.js';
+import {
+  alphaNumericMessage,
+  minLengthMessage,
+  minValueMessage,
+  requiredMessage
+} from '../validationMessages.js';
 
 export const PRICE_PRODUCE_TYPES = [
   'Beans',
@@ -70,7 +76,7 @@ export const getPriceStatusLabel = (source) => {
   return 'Unknown';
 };
 
-export const resolvePriceScope = (row) =>
+const resolvePriceScope = (row) =>
   normalizeProduceName(row.produceName) ? 'specific' : 'type_default';
 
 export const buildPriceOverviewItems = (rows) => {
@@ -168,20 +174,20 @@ export const validatePriceTarget = (target) => {
   const produceName = normalizeProduceName(target.produceName);
 
   if (produceName && produceName.length < 2) {
-    return 'Produce name must be at least 2 characters';
+    return minLengthMessage('Produce Name', 2);
   }
 
   if (produceName && !ALPHANUMERIC_TEXT.test(produceName)) {
-    return 'Produce name must be alphanumeric';
+    return alphaNumericMessage('Produce Name');
   }
 
   if (!target.produceType) {
-    return 'Select a produce type';
+    return requiredMessage('Produce Type');
   }
 
   const price = Number(target.priceUgx);
   if (!price || Number.isNaN(price) || price < 10000) {
-    return 'Price must be at least 10000 UGX';
+    return minValueMessage('Price per kg (UGX)', 10000);
   }
 
   return '';

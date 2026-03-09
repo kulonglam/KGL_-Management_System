@@ -210,7 +210,7 @@ const swaggerSpec = {
           },
           costUgx: { type: 'number', minimum: 10000 },
           dealerName: { type: 'string' },
-          dealerContact: { type: 'string', example: '+256700000000' }
+          dealerContact: { type: 'string', example: '0700000000' }
         }
       },
       Sale: {
@@ -526,18 +526,6 @@ const swaggerSpec = {
       }
     },
     '/api/auth/users/{id}': {
-      get: {
-        tags: ['Users'],
-        summary: 'Get user by id',
-        security: [{ bearerAuth: [] }],
-        parameters: [{ $ref: '#/components/parameters/IdParam' }],
-        responses: {
-          200: successResponse({ $ref: '#/components/schemas/UserPublic' }),
-          401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' },
-          404: { $ref: '#/components/responses/NotFound' }
-        }
-      },
       put: {
         tags: ['Users'],
         summary: 'Update user',
@@ -911,19 +899,6 @@ const swaggerSpec = {
       }
     },
     '/api/prices/{id}': {
-      get: {
-        tags: ['Prices'],
-        summary: 'Get price by id',
-        security: [{ bearerAuth: [] }],
-        parameters: [{ $ref: '#/components/parameters/IdParam' }],
-        responses: {
-          200: successResponse({ $ref: '#/components/schemas/PriceSetting' }),
-          400: { $ref: '#/components/responses/BadRequest' },
-          401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' },
-          404: { $ref: '#/components/responses/NotFound' }
-        }
-      },
       put: {
         tags: ['Prices'],
         summary: 'Update price',

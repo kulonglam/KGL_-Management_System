@@ -103,7 +103,7 @@
 
 <script setup>
 import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs';
-import { dashboardChartOptions } from '../../utils/charts/dashboardChartTheme.mjs';
+import { dashboardChartOptions } from '../../utils/charts/dashboardChartTheme.js';
 
 defineProps({
   selectedPeriodLabel: { type: String, required: true },

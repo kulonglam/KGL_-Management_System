@@ -51,18 +51,15 @@
 </template>
 
 <script>
-/**
- * Sales-agent dashboard showing today's personal cash/credit performance snapshot.
- * File: frontend/src/views/SalesAgentDashboard.vue
- */
-
+// Sales-agent dashboard showing today's personal cash/credit performance snapshot.
+ 
 import { salesAPI, creditSalesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatDisplayDate } from '../utils/dateFormat.mjs';
+import { formatDisplayDate } from '../utils/dateFormat.js';
 
 export default {
   name: 'SalesAgentDashboard',

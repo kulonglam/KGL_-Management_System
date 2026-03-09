@@ -145,7 +145,7 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import DashboardMetricGrid from '../components/dashboards/DashboardMetricGrid.vue';
 import DirectorDashboardCharts from '../components/dashboards/DirectorDashboardCharts.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
-import { useDirectorDashboard } from '../composables/useDirectorDashboard.mjs';
+import { useDirectorDashboard } from '../composables/useDirectorDashboard.js';
 
 const {
   branchOptions,

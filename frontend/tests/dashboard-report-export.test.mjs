@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 import {
   buildDirectorCsvContent,
   buildDirectorFileName
-} from '../src/utils/reports/directorReportExport.mjs';
+} from '../src/utils/reports/directorReportExport.js';
 import {
   buildManagerCsvContent,
   buildManagerFileName
-} from '../src/utils/reports/managerReportExport.mjs';
+} from '../src/utils/reports/managerReportExport.js';
 
 test('buildDirectorFileName sanitizes labels and formats filename', () => {
   const fileName = buildDirectorFileName(

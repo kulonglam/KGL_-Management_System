@@ -1,8 +1,5 @@
-/**
- * Centralizes frontend checks for the reserved Orban director account.
- * File: frontend/src/utils/directorAccess.mjs
- */
-
+// Centralizes frontend checks for the reserved Orban director account.
+ 
 const ORBAN_DIRECTOR_USERNAME = 'orban';
 
 const normalizeUsername = (value) => String(value || '').trim().toLowerCase();

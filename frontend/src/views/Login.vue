@@ -15,13 +15,13 @@
           <div
             class="flex-grow-1 d-flex flex-column align-items-center justify-content-center text-center mt-5"
           >
-            <h1 class="display-6 fw-bold mb-3 login-sidebar-title">Welcome to Karibu Groceries</h1>
+            <h2 class="display-6 fw-bold mb-3 login-sidebar-title">Welcome to Karibu Groceries</h2>
             <p class="lead mb-0 login-sidebar-copy">
               Track procurement, inventory, cash and credit sales across branches in real time.
             </p>
           </div>
           <div class="text-center small mt-auto login-sidebar-footer">
-            &copy; 2026 Karibu Groceries LTD
+            &copy; 2026 Karibu Groceries LTD | Your trusted whole sales system
           </div>
         </div>
 
@@ -146,7 +146,7 @@ import { authAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { getHomeRouteForUser } from '../utils/directorAccess.mjs';
+import { getHomeRouteForUser } from '../utils/directorAccess.js';
 
 export default {
   name: 'Login',

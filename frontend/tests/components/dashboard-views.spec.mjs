@@ -22,7 +22,7 @@ const directorSpies = vi.hoisted(() => ({
   loadData: vi.fn()
 }));
 
-vi.mock('../../src/composables/useManagerDashboard.mjs', () => ({
+vi.mock('../../src/composables/useManagerDashboard.js', () => ({
   useManagerDashboard: () => ({
     agentPerformance: [],
     agentPerformanceChartData: { labels: [], datasets: [] },
@@ -64,7 +64,7 @@ vi.mock('../../src/composables/useManagerDashboard.mjs', () => ({
   })
 }));
 
-vi.mock('../../src/composables/useDirectorDashboard.mjs', () => ({
+vi.mock('../../src/composables/useDirectorDashboard.js', () => ({
   useDirectorDashboard: () => ({
     branchOptions: [
       { value: 'all', label: 'All Branches' },

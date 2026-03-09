@@ -1,9 +1,9 @@
 /**
  * Builds manager dashboard exports in CSV/Excel/print-friendly HTML formats.
- * File: frontend/src/utils/reports/managerReportExport.mjs
+ * File: frontend/src/utils/reports/managerReportExport.js
  */
 
-import { formatDisplayTimestamp } from '../dateFormat.mjs';
+import { formatDisplayTimestamp } from '../dateFormat.js';
 
 // Coerce nullable metric values into safe numeric output.
 const toNumber = (value) => Number(value || 0);

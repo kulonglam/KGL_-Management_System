@@ -4,8 +4,7 @@
  */
 
 import express from 'express';
-import { login, register, getMe, updateMe, getUsers, getUserById, updateUser, deleteUser
-} from '../controllers/authController.js';
+import { login, register, getMe, updateMe, getUsers, updateUser, deleteUser } from '../controllers/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { authLimiter, writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
@@ -54,8 +53,6 @@ router.get(
   getUsers
 );
 
-// GET /api/auth/users/:id: return one user record in manager scope.
-router.get('/users/:id', protect, authorize('manager'), mongoIdParamValidation, validateRequest, getUserById);
 // PUT /api/auth/users/:id: update one managed user account.
 router.put(
   '/users/:id',

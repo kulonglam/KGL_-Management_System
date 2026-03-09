@@ -4,6 +4,7 @@
  */
 
 import { body, param, query } from 'express-validator';
+import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Configure produce types.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
@@ -14,7 +15,7 @@ const BRANCHES = ['Maganjo', 'Matugga'];
 // Configure alphanumeric text.
 const ALPHANUMERIC_TEXT = /^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/;
 // Configure phone pattern.
-const PHONE_PATTERN = /^(\+256|0)[0-9]{9}$/;
+const PHONE_PATTERN = LOCAL_PHONE_PATTERN;
 // Configure nin pattern.
 const NIN_PATTERN = /^(CM|CF)[0-9]{12}$/;
 // Configure time pattern.
@@ -231,10 +232,11 @@ const procurementCreateValidation = [
     .withMessage('dealerName must be alphanumeric'),
   body('dealerContact')
     .trim()
+    .customSanitizer(normalizeLocalPhone)
     .notEmpty()
     .withMessage('dealerContact is required')
     .matches(PHONE_PATTERN)
-    .withMessage('dealerContact must be a valid Ugandan phone number')
+    .withMessage('dealerContact must use the 07XXXXXXXX format')
 ];
 
 // Configure procurement update validation.
@@ -283,8 +285,9 @@ const procurementUpdateValidation = [
   body('dealerContact')
     .optional()
     .trim()
+    .customSanitizer(normalizeLocalPhone)
     .matches(PHONE_PATTERN)
-    .withMessage('dealerContact must be a valid Ugandan phone number')
+    .withMessage('dealerContact must use the 07XXXXXXXX format')
 ];
 
 // Configure sale create validation.
@@ -450,10 +453,11 @@ const trustedBuyerCreateValidation = [
     .withMessage('location must be alphanumeric'),
   body('contact')
     .trim()
+    .customSanitizer(normalizeLocalPhone)
     .notEmpty()
     .withMessage('contact is required')
     .matches(PHONE_PATTERN)
-    .withMessage('contact must be a valid Ugandan phone number')
+    .withMessage('contact must use the 07XXXXXXXX format')
 ];
 
 // Configure trusted buyer update validation.
@@ -482,8 +486,9 @@ const trustedBuyerUpdateValidation = [
   body('contact')
     .optional()
     .trim()
+    .customSanitizer(normalizeLocalPhone)
     .matches(PHONE_PATTERN)
-    .withMessage('contact must be a valid Ugandan phone number')
+    .withMessage('contact must use the 07XXXXXXXX format')
 ];
 
 // Configure price create validation.

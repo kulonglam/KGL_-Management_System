@@ -32,10 +32,10 @@
 
           <div class="form-action-bar">
             <div class="form-action-copy">
-              <strong>Cash amount follows the active manager-set price.</strong>
-              <span>
+              
+              <strong>
                 Review the transaction before saving. Stock is reduced only after confirmation.
-              </span>
+              </strong>
             </div>
             <div class="form-action-buttons">
               <button type="submit" class="btn btn-success" :disabled="loading">
@@ -130,11 +130,8 @@
 </template>
 
 <script setup>
-/**
- * Cash-sales entry page: validates stock and captures sale details with review modal confirmation.
- * File: frontend/src/views/Sales.vue
- */
-
+// Cash-sales entry page: validates stock and captures sale details with review modal confirmation.
+ 
 import { onMounted, ref } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { useAutoClearFieldErrors } from '../composables/useAutoClearFieldErrors';
@@ -147,7 +144,7 @@ import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
-import { salesValidationSchema } from '../utils/formSchemas.mjs';
+import { salesValidationSchema } from '../utils/formSchemas.js';
 
 // Authenticated user context for default branch/agent display.
 const user = ref({});

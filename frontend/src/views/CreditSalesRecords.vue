@@ -400,8 +400,9 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.mjs';
-import { formatDisplayDate } from '../utils/dateFormat.mjs';
+import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.js';
+import { formatDisplayDate } from '../utils/dateFormat.js';
+import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 export default {
   name: 'CreditSalesRecords',
@@ -590,7 +591,10 @@ export default {
       this.loadError = '';
       try {
         const response = await creditSalesAPI.getAll();
-        this.creditSales = response.data;
+        this.creditSales = response.data.map((item) => ({
+          ...item,
+          contact: normalizeLocalPhone(item.contact) || item.contact
+        }));
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Failed to load credit sales records.';
       } finally {

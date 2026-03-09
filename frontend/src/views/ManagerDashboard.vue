@@ -134,7 +134,7 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import DashboardMetricGrid from '../components/dashboards/DashboardMetricGrid.vue';
 import ManagerDashboardCharts from '../components/dashboards/ManagerDashboardCharts.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
-import { useManagerDashboard } from '../composables/useManagerDashboard.mjs';
+import { useManagerDashboard } from '../composables/useManagerDashboard.js';
 
 const {
   agentPerformance,

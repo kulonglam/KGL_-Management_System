@@ -161,7 +161,7 @@
 import { computed, ref, watch } from 'vue';
 import InsightStrip from '../common/InsightStrip.vue';
 import TablePagination from '../common/TablePagination.vue';
-import { formatDisplayDateTime } from '../../utils/dateFormat.mjs';
+import { formatDisplayDateTime } from '../../utils/dateFormat.js';
 
 const props = defineProps({
   procurements: {

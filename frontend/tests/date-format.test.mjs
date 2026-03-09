@@ -6,7 +6,7 @@ import {
   formatDisplayDateTime,
   formatDisplayRange,
   formatDisplayTimestamp
-} from '../src/utils/dateFormat.mjs';
+} from '../src/utils/dateFormat.js';
 
 test('formatDisplayDate renders YYYY-MM-DD values as DD/MM/YYYY', () => {
   assert.equal(formatDisplayDate('2025-12-31'), '31/12/2025');

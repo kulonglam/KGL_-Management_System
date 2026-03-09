@@ -13,9 +13,8 @@ import {
   getPriceStatusLabel,
   normalizeProduceName,
   PRICE_PRODUCE_TYPES,
-  resolvePriceScope,
   validatePriceTarget
-} from '../utils/pricing/priceManagement.mjs';
+} from '../utils/pricing/priceManagement.js';
 
 export function usePriceManagement() {
   const loading = ref(false);
@@ -221,7 +220,6 @@ export function usePriceManagement() {
     openHistoryDialog,
     priceStatusLabel: getPriceStatusLabel,
     produceTypes: PRICE_PRODUCE_TYPES,
-    resolveScope: resolvePriceScope,
     rows,
     summaryItems
   };

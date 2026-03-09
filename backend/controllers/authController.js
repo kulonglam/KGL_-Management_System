@@ -191,23 +191,6 @@ const getUsers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// GET /api/auth/users/:id: return one user if requester has branch/role access to that record.
-const getUserById = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const accessError = getManagerUserAccessError(req.user, user);
-    if (accessError) {
-      return res.status(403).json({ message: accessError });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
 // PUT /api/auth/users/:id: manager updates one user through shared service validation rules.
 const updateUser = async (req, res) => {
   try {
@@ -250,7 +233,7 @@ const deleteUser = async (req, res) => {
   }
 };
 
-export { login, getMe, updateMe, register, getUsers, getUserById, updateUser, deleteUser };
+export { login, getMe, updateMe, register, getUsers, updateUser, deleteUser };
 
 
 

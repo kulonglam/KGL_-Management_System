@@ -32,7 +32,7 @@
 
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Users</h5>
+        <h5 class="mb-0">Staffs</h5>
         <div class="d-flex gap-2">
           <button class="btn btn-primary btn-sm" @click="toggleForm">
             {{ showForm ? 'Close' : 'New User' }}
@@ -147,7 +147,7 @@
         <form @submit.prevent="handleSubmit">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label" for="user-name">Full Name *</label>
+              <label class="form-label" for="user-name">Full Name</label>
               <input
                 id="user-name"
                 type="text"
@@ -159,11 +159,11 @@
               />
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="user-username">Username *</label>
+              <label class="form-label" for="user-username">Username</label>
               <input id="user-username" type="text" class="form-control" v-model="form.username" required />
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="user-role">Role *</label>
+              <label class="form-label" for="user-role">Role</label>
               <select id="user-role" class="form-select" v-model="form.role" required>
                 <option value="">Select role</option>
                 <option value="manager">Manager</option>
@@ -182,7 +182,7 @@
               />
             </div>
             <div class="col-md-6">
-              <label class="form-label" for="user-password">Password {{ editingId ? '' : '*' }}</label>
+              <label class="form-label" for="user-password">Password {{ editingId ? '' : '' }}</label>
               <input
                 id="user-password"
                 type="password"
@@ -234,10 +234,7 @@
 </template>
 
 <script>
-/**
- * Branch user administration page for creating, updating, filtering, and deleting staff accounts.
- * File: frontend/src/views/Users.vue
- */
+// Branch user administration page for creating, updating, filtering, and deleting staff accounts.
 
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
@@ -328,7 +325,7 @@ export default {
     overviewItems() {
       const visibleMeta =
         this.displayedUsers.length === this.users.length
-          ? 'No filters applied'
+          ? 'Only three staff are allowed per branch'
           : `${this.displayedUsers.length.toLocaleString('en-UG')} visible after filters`;
 
       return [

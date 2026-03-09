@@ -124,9 +124,9 @@
               type="button"
               class="btn btn-outline-secondary"
               :disabled="saving || loading"
-              @click="loadProfile"
+              @click="handleCancel"
             >
-              Reset
+              Cancel
             </button>
           </div>
         </form>
@@ -136,14 +136,12 @@
 </template>
 
 <script>
-/**
- * Profile management page for viewing/updating account details and optional profile photo.
- * File: frontend/src/views/Profile.vue
- */
-
+// Profile management page for viewing/updating account details and optional profile photo.
+ 
 import { authAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { getHomeRouteForUser } from '../utils/directorAccess.js';
 
 // Cap uploaded profile image size to 1 MB.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
@@ -188,6 +186,23 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    // Leave the profile editor when possible, otherwise restore the saved profile state.
+    handleCancel() {
+      const previousRoute = window.history.state?.back;
+      if (previousRoute && previousRoute !== this.$route.fullPath) {
+        this.$router.back();
+        return;
+      }
+
+      const authStore = useAuthStore(pinia);
+      const fallbackRoute = getHomeRouteForUser(authStore.user);
+      if (fallbackRoute && fallbackRoute !== this.$route.fullPath) {
+        this.$router.push(fallbackRoute);
+        return;
+      }
+
+      this.loadProfile();
     },
     // Apply backend user payload to editable form fields.
     applyUserToForm(user) {

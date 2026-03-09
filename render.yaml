@@ -12,6 +12,10 @@
         value: production
       - key: ENABLE_SWAGGER
         value: "false"
+      - key: JWT_ISSUER
+        value: https://kgl-backend.onrender.com
+      - key: JWT_AUDIENCE
+        value: karibu-groceries-api
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET

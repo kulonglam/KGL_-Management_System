@@ -79,7 +79,7 @@ import PriceCreateCard from '../components/pricing/PriceCreateCard.vue';
 import PriceEditorDialog from '../components/pricing/PriceEditorDialog.vue';
 import PriceHistoryDialog from '../components/pricing/PriceHistoryDialog.vue';
 import PriceTableCard from '../components/pricing/PriceTableCard.vue';
-import { usePriceManagement } from '../composables/usePriceManagement.mjs';
+import { usePriceManagement } from '../composables/usePriceManagement.js';
 
 const {
   closeDeleteDialog,

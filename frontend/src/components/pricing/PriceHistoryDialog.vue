@@ -61,7 +61,7 @@ import {
   historyActionLabel,
   historySummary,
   historyTargetChange
-} from '../../utils/pricing/priceManagement.mjs';
+} from '../../utils/pricing/priceManagement.js';
 
 defineProps({
   show: {

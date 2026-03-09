@@ -181,14 +181,14 @@
             v-model="form.dealerContact"
             inputmode="tel"
             autocomplete="tel"
-            maxlength="13"
-            pattern="^(\+256|0)[0-9]{9}$"
-            placeholder="+256700000000 or 0700000000"
+            maxlength="10"
+            :pattern="LOCAL_PHONE_PATTERN_HTML"
+            :placeholder="LOCAL_PHONE_PLACEHOLDER"
             @input="sanitizePhoneField('dealerContact')"
             required
           />
           <div v-if="errors.dealerContact" class="invalid-feedback">{{ errors.dealerContact }}</div>
-          <small class="field-note">Use digits only. Accepted formats are 0700000000 or +256700000000.</small>
+          <small class="field-note">{{ LOCAL_PHONE_HINT }}</small>
         </div>
 
         <div class="col-md-6">
@@ -202,22 +202,15 @@
 
 <script setup>
 import { computed } from 'vue';
+import {
+  LOCAL_PHONE_HINT,
+  LOCAL_PHONE_PATTERN_HTML,
+  LOCAL_PHONE_PLACEHOLDER,
+  normalizeLocalPhone
+} from '../../utils/phoneNumber.js';
 
 // Trim and collapse repeated whitespace for free-text fields.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
-const sanitizePhoneValue = (value) => {
-  const normalized = String(value || '').replace(/[^\d+]/g, '');
-  const withoutExtraPlus = normalized.startsWith('+')
-    ? `+${normalized.slice(1).replace(/\+/g, '')}`
-    : normalized.replace(/\+/g, '');
-
-  if (withoutExtraPlus.startsWith('+')) {
-    return withoutExtraPlus.slice(0, 13);
-  }
-
-  return withoutExtraPlus.slice(0, 10);
-};
-
 // Shared procurement form model passed from parent views.
 const form = defineModel('form', {
   type: Object,
@@ -232,7 +225,7 @@ const normalizeText = (field) => {
 
 const sanitizePhoneField = (field) => {
   if (typeof form.value[field] !== 'string') return;
-  form.value[field] = sanitizePhoneValue(form.value[field]);
+  form.value[field] = normalizeLocalPhone(form.value[field]);
 };
 
 // Enforce business minimum tonnage by source type.
