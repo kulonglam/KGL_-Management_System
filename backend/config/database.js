@@ -1,8 +1,5 @@
-/**
- * Initializes MongoDB connectivity with mongoose safety options and startup failure handling.
- * File: backend/config/database.js
- */
-
+//  Initializes MongoDB connectivity with mongoose safety options and startup failure handling.
+ 
 import mongoose from 'mongoose';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
@@ -84,8 +81,3 @@ const connectDB = async () => {
 };
 
 export default connectDB;
-
-
-
-
-

@@ -1,7 +1,5 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/creditSalesController.js
- */
+//  Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ 
 
 import CreditSale from '../models/CreditSale.js';
 import {

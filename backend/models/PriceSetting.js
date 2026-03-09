@@ -1,7 +1,4 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/PriceSetting.js
- */
+// Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
 
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
@@ -36,8 +33,3 @@ priceSettingSchema.index({ branch: 1, produceType: 1, produceName: 1 }, { unique
 priceSettingSchema.index({ branch: 1, produceType: 1, priceUgx: 1 });
 
 export default mongoose.model('PriceSetting', priceSettingSchema);
-
-
-
-
-

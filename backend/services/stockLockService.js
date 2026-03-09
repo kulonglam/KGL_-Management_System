@@ -1,7 +1,6 @@
-/**
+/*
  * Implements short-lived distributed stock locks to prevent concurrent overselling
  * when multiple requests update the same branch/produce stock bucket.
- * File: backend/services/stockLockService.js
  */
 
 import { randomUUID } from 'crypto';
@@ -105,8 +104,3 @@ const withStockLock = async (input, task, options) => {
 };
 
 export { withStockLock };
-
-
-
-
-

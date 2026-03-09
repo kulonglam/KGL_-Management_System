@@ -1,8 +1,5 @@
-/**
- * Supplies shared utility helpers used across multiple backend modules.
- * File: backend/utils/pagination.js
- */
-
+// Supplies shared utility helpers used across multiple backend modules.
+ 
 // Parse pagination.
 const parsePagination = (query = {}) => {
   const hasPaginationInput = query.page !== undefined || query.limit !== undefined;
@@ -35,8 +32,3 @@ const buildPaginationMeta = ({ page, limit, total }) => ({
 });
 
 export { parsePagination, buildPaginationMeta };
-
-
-
-
-

@@ -1,7 +1,5 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/opsController.js
- */
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ 
 
 import mongoose from 'mongoose';
 
@@ -33,8 +31,3 @@ const getReadiness = (req, res) => {
 };
 
 export { getHealth, getReadiness };
-
-
-
-
-

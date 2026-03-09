@@ -1,9 +1,5 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/priceController.js
- */
-
-import PriceSetting from '../models/PriceSetting.js';
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ import PriceSetting from '../models/PriceSetting.js';
 import mongoose from 'mongoose';
 import {
   buildPriceIdentityQuery,

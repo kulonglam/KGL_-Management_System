@@ -1,7 +1,6 @@
-/**
+/*
  * Provides trusted-buyer normalization and duplicate-detection helpers
  * used by create/update flows in branch-scoped buyer management.
- * File: backend/services/trustedBuyerService.js
  */
 
 import TrustedBuyer from '../models/TrustedBuyer.js';
@@ -34,8 +33,3 @@ const findDuplicateTrustedBuyer = async ({ branch, nationalId, excludeId = null 
 };
 
 export { normalizeText, normalizeNationalId, findDuplicateTrustedBuyer };
-
-
-
-
-

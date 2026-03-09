@@ -1,9 +1,5 @@
-/**
- * Supplies shared utility helpers used across multiple backend modules.
- * File: backend/utils/produceNormalization.js
- */
-
-// Normalize whitespace and trim text input.
+// Supplies shared utility helpers used across multiple backend modules.
+ // Normalize whitespace and trim text input.
 const normalizeWhitespace = (value) => String(value || '').replace(/\s+/g, ' ').trim();
 
 // Normalize unicode dash variants to ASCII hyphen.
@@ -85,14 +81,8 @@ const normalizeProduceNameKey = (value) =>
     .trim();
 
 export {
-  normalizeWhitespace,
   normalizeProduceName,
   normalizeProduceType,
   normalizeSourceType,
   normalizeProduceNameKey
 };
-
-
-
-
-

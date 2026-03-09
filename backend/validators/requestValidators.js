@@ -1,8 +1,5 @@
-/**
- * Defines express-validator chains that enforce payload shape and business constraints.
- * File: backend/validators/requestValidators.js
- */
-
+// Defines express-validator chains that enforce payload shape and business constraints.
+ 
 import { body, param, query } from 'express-validator';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
@@ -523,9 +520,6 @@ const priceUpdateValidation = [
     .withMessage(`priceUgx must be at least ${VALIDATION_LIMITS.moneyMinUgx}`)
 ];
 
-// Configure notification read validation.
-const notificationReadValidation = [...mongoIdParamValidation];
-
 export {
   mongoIdParamValidation,
   paginationValidation,
@@ -544,11 +538,5 @@ export {
   trustedBuyerCreateValidation,
   trustedBuyerUpdateValidation,
   priceCreateValidation,
-  priceUpdateValidation,
-  notificationReadValidation
+  priceUpdateValidation
 };
-
-
-
-
-

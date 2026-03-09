@@ -1,8 +1,5 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/stockNotificationController.js
- */
-
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ 
 import StockNotification from '../models/StockNotification.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
@@ -72,8 +69,3 @@ const markStockNotificationRead = async (req, res) => {
 };
 
 export { getStockNotifications, markStockNotificationRead };
-
-
-
-
-

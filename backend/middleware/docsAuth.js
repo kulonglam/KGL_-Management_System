@@ -1,7 +1,5 @@
-/**
- * Protects sensitive operational docs endpoints when they are exposed in production.
- * File: backend/middleware/docsAuth.js
- */
+// Protects sensitive operational docs endpoints when they are exposed in production.
+
 
 import { getSwaggerCredentials, isProduction, safeEquals } from '../config/security.js';
 

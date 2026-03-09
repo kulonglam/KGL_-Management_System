@@ -1,7 +1,5 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/StockNotification.js
- */
+// Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ 
 
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
@@ -60,8 +58,3 @@ stockNotificationSchema.index({
 });
 
 export default mongoose.model('StockNotification', stockNotificationSchema);
-
-
-
-
-

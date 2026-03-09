@@ -1,7 +1,4 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/opsRoutes.js
- */
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
 
 import express from 'express';
 import { getHealth, getReadiness } from '../controllers/opsController.js';

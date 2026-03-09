@@ -1,8 +1,7 @@
 /**
  * Encapsulates produce-pricing rules: input validation, branch price row composition,
  * and synchronization of procurement selling prices when managed prices change.
- * File: backend/services/priceService.js
- */
+  */
 
 import mongoose from 'mongoose';
 import PriceSetting from '../models/PriceSetting.js';
@@ -177,17 +176,9 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx)
 };
 
 export {
-  PRICE_SCOPE,
-  PRODUCE_TYPES,
   buildPriceIdentityQuery,
-  buildPriceLookupKey,
   getBranchPriceRows,
   normalizeOptionalProduceName,
   parseAndValidatePriceInput,
   syncProcurementPrices
 };
-
-
-
-
-

@@ -43,4 +43,4 @@ const buildReportBrandingHtml = ({ reportTitle, generatedAt, escapeHtml }) => {
   `;
 };
 
-export { COMPANY_NAME, SYSTEM_NAME, getReportBrandingRows, buildReportBrandingHtml };
+export { getReportBrandingRows, buildReportBrandingHtml };

@@ -1,8 +1,5 @@
-/**
- * Stores an immutable audit trail of manager price changes.
- * File: backend/models/PriceHistory.js
- */
-
+// Stores an immutable audit trail of manager price changes.
+ 
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 

@@ -1,8 +1,4 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/salesRoutes.js
- */
-
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
 import express from 'express';
 // Configure router.
 const router = express.Router();
@@ -75,8 +71,3 @@ router.put(
 );
 
 export default router;
-
-
-
-
-

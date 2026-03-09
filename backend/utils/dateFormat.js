@@ -1,8 +1,5 @@
-/**
- * Shared backend date formatting helpers for consistent DD/MM/YYYY labels.
- * File: backend/utils/dateFormat.js
- */
-
+// Shared backend date formatting helpers for consistent DD/MM/YYYY labels.
+ 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const padTwo = (value) => String(value).padStart(2, '0');

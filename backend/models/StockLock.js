@@ -1,8 +1,4 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/StockLock.js
- */
-
+// Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
 import mongoose from 'mongoose';
 
 // Define stock lock schema.
@@ -30,8 +26,3 @@ const stockLockSchema = new mongoose.Schema(
 stockLockSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model('StockLock', stockLockSchema);
-
-
-
-
-

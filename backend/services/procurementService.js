@@ -1,8 +1,5 @@
-/**
- * Provides procurement-domain helpers for manager price resolution and branch-access checks.
- * File: backend/services/procurementService.js
- */
-
+// Provides procurement-domain helpers for manager price resolution and branch-access checks.
+ 
 import PriceSetting from '../models/PriceSetting.js';
 import {
   normalizeOptionalProduceName
@@ -102,8 +99,3 @@ const canManagerAccessBranch = (user, branch) => {
 };
 
 export { resolveSellingPrice, resolveSellingPriceDetails, canManagerAccessBranch };
-
-
-
-
-

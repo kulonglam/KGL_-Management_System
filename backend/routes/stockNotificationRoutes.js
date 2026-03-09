@@ -1,7 +1,4 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/stockNotificationRoutes.js
- */
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
 
 import express from 'express';
 import {
@@ -36,8 +33,3 @@ router.put(
 );
 
 export default router;
-
-
-
-
-

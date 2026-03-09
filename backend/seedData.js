@@ -1,8 +1,5 @@
-﻿/**
- * Resets the database and inserts a clean demo baseline for local testing and demos.
- * File: backend/seedData.js
- */
-
+﻿// Resets the database and inserts a clean demo baseline for local testing and demos.
+ 
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';

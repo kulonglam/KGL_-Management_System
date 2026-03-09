@@ -1,7 +1,4 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/inventoryRoutes.js
- */
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
 
 import express from 'express';
 // Configure router.

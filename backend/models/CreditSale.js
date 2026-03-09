@@ -1,8 +1,5 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/CreditSale.js
- */
-
+//  Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ 
 import mongoose from 'mongoose';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
@@ -64,8 +61,3 @@ creditSaleSchema.index({ branch: 1, dueDate: 1, isPaid: 1 });
 creditSaleSchema.index({ trustedBuyer: 1, createdAt: -1 });
 
 export default mongoose.model('CreditSale', creditSaleSchema);
-
-
-
-
-

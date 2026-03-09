@@ -1,354 +1,411 @@
 # Karibu Groceries LTD Management System - User Manual
 
-Last Updated: 2026-02-27
+Last Updated: 2026-03-09
 
 ## 1. Purpose
 
-This manual explains how to use the Karibu Groceries LTD Management System for day-to-day branch and executive operations.
+This manual explains how to use the Karibu Groceries LTD Management System for daily branch operations and executive monitoring.
 
 The system supports:
-- Procurement recording
-- Cash sales recording
-- Credit sales and repayment tracking
-- Inventory monitoring
-- Price management
-- Trusted buyer management
-- Branch user management
-- Role-based dashboards and report exports
 
-## 2. Supported Roles and Access
+- procurement recording
+- cash sales recording
+- credit sales and repayment tracking
+- inventory monitoring
+- branch price management
+- trusted buyer management
+- user management by branch
+- role-based dashboards and reports
 
-## Director
+## 2. User Roles and Access
+
+### Director
+
 - Access: Director Dashboard, Profile
-- Main use: Cross-branch performance monitoring and report export
-- Restriction: No branch operations (cannot record procurement/sales, manage users, or manage prices)
+- Main use: view cross-branch totals, trends, and report exports
+- Restriction: cannot record procurement, sales, credit sales, users, or prices
 
-## Manager
-- Access: Full branch operations and administration
-- Main use: Prices, procurement, sales, credit sales, records, trusted buyers, inventory, users, profile
-- Restriction: Can manage only own branch data
+### Manager
 
-## Sales Agent
-- Access: Sales operations and personal monitoring
-- Main use: Record cash sales, record credit sales, view inventory and records, profile
-- Restriction: Cannot record procurement, manage prices, manage users, or repay credit balances
+- Access: manager dashboard, procurement, sales, credit sales, records, inventory, trusted buyers, users, price management, profile
+- Main use: run branch operations and branch administration
+- Restriction: can work only within own branch
 
-## 3. Branch and Product Scope
+### Sales Agent
 
-## Branches
+- Access: sales dashboard, sales, credit sales, records, inventory, profile
+- Main use: record branch sales and monitor personal branch activity
+- Restriction: cannot record procurement, manage prices, manage users, or repay credit balances
+
+## 3. Branches and Produce Types
+
+### Branches
+
 - Maganjo
 - Matugga
 
-## Produce Types
+### Produce Types
+
 - Beans
 - Grain Maize
 - Cow peas
 - Groundnuts
 - Soybeans
 
-## 4. Login and Session
+## 4. Login and Logout
+
+### Login
 
 1. Open the application login page.
 2. Enter your `username` and `password`.
 3. Click `Sign In`.
-4. You are redirected automatically based on role.
+4. The system redirects you to the correct dashboard based on your role.
 
 Optional:
-- `Remember username` stores your username on this device.
-- `Forgot Password?` shows reset guidance (contact manager/system admin).
 
-Logout:
-- Use the `Logout` button in the sidebar and confirm.
+- `Remember username` stores only the username on the current device.
+
+### Logout
+
+1. Click `Logout` in the sidebar.
+2. Confirm the action.
+3. The system ends your local session and logs you out of the application.
 
 ## 5. Navigation Basics
 
-- The top bar shows system branding.
-- The sidebar shows pages based on your role.
-- Managers see grouped navigation:
-  - Operations
-  - Records
-  - Administration
-- Managers also receive stock notifications and out-of-stock alerts in the dashboard layout.
+- The sidebar displays only pages allowed for your role.
+- The header shows branding and stock notifications where applicable.
+- Managers and sales agents work at branch level.
+- The director uses an aggregate reporting view only.
 
-## 6. Manager User Guide
+## 6. Manager Guide
 
-## 6.1 Set Prices First (Mandatory)
+### 6.1 Set Prices First
 
-Before recording procurement, configure managed prices.
+Path: `Price Management`
 
-Path: `Administration > Price Management`
+Before procurement or selling, the branch manager should configure selling prices.
 
-1. Add a price row or edit an existing one.
-2. Enter `Produce Type`.
-3. Optional: enter `Produce Name` if you need a price for one specific produce, for example `Red Beans`.
+Steps:
+
+1. Open `Price Management`.
+2. Select `Produce Type`.
+3. Optionally enter `Produce Name` for a produce-specific price.
 4. Enter `Price per kg (UGX)`.
-5. Click `Create` (first time) or `Update`.
+5. Save the price row.
 
 Notes:
-- Minimum price is 10,000 UGX.
-- Leave `Produce Name` blank to create one type-default price for all produce names in that type.
-- Add a `Produce Name` to create a specific override, for example separate prices for `Red Beans` and `Yellow Beans`.
-- Price status can be `Managed` or `Suggested`.
-- Updating a managed price synchronizes related procurement selling prices for that branch.
-- Use `History` on a managed row to see who changed the price, when it changed, and the old/new amount.
-- If no managed price exists, procurement creation is blocked.
 
-## 6.2 Record Procurement
+- Minimum price is `10,000 UGX`.
+- Blank `Produce Name` creates a type-default price.
+- A filled `Produce Name` creates a specific override.
+- Price changes are recorded in price history.
 
-Path: `Operations > Procurement`
+### 6.2 Record Procurement
+
+Path: `Procurement`
 
 Enter:
-- Produce name
-- Produce type
-- Source type (`individual`, `company`, `kgl_farm`)
-- Date and time received
-- Tonnage (kg)
-- Cost (UGX)
-- Dealer name and dealer contact
-- Branch is auto-filled from your account
 
-Validation rules:
-- Produce/dealer text: alphanumeric words with spaces
-- Dealer contact: Uganda format (`+2567XXXXXXXX` or `07XXXXXXXX`)
-- Tonnage:
-  - `individual`: at least 1000 kg
-  - other sources: at least 100 kg
-- Cost: at least 10,000 UGX
-- Selling price: controlled by Price Management
+- produce name
+- produce type
+- source type (`individual`, `company`, `kgl_farm`)
+- date received
+- time received
+- tonnage in kilograms
+- cost in UGX
+- dealer name
+- dealer contact
 
-Submit with `Record Procurement`.
+Rules:
 
-## 6.3 Record Cash Sale
+- produce name and dealer name must be alpha-numeric text
+- produce type must be a valid produce type
+- contact must use the `07XXXXXXXX` format
+- tonnage must be at least `100 kg`
+- if source is `individual`, tonnage must be at least `1000 kg`
+- cost must be at least `10,000 UGX`
+- selling price is controlled by the manager-set price
 
-Path: `Operations > Sales`
+Expected result:
 
-1. Select produce from available inventory.
+- procurement is saved
+- branch inventory increases
+- the record appears in procurement records
+
+### 6.3 Record Cash Sale
+
+Path: `Sales`
+
+Steps:
+
+1. Select available produce from inventory.
 2. Enter tonnage.
-3. Buyer name.
-4. Confirm date/time and auto-filled sales agent/branch.
-5. Click `Record Sale`.
-6. Review modal appears.
-7. Click `Save Cash Sale`.
+3. Enter buyer name.
+4. Confirm date, time, branch, and sales agent details.
+5. Click `Review Sale`.
+6. Confirm and save.
 
 System behavior:
-- Amount is auto-calculated from managed selling price.
-- Sale is blocked if stock is insufficient.
-- If stock reaches zero, out-of-stock notification is generated.
 
-## 6.4 Record Credit Sale
+- amount paid is auto-calculated from the active selling price
+- only available stock can be sold
+- stock reduces after confirmation
+- out-of-stock notification is generated when stock reaches zero
 
-Path: `Operations > Credit Sales`
+### 6.4 Record Credit Sale
+
+Path: `Credit Sales`
+
+Steps:
 
 1. Select a trusted buyer.
 2. Select produce and enter tonnage.
-3. Confirm due date and dispatch date.
-4. Click `Record Credit Sale`.
-5. Review details in modal.
-6. Click `Save Credit Sale`.
+3. Enter due date and confirm dispatch date.
+4. Review the transaction.
+5. Save the credit sale.
 
 System behavior:
-- Amount due is auto-calculated from managed price.
-- Due date is required.
-- Stock must be available.
-- Buyer must belong to your branch.
-- New credit sale is blocked if the buyer has outstanding unpaid balance.
 
-## 6.5 Manage Trusted Buyers
+- amount due is auto-calculated
+- buyer must belong to the same branch
+- buyer must not have an unpaid previous balance
+- stock must be available
+- credit sale is stored separately from normal sales
 
-Path: `Administration > Trusted Buyers`
+### 6.5 Manage Trusted Buyers
 
-Available actions:
-- Add buyer
-- Edit buyer
-- Delete buyer
+Path: `Trusted Buyers`
 
 Required fields:
-- Name
-- National ID (NIN)
-- Location
-- Contact
+
+- buyer name
+- national ID
+- location
+- contact
 
 Validation rules:
-- NIN: strict Uganda format (`CM` or `CF` followed by 12 digits)
-- Contact: Uganda phone format
-- NIN is unique per branch
 
-## 6.6 Monitor Inventory and Notifications
+- buyer name and location must be at least 2 characters
+- national ID must follow Uganda NIN format: `CM` or `CF` + 12 digits
+- contact must use `07XXXXXXXX`
+- records are branch-specific
 
-Path: `Operations > Inventory`
+### 6.6 Monitor Inventory and Notifications
+
+Path: `Inventory`
 
 You can view:
-- Total items, total weight, total value, low-stock count
-- Per-item stock, price, value, and stock status
-- Dedicated out-of-stock list
+
+- total items
+- total weight
+- total value
+- low-stock count
+- out-of-stock items
 
 Thresholds:
-- Low stock: below 500 kg
-- Out of stock: 0 kg
+
+- low stock: below `500 kg`
+- out of stock: `0 kg`
 
 Notifications:
-- Unread stock notifications appear in dashboard header.
-- Use `Acknowledge` or `Acknowledge All`.
 
-## 6.7 Manage Branch Users
+- unread stock notifications appear in the header
+- managers can acknowledge single notifications or all
 
-Path: `Administration > Users`
+### 6.7 Manage Branch Users
 
-Actions:
-- Create manager or sales-agent accounts for your branch
-- Edit user details
-- Delete users (except self)
+Path: `Users`
 
-Staffing controls enforced:
-- Maximum 1 manager per branch
-- Maximum 2 attendants (sales agents) per branch
-- System prevents updates/deletions that break minimum required staffing
+Managers can:
 
-## 6.8 Work with Records
+- create users for their branch
+- edit users in their branch
+- delete users in their branch
 
-## Procurement Records
-Path: `Records > Procurement Records`
-- Refresh list
-- Edit procurement
-- Delete procurement
+Staffing controls:
 
-## Sales Records
-Path: `Records > Sales Records`
-- Read-only listing with pagination and refresh
+- maximum `1` manager per branch
+- maximum `2` sales agents per branch
+- the system prevents changes that would violate the minimum required staffing
 
-## Credit Sales Records
-Path: `Records > Credit Sales Records`
-- View due amount, balance, status, due/dispatch dates
-- Repay outstanding balances (manager only)
+### 6.8 Work with Records
+
+#### Procurement Records
+
+Path: `Procurement Records`
+
+- refresh records
+- edit records
+- delete records
+
+#### Sales Records
+
+Path: `Sales Records`
+
+- view paginated sales history
+- refresh records
+
+#### Credit Sales Records
+
+Path: `Credit Sales Records`
+
+- view balances, due dates, and payment status
+- managers can record repayments
 
 Repayment rules:
-- Amount must be greater than 0
-- Amount cannot exceed current balance
-- Payment date must be valid
-- Status changes to `Paid` automatically when balance reaches 0
 
-## 6.9 Manager Dashboard and Exports
+- repayment amount must be greater than `0`
+- repayment cannot exceed current balance
+- payment date must be valid
+- balance reduces automatically
+- status changes to `Paid` when the balance reaches `0`
 
-Path: `Operations > Dashboard`
+### 6.9 Manager Dashboard and Exports
+
+Path: `Manager Dashboard`
 
 Features:
-- Weekly/monthly/yearly filtering
-- KPI cards (inventory value, cash sales, credit sales, procurement, revenue)
-- Charts (revenue split, credit collection, trends, product and agent performance)
 
-Export options:
-- CSV
-- Excel (`.xls`)
-- PDF (requires browser pop-up permission)
+- KPI overview cards
+- date-period filtering
+- charts for sales, revenue, procurement, and credit performance
+- export options for CSV, Excel, and PDF/print output
 
-## 7. Sales Agent User Guide
+## 7. Sales Agent Guide
 
-## 7.1 Dashboard
+### 7.1 Dashboard
+
 Path: `Dashboard`
-- Shows your own today-only summary:
-  - Cash sales value/count
-  - Credit sales value/count
-  - Total kilograms sold today
 
-## 7.2 Record Cash Sale
+The sales agent dashboard shows:
+
+- today’s cash sales
+- today’s credit sales
+- kilograms sold today
+
+### 7.2 Cash Sales
+
 Path: `Sales`
-- Same recording flow as manager (review and save)
-- Amount auto-calculated
-- Stock constraints enforced
 
-## 7.3 Record Credit Sale
+- same sales flow as manager
+- stock checks and review step still apply
+- sales agent cannot change branch pricing
+
+### 7.3 Credit Sales
+
 Path: `Credit Sales`
-- Select an existing trusted buyer
-- Amount auto-calculated
-- Stock, due-date, and outstanding-balance checks enforced
 
-## 7.4 Inventory and Records
-- `Inventory`: view branch stock and alerts
-- `Sales Records`: read-only history
-- `Credit Sales Records`: read-only history (no repay action)
+- sales agent can create credit sales for existing trusted buyers
+- stock and outstanding-balance checks still apply
+- sales agent cannot post repayments
 
-## 7.5 Profile
-- Update name and username
-- Optionally change password
-- Upload/remove profile image
+### 7.4 Inventory and Records
 
-## 8. Director User Guide
+- `Inventory`: read branch stock status
+- `Sales Records`: view branch sales history
+- `Credit Sales Records`: view branch credit history
+
+### 7.5 Profile
+
+Sales agents can update:
+
+- name
+- username
+- password
+- profile image
+
+## 8. Director Guide
 
 Path: `Director Dashboard`
 
 Main actions:
-1. Choose `Period` (weekly/monthly/yearly).
-2. Choose `Branch` scope (all, Maganjo, Matugga).
-3. Review totals, branch breakdowns, trends, and procurement metrics.
-4. Export reports as CSV, Excel, or PDF.
 
-Access note:
-- Cross-branch aggregation is restricted to the director account `orban` (Mr. Orban).
+1. choose reporting period
+2. choose branch scope
+3. review totals and trends
+4. export reports
 
-## 9. Profile Management (All Roles)
+Important note:
+
+- only the reserved director account `orban` can access the aggregate cross-branch reporting view
+
+## 9. Profile Management
 
 Path: `Profile`
 
-You can update:
-- Full name
-- Username
-- Password (optional)
-- Profile image (optional)
+All users can update:
+
+- full name
+- username
+- password
+- profile image
 
 Profile image constraints:
-- Allowed formats: PNG, JPG/JPEG, WEBP
-- Maximum size: 1 MB
 
-Password constraints:
-- Minimum 6 characters
-- Confirmation must match
+- PNG, JPG/JPEG, or WEBP
+- maximum `1 MB`
 
-## 10. Core Business Rules Enforced by the System
+Password policy:
 
-1. Only in-stock products can be sold.
-2. Cash and credit amounts are system-calculated from managed prices.
-3. Inventory decreases automatically after sale/credit sale.
-4. Low-stock alert threshold is below 500 kg.
-5. Out-of-stock notifications are generated when stock reaches zero.
-6. Credit sales require a trusted buyer.
-7. Credit sales must include a due date.
-8. A trusted buyer cannot start new credit with outstanding unpaid balance.
-9. Procurement requires managed pricing for the selected produce, either through a produce-specific price or a type default.
-10. Branch staffing controls enforce manager/attendant limits.
+- at least `10` characters
+- at least one uppercase letter
+- at least one lowercase letter
+- at least one number
+- at least one symbol
+
+## 10. Core Business Rules Enforced
+
+1. Only products in stock can be sold.
+2. Cash and credit amounts are derived from the active manager-set price.
+3. Inventory reduces after confirmed sales and credit dispatches.
+4. Procurement is recorded by managers only.
+5. Sales agents are not allowed to record procurement.
+6. Credit sales are allowed only for trusted buyers.
+7. A buyer with unpaid balance cannot take new credit.
+8. Director access is aggregate-only.
+9. Branch users are limited according to staffing rules.
+10. Contact fields use local `07XXXXXXXX` format.
 
 ## 11. Common Errors and Fixes
 
-## "Manager price is required for this produce"
-- Go to `Price Management` and create/update either:
-  - a produce-specific price for that produce name, or
-  - a type-default price for its produce type.
+### "Manager price is required for this produce"
 
-## "Insufficient stock"
-- Reduce tonnage or replenish stock through procurement.
+Go to `Price Management` and create either:
 
-## "Trusted buyer already exists for this branch"
-- Search buyer list and edit existing record instead of creating duplicate.
+- a produce-specific price, or
+- a type-default price for that produce type
 
-## "Payment exceeds balance"
-- Enter an amount less than or equal to remaining balance.
+### "Insufficient stock"
 
-## "Each branch can only have 1 manager" / "2 attendants"
-- Update existing staff roles instead of creating additional users.
+Reduce the tonnage or restock through procurement.
 
-## 12. Data and Security Notes
+### "Trusted buyer already exists for this branch"
 
-- Authentication uses secure token-based sessions.
-- Route and action access are role-restricted.
-- Branch-level isolation applies to manager and sales-agent records.
-- Director sees aggregation only, not branch transaction entry pages.
+Search for the buyer first and update the existing record instead of creating a duplicate.
 
-## 13. Quick Checklist for New Branch Managers
+### "Payment exceeds balance"
 
-1. Confirm login works for your account.
-2. Set all produce prices in `Price Management`.
-3. Add/verify trusted buyers.
-4. Verify branch users (1 manager + 2 sales agents).
-5. Record procurement for incoming stock.
-6. Confirm inventory appears and status badges are correct.
-7. Start sales and credit operations.
-8. Review records daily and process repayments.
+Enter a repayment amount less than or equal to the remaining balance.
+
+### "Each branch can only have 1 manager" or "2 sales agents"
+
+Adjust existing users instead of creating extra users in the same branch.
+
+## 12. Security and Data Notes
+
+- authentication is required for protected pages and API routes
+- actions are restricted by role and branch scope
+- server-side validation enforces business rules
+- logout clears the session and the backend can invalidate active tokens
+
+## 13. Quick Checklist for a New Manager
+
+1. log in successfully
+2. set branch prices
+3. add or verify trusted buyers
+4. verify branch staff
+5. record procurement
+6. confirm inventory updated
+7. start sales operations
+8. review records and repayments daily

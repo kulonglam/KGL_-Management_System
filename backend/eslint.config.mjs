@@ -1,4 +1,4 @@
-/** Backend ESLint flat configuration for Node.js services, routes, and test files. */
+// Backend ESLint flat configuration for Node.js services, routes, and test files. */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FlatCompat } from '@eslint/eslintrc';
@@ -32,4 +32,3 @@ export default [
     }
   })
 ];
-

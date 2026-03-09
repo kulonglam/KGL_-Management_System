@@ -1,9 +1,5 @@
-/**
- * Supplies shared utility helpers used across multiple backend modules.
- * File: backend/utils/logger.js
- */
-
-// Handle mask sensitive value.
+// Supplies shared utility helpers used across multiple backend modules.
+ // Handle mask sensitive value.
 const maskSensitiveValue = (key, value) => {
   if (value === undefined || value === null) return value;
 
@@ -78,8 +74,3 @@ const logger = {
 };
 
 export default logger;
-
-
-
-
-

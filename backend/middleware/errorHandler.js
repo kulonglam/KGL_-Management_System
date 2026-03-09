@@ -1,7 +1,4 @@
-/**
- * Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
- * File: backend/middleware/errorHandler.js
- */
+// Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
 
 import logger from '../utils/logger.js';
 
@@ -48,8 +45,3 @@ const errorHandler = (err, req, res, _next) => {
 };
 
 export { notFound, errorHandler };
-
-
-
-
-

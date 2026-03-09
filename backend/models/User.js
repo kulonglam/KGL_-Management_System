@@ -1,7 +1,4 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/User.js
- */
+// Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
 
 import mongoose from 'mongoose';
 
@@ -31,8 +28,3 @@ userSchema.index({ branch: 1, role: 1 });
 userSchema.index({ username: 1, lockUntil: 1 });
 
 export default mongoose.model('User', userSchema);
-
-
-
-
-

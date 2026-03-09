@@ -1,7 +1,4 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/trustedBuyerController.js
- */
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import {
@@ -129,8 +126,3 @@ const deleteTrustedBuyer = async (req, res) => {
   }
 };
 export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer };
-
-
-
-
-

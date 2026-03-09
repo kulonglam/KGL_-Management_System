@@ -1,7 +1,4 @@
-/**
- * Persists and retrieves immutable price change history.
- * File: backend/services/priceHistoryService.js
- */
+// Persists and retrieves immutable price change history.
 
 import PriceHistory from '../models/PriceHistory.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';

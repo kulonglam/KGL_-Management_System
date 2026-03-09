@@ -65,10 +65,7 @@ const resolvePatternMessage = (label, pattern) => {
 
 export {
   alphaNumericMessage,
-  dottedTextMessage,
-  invalidFormatMessage,
   invalidValueMessage,
-  lettersOnlyMessage,
   localPhoneMessage,
   maxLengthMessage,
   maxValueMessage,

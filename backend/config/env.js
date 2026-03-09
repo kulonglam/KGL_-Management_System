@@ -1,7 +1,4 @@
-/**
- * Validates required environment configuration so the server fails fast on invalid setup.
- * File: backend/config/env.js
- */
+// Validates required environment configuration so the server fails fast on invalid setup.
 
 import { getJwtClaimOptions, parseAllowedOrigins, shouldEnableSwagger } from './security.js';
 

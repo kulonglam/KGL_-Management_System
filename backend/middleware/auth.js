@@ -1,8 +1,4 @@
-/**
- * Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
- * File: backend/middleware/auth.js
- */
-
+// Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
@@ -99,8 +95,3 @@ const authorizeDirectorOrban = (req, res, next) => {
 };
 
 export { protect, authorize, authorizeDirectorOrban };
-
-
-
-
-

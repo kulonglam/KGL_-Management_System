@@ -1,8 +1,7 @@
 /**
  * Builds inventory snapshots from procurement and sales movements, including branch-level
  * totals, low-stock/out-of-stock views, and produce-level stock lookups.
- * File: backend/services/inventoryService.js
- */
+  */
 
 import Procurement from '../models/Procurement.js';
 import Sale from '../models/Sale.js';
@@ -156,8 +155,3 @@ export {
   calculateInventoryByFilter,
   getInventoryOverview
 };
-
-
-
-
-

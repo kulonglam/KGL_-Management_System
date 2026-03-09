@@ -1,8 +1,5 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/TrustedBuyer.js
- */
-
+// Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ 
 import mongoose from 'mongoose';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
@@ -28,8 +25,3 @@ trustedBuyerSchema.index({ nationalId: 1, branch: 1 }, { unique: true });
 trustedBuyerSchema.index({ branch: 1, createdAt: -1 });
 
 export default mongoose.model('TrustedBuyer', trustedBuyerSchema);
-
-
-
-
-

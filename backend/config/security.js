@@ -99,14 +99,11 @@ const safeEquals = (left, right) => {
 };
 
 export {
-  FALLBACK_ALLOWED_ORIGINS,
   getAllowedOrigins,
   getJwtAlgorithms,
   getJwtClaimOptions,
-  getNodeEnv,
   getSwaggerCredentials,
   isProduction,
-  normalizeOrigin,
   parseAllowedOrigins,
   safeEquals,
   shouldEnableSwagger

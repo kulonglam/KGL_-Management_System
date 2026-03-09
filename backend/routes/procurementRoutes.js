@@ -1,8 +1,5 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/procurementRoutes.js
- */
-
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ 
 import express from 'express';
 // Configure router.
 const router = express.Router();

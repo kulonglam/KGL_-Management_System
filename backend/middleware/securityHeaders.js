@@ -1,8 +1,5 @@
-/**
- * Applies defensive HTTP response headers for browser-facing API traffic.
- * File: backend/middleware/securityHeaders.js
- */
-
+// Applies defensive HTTP response headers for browser-facing API traffic.
+ 
 import { getAllowedOrigins } from '../config/security.js';
 
 const buildCspValue = () => {

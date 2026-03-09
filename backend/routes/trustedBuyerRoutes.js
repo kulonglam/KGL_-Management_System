@@ -1,9 +1,5 @@
-/**
- * Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
- * File: backend/routes/trustedBuyerRoutes.js
- */
-
-import express from 'express';
+// Declares endpoint URLs and wires middleware/validators/controllers for this API surface.
+ import express from 'express';
 // Configure router.
 const router = express.Router();
 import {
@@ -64,8 +60,3 @@ router.delete(
 );
 
 export default router;
-
-
-
-
-

@@ -166,5 +166,3 @@ export const priceAPI = {
   update: (id, data) => api.put(`/prices/${id}`, data),
   delete: (id) => api.delete(`/prices/${id}`)
 };
-
-export default api;

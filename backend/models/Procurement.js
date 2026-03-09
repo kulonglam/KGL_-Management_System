@@ -1,8 +1,5 @@
-/**
- * Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
- * File: backend/models/Procurement.js
- */
-
+//  Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
+ 
 import mongoose from 'mongoose';
 import {
   normalizeProduceName,
@@ -73,8 +70,3 @@ procurementSchema.index({ branch: 1, dateReceived: -1 });
 procurementSchema.index({ branch: 1, produceType: 1, sourceType: 1 });
 
 export default mongoose.model('Procurement', procurementSchema);
-
-
-
-
-

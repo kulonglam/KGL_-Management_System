@@ -1,7 +1,6 @@
-/**
+/*
  * Handles out-of-stock notification lifecycle: create-once for unread events
  * and resolve/acknowledge when matching stock is replenished.
- * File: backend/services/stockNotificationService.js
  */
 
 import StockNotification from '../models/StockNotification.js';
@@ -55,8 +54,3 @@ const resolveOutOfStockNotification = async ({ branch, produceName, produceType 
 };
 
 export { createOutOfStockNotification, resolveOutOfStockNotification };
-
-
-
-
-

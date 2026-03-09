@@ -119,7 +119,7 @@ export const historyActionLabel = (action) => {
 
 export const formatHistoryTimestamp = (value) => formatDisplayTimestamp(value);
 
-export const describeHistoryTarget = (produceName, produceType) => {
+const describeHistoryTarget = (produceName, produceType) => {
   const normalizedName = normalizeProduceName(produceName);
   if (normalizedName) {
     return `${normalizedName} (${produceType})`;

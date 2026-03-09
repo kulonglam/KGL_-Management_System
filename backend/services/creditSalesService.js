@@ -1,8 +1,7 @@
 /**
  * Implements credit-sale business workflows: stock-safe creation, due-date validation,
  * outstanding-balance checks, payment-status transitions, and repayment posting.
- * File: backend/services/creditSalesService.js
- */
+  */
 
 import CreditSale from '../models/CreditSale.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
@@ -77,15 +76,6 @@ const buildOutstandingBalanceMessage = (outstandingBalance) => {
   return `Trusted buyer has an outstanding balance of ${Math.round(outstandingBalance).toLocaleString('en-UG')} UGX. Clear previous credit first.`;
 };
 
-// Build deterministic state values for a paid/unpaid status toggle.
-const buildPaymentStatusUpdate = (creditSale, isPaid) => {
-  return {
-    isPaid,
-    amountPaidUgx: isPaid ? creditSale.amountDueUgx : 0,
-    balanceUgx: isPaid ? 0 : creditSale.amountDueUgx
-  };
-};
-
 // Parse and validate repayment input values (amount and payment date).
 const parseRepaymentInput = ({ amountUgx, paidAt }) => {
   const amount = Number(amountUgx);
@@ -99,29 +89,6 @@ const parseRepaymentInput = ({ amountUgx, paidAt }) => {
   }
 
   return { amount, paidAt: paidAtDate };
-};
-
-// Compute post-payment amounts and reject overpayment against current remaining balance.
-const calculateRepaymentState = (creditSale, amount) => {
-  const currentPaid = creditSale.amountPaidUgx || 0;
-  const currentBalance =
-    creditSale.balanceUgx !== undefined && creditSale.balanceUgx !== null
-      ? creditSale.balanceUgx
-      : Math.max(creditSale.amountDueUgx - currentPaid, 0);
-
-  if (amount > currentBalance) {
-    return { error: `Payment exceeds balance (${currentBalance} UGX)` };
-  }
-
-  const newPaid = currentPaid + amount;
-  const newBalance = Math.max(creditSale.amountDueUgx - newPaid, 0);
-
-  return {
-    currentPaid,
-    currentBalance,
-    newPaid,
-    newBalance
-  };
 };
 
 // Reusable aggregation expression for current paid amount in atomic update pipelines.
@@ -403,19 +370,7 @@ const repayCreditSaleRecord = async ({ actorUser, creditSaleId, payload }) => {
 };
 
 export {
-  resolveProduceTypeForCreditSale,
-  validateDueDate,
-  calculateOutstandingBalance,
-  buildOutstandingBalanceMessage,
-  buildPaymentStatusUpdate,
-  parseRepaymentInput,
-  calculateRepaymentState,
   applyCreditPaymentStatusUpdate,
   createCreditSaleRecord,
   repayCreditSaleRecord
 };
-
-
-
-
-

@@ -1,7 +1,5 @@
 // Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
- //File: backend/middleware/securityGuards.js
  
-
 const POLLUTION_BLOCKLIST = new Set(['__proto__', 'prototype', 'constructor']);
 
 // Strip keys that can trigger NoSQL/operator injection or prototype pollution.
@@ -76,8 +74,3 @@ const enforceHttpsInProduction = (req, res, next) => {
 };
 
 export { sanitizeRequestPayload, rejectParameterPollution, enforceHttpsInProduction };
-
-
-
-
-

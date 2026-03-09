@@ -1,7 +1,6 @@
 /**
  * Provides authentication/account domain utilities: token generation, password policy checks,
  * profile-image validation, role guardrails, and user create/update workflows.
- * File: backend/services/authService.js
  */
 
 import jwt from 'jsonwebtoken';
@@ -378,7 +377,6 @@ export {
   toUserPayload,
   ensureLegacyDirectorTotalsAccess,
   isDirectorOrbanAccount,
-  checkRoleLimits,
   checkRoleMinimumAfterRemoval,
   hashPassword,
   getGenericLoginFailure,
@@ -388,8 +386,3 @@ export {
   registerUser,
   updateUserRecord
 };
-
-
-
-
-

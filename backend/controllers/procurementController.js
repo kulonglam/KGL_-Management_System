@@ -1,7 +1,5 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/procurementController.js
- */
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
+ 
 
 import Procurement from '../models/Procurement.js';
 import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';

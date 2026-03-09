@@ -1,7 +1,4 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/authController.js
- */
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
@@ -262,8 +259,3 @@ const deleteUser = async (req, res) => {
 };
 
 export { login, logout, getMe, updateMe, register, getUsers, updateUser, deleteUser };
-
-
-
-
-

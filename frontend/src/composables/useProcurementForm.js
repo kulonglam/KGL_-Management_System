@@ -133,14 +133,6 @@ const useProcurementPricing = () => {
   };
 };
 
-// Convert source enum values into display-friendly labels.
-const formatSource = (value) => {
-  if (value === 'individual') return 'Individual';
-  if (value === 'company') return 'Company';
-  if (value === 'kgl_farm') return 'KGL Farm';
-  return value || '-';
-};
-
 // Normalize date-like input into HTML date input format (YYYY-MM-DD).
 const toDateInput = (value) => {
   if (!value) return '';
@@ -149,4 +141,4 @@ const toDateInput = (value) => {
   return date.toISOString().split('T')[0];
 };
 
-export { createInitialProcurementForm, useProcurementPricing, formatSource, toDateInput };
+export { createInitialProcurementForm, useProcurementPricing, toDateInput };

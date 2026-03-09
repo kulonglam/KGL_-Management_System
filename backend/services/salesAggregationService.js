@@ -1,7 +1,6 @@
-/**
+/*
  * Builds sales aggregation context and payloads for director reporting, including branch filters,
  * period windows, trend buckets, and combined cash/credit/procurement totals.
- * File: backend/services/salesAggregationService.js
  */
 
 import {
@@ -270,8 +269,3 @@ const buildSalesAggregationPayload = ({
 };
 
 export { resolveProduceTypeForSale, buildAggregationContext, buildSalesAggregationPayload };
-
-
-
-
-

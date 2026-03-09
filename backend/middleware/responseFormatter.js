@@ -1,9 +1,5 @@
-/**
- * Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
- * File: backend/middleware/responseFormatter.js
- */
-
-// Handle is unified shape.
+//  Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
+ // Handle is unified shape.
 const isUnifiedShape = (payload) =>
   payload &&
   typeof payload === 'object' &&
@@ -67,8 +63,3 @@ const responseFormatter = (req, res, next) => {
 };
 
 export { responseFormatter };
-
-
-
-
-

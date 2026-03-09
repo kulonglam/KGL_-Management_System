@@ -1,7 +1,4 @@
-/**
- * Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
- * File: backend/controllers/inventoryController.js
- */
+// Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
 import { getInventoryOverview } from '../services/inventoryService.js';
 

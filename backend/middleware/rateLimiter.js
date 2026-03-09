@@ -1,7 +1,4 @@
-/**
- * Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
- * File: backend/middleware/rateLimiter.js
- */
+// Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
 
 import rateLimit from 'express-rate-limit';
 
@@ -33,8 +30,3 @@ const writeLimiter = rateLimit({
 });
 
 export { apiLimiter, authLimiter, writeLimiter };
-
-
-
-
-
