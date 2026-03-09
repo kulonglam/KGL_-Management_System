@@ -100,6 +100,13 @@ export function usePriceManagement() {
     resetEditDialog();
   };
 
+  const updateEditForm = (nextForm) => {
+    editDialog.form = {
+      ...editDialog.form,
+      ...nextForm
+    };
+  };
+
   const confirmEditDialog = async () => {
     clearMessages();
     editDialog.error = '';
@@ -221,6 +228,7 @@ export function usePriceManagement() {
     priceStatusLabel: getPriceStatusLabel,
     produceTypes: PRICE_PRODUCE_TYPES,
     rows,
-    summaryItems
+    summaryItems,
+    updateEditForm
   };
 }

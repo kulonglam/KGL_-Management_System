@@ -26,7 +26,7 @@
                 <label class="form-label" for="price-edit-produce-name">Produce Name</label>
                 <input
                   id="price-edit-produce-name"
-                  v-model="form.produceName"
+                  v-model="produceNameModel"
                   type="text"
                   class="form-control"
                   placeholder="Leave blank for type default"
@@ -39,7 +39,7 @@
                 <label class="form-label" for="price-edit-produce-type">Produce Type</label>
                 <select
                   id="price-edit-produce-type"
-                  v-model="form.produceType"
+                  v-model="produceTypeModel"
                   class="form-select"
                 >
                   <option value="">Select type</option>
@@ -54,7 +54,7 @@
                   <span class="price-prefix">UGX</span>
                   <input
                     id="price-edit-price-ugx"
-                    v-model="form.priceUgx"
+                    v-model="priceUgxModel"
                     type="number"
                     class="form-control text-end price-input"
                     min="10000"
@@ -89,7 +89,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   show: {
     type: Boolean,
     default: false
@@ -112,7 +114,29 @@ defineProps({
   }
 });
 
-defineEmits(['close', 'submit']);
+const emit = defineEmits(['close', 'submit', 'update:form']);
+
+const updateForm = (field, value) => {
+  emit('update:form', {
+    ...props.form,
+    [field]: value
+  });
+};
+
+const produceNameModel = computed({
+  get: () => props.form.produceName,
+  set: (value) => updateForm('produceName', value)
+});
+
+const produceTypeModel = computed({
+  get: () => props.form.produceType,
+  set: (value) => updateForm('produceType', value)
+});
+
+const priceUgxModel = computed({
+  get: () => props.form.priceUgx,
+  set: (value) => updateForm('priceUgx', value)
+});
 </script>
 
 <style scoped>

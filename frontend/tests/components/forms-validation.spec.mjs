@@ -116,9 +116,9 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Produce name is required.');
-    expect(wrapper.text()).toContain('Produce type is required.');
-    expect(wrapper.text()).toContain('Source type is required.');
+    expect(wrapper.text()).toContain('Produce Name is required.');
+    expect(wrapper.text()).toContain('Produce Type is required.');
+    expect(wrapper.text()).toContain('Source Type is required.');
     expect(procurementAPI.create).not.toHaveBeenCalled();
   });
 
@@ -146,7 +146,7 @@ describe('Forms Validation E2E', () => {
         costUgx: 15000,
         sellingPrice: 22000,
         dealerName: 'Dealer 1',
-        dealerContact: '+256700000002'
+        dealerContact: '0700000002'
       })
     );
   });
@@ -196,7 +196,7 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Tonnage must be at least 1000 kg for individual dealers.');
+    expect(wrapper.text()).toContain('Tonnage (kg) must be at least 1000.');
     expect(procurementAPI.create).not.toHaveBeenCalled();
   });
 
@@ -214,7 +214,7 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Dealer contact must be a valid Ugandan phone number.');
+    expect(wrapper.text()).toContain('Dealer Contact must use the 07XXXXXXXX format.');
     expect(procurementAPI.create).not.toHaveBeenCalled();
   });
 
@@ -235,9 +235,9 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Produce name is required.');
-    expect(wrapper.text()).toContain('Tonnage is required.');
-    expect(wrapper.text()).toContain('Buyer name is required.');
+    expect(wrapper.text()).toContain('Produce Name is required.');
+    expect(wrapper.text()).toContain('Tonnage (kg) is required.');
+    expect(wrapper.text()).toContain('Buyer Name is required.');
     expect(salesAPI.create).not.toHaveBeenCalled();
   });
 
@@ -277,7 +277,7 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Buyer name must be alphanumeric.');
+    expect(wrapper.text()).toContain('Buyer Name must be alpha-numeric.');
     expect(salesAPI.create).not.toHaveBeenCalled();
   });
 
@@ -288,9 +288,9 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Trusted buyer is required.');
-    expect(wrapper.text()).toContain('Produce name is required.');
-    expect(wrapper.text()).toContain('Due date is required.');
+    expect(wrapper.text()).toContain('Trusted Buyer is required.');
+    expect(wrapper.text()).toContain('Produce Name is required.');
+    expect(wrapper.text()).toContain('Due Date is required.');
     expect(creditSalesAPI.create).not.toHaveBeenCalled();
   });
 
@@ -349,7 +349,7 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Buyer name is required.');
+    expect(wrapper.text()).toContain('Buyer Name is required.');
     expect(wrapper.text()).toContain('National ID is required.');
     expect(wrapper.text()).toContain('Location is required.');
     expect(wrapper.text()).toContain('Contact is required.');
@@ -375,7 +375,7 @@ describe('Forms Validation E2E', () => {
       name: 'Buyer 3',
       nationalId: 'CF120000000000',
       location: 'Kampala 2',
-      contact: '+256700000003'
+      contact: '0700000003'
     });
   });
 
@@ -411,7 +411,7 @@ describe('Forms Validation E2E', () => {
     await wrapper.find('form').trigger('submit.prevent');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Contact must be a valid Ugandan phone number.');
+    expect(wrapper.text()).toContain('Contact must use the 07XXXXXXXX format.');
     expect(trustedBuyersAPI.create).not.toHaveBeenCalled();
   });
 

@@ -49,6 +49,7 @@
       :error="editDialog.error"
       @close="closeEditDialog"
       @submit="confirmEditDialog"
+      @update:form="updateEditForm"
     />
 
     <PriceHistoryDialog
@@ -104,7 +105,8 @@ const {
   priceStatusLabel,
   produceTypes,
   rows,
-  summaryItems
+  summaryItems,
+  updateEditForm
 } = usePriceManagement();
 </script>
 
