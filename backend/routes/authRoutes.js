@@ -4,7 +4,16 @@
  */
 
 import express from 'express';
-import { login, register, getMe, updateMe, getUsers, updateUser, deleteUser } from '../controllers/authController.js';
+import {
+  login,
+  logout,
+  register,
+  getMe,
+  updateMe,
+  getUsers,
+  updateUser,
+  deleteUser
+} from '../controllers/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { authLimiter, writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
@@ -30,6 +39,8 @@ router.use(noStore);
 
 // POST /api/auth/login: authenticate credentials and return signed session details.
 router.post('/login', authLimiter, loginValidation, validateRequest, login);
+// POST /api/auth/logout: revoke the active bearer token version for the current user.
+router.post('/logout', protect, writeLimiter, logout);
 // POST /api/auth/register: create a new branch user account (manager only).
 router.post('/register', protect, authorize('manager'),
   writeLimiter,

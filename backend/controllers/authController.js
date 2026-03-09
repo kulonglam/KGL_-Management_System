@@ -16,6 +16,8 @@ import {
   hashPassword,
   validatePasswordStrength,
   getManagerUserAccessError,
+  getGenericLoginFailure,
+  revokeUserTokens,
   registerUser,
   updateUserRecord
 } from '../services/authService.js';
@@ -23,6 +25,7 @@ import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
 const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
+const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
 
 // POST /api/auth/login: authenticate credentials, apply lockout policy, and return auth payload.
 const login = async (req, res) => {
@@ -38,7 +41,9 @@ const login = async (req, res) => {
         reason: 'account_locked',
         lockUntil: user.lockUntil
       });
-      return res.status(423).json({ message: 'Account is temporarily locked. Try again later.' });
+      return res
+        .status(GENERIC_LOGIN_FAILURE.statusCode)
+        .json({ message: GENERIC_LOGIN_FAILURE.message });
     }
 
     if (user && (await bcrypt.compare(password, user.password))) {
@@ -63,10 +68,33 @@ const login = async (req, res) => {
         username,
         reason: 'invalid_credentials'
       });
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res
+        .status(GENERIC_LOGIN_FAILURE.statusCode)
+        .json({ message: GENERIC_LOGIN_FAILURE.message });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('auth.login.error', {
+      username: req.body?.username || null,
+      message: error.message
+    });
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// POST /api/auth/logout: revoke the current user's active JWT version and confirm logout.
+const logout = async (req, res) => {
+  try {
+    await revokeUserTokens(req.user?._id);
+    return res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    logger.error('auth.logout.error', {
+      requestId: req.requestId || null,
+      userId: req.user?._id ? String(req.user._id) : null,
+      message: error.message
+    });
+    return res.status(error.statusCode || 500).json({
+      message: error.statusCode ? error.message : 'Internal Server Error'
+    });
   }
 };
 
@@ -233,7 +261,7 @@ const deleteUser = async (req, res) => {
   }
 };
 
-export { login, getMe, updateMe, register, getUsers, updateUser, deleteUser };
+export { login, logout, getMe, updateMe, register, getUsers, updateUser, deleteUser };
 
 
 

@@ -461,6 +461,17 @@ const swaggerSpec = {
         }
       }
     },
+    '/api/auth/logout': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Logout current user',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/MessageObject' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
     '/api/auth/register': {
       post: {
         tags: ['Users'],

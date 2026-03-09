@@ -28,6 +28,10 @@ const PASSWORD_POLICY = {
   hasSymbol: /[^A-Za-z0-9]/
 };
 const ORBAN_DIRECTOR_USERNAME = 'orban';
+const GENERIC_LOGIN_FAILURE = {
+  statusCode: 401,
+  message: 'Invalid credentials'
+};
 
 // Normalize usernames for exact account-identity comparisons.
 const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
@@ -81,6 +85,9 @@ const generateToken = (id, tokenVersion = 0) => {
     }
   );
 };
+
+// Return the generic login failure payload used to avoid leaking account state.
+const getGenericLoginFailure = () => ({ ...GENERIC_LOGIN_FAILURE });
 
 // Enforce password complexity policy and return a human-readable error when a rule fails.
 const validatePasswordStrength = (password) => {
@@ -181,6 +188,25 @@ const checkRoleMinimumAfterRemoval = async (role, branch, excludeUserId) => {
 const hashPassword = async (password) => {
   const salt = await bcrypt.genSalt(10);
   return bcrypt.hash(password, salt);
+};
+
+// Revoke all currently issued JWTs for a user by rotating the token version server-side.
+const revokeUserTokens = async (userId) => {
+  if (!userId) {
+    throw createServiceError(400, 'User id is required');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $inc: { tokenVersion: 1 } },
+    { new: true, runValidators: false }
+  );
+
+  if (!user) {
+    throw createServiceError(404, 'User not found');
+  }
+
+  return user;
 };
 
 // Return an access error for manager-scoped operations when target user is outside allowed scope.
@@ -355,7 +381,9 @@ export {
   checkRoleLimits,
   checkRoleMinimumAfterRemoval,
   hashPassword,
+  getGenericLoginFailure,
   getManagerUserAccessError,
+  revokeUserTokens,
   validatePasswordStrength,
   registerUser,
   updateUserRecord

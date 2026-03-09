@@ -104,6 +104,7 @@ api.interceptors.response.use(
 // Authentication and user-management endpoints.
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
+  logout: () => api.post('/auth/logout'),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
   updateMe: (data) => api.put('/auth/me', data),

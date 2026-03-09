@@ -229,16 +229,32 @@
             type="button"
             class="btn-close"
             aria-label="Close logout confirmation"
+            :disabled="logoutSubmitting"
             @click="closeLogoutModal"
           ></button>
         </div>
         <div class="modal-body">
           <p class="mb-4">Are you sure you want to logout?</p>
+          <div v-if="logoutError" class="alert alert-danger py-2" role="alert">
+            {{ logoutError }}
+          </div>
           <div class="d-flex justify-content-end gap-2">
-            <button type="button" class="btn btn-outline-secondary" @click="closeLogoutModal">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="logoutSubmitting"
+              @click="closeLogoutModal"
+            >
               Cancel
             </button>
-            <button type="button" class="btn btn-danger" @click="confirmLogout">Logout</button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              :disabled="logoutSubmitting"
+              @click="confirmLogout"
+            >
+              {{ logoutSubmitting ? 'Logging out...' : 'Logout' }}
+            </button>
           </div>
         </div>
       </div>
@@ -250,7 +266,7 @@
 // Shared authenticated layout: sidebar/navigation, stock alerts, and logout modal controls.
  
 
-import { inventoryAPI, notificationsAPI } from '../services/api';
+import { authAPI, inventoryAPI, notificationsAPI } from '../services/api';
 import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
@@ -269,6 +285,8 @@ export default {
       stockMonitorIntervalId: null,
       mobileSidebarOpen: false,
       showLogoutModal: false,
+      logoutSubmitting: false,
+      logoutError: '',
       lastFocusedElement: null,
       lastSidebarFocusedElement: null,
       managerSectionOpen: {
@@ -450,6 +468,7 @@ export default {
   methods: {
     openLogoutModal() {
       this.lastFocusedElement = document.activeElement;
+      this.logoutError = '';
       this.showLogoutModal = true;
     },
     focusLogoutModal() {
@@ -463,11 +482,29 @@ export default {
       });
     },
     closeLogoutModal() {
+      if (this.logoutSubmitting) return;
+      this.logoutError = '';
       this.showLogoutModal = false;
     },
-    confirmLogout() {
+    async confirmLogout() {
+      if (this.logoutSubmitting) return;
+
+      this.logoutSubmitting = true;
+      this.logoutError = '';
+
+      try {
+        await authAPI.logout();
+      } catch (error) {
+        if (error?.response?.status !== 401) {
+          this.logoutError = error?.response?.data?.message || 'Logout failed. Please try again.';
+          this.logoutSubmitting = false;
+          return;
+        }
+      }
+
+      this.logoutSubmitting = false;
       this.closeMobileSidebar();
-      this.closeLogoutModal();
+      this.showLogoutModal = false;
       this.authStore.clearSession();
       this.$router.push('/');
     },
