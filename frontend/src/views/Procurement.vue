@@ -37,7 +37,7 @@
               <strong>Saving adds stock to {{ user.branch || 'the current' }} branch.</strong>
               <span>
                 Price per kilogram is pulled from Price Management once the produce name and type
-                match an existing manager price or type default.
+                match an existing manager price.
               </span>
             </div>
             <div class="form-action-buttons">
@@ -62,11 +62,8 @@
 </template>
 
 <script setup>
-/**
- * Procurement entry page: validates input, applies managed pricing, and submits new records.
- * File: frontend/src/views/Procurement.vue
- */
-
+// Procurement entry page: validates input, applies managed pricing, and submits new records.
+ 
 import { computed, onMounted, ref, watch } from 'vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import { useAutoClearFieldErrors } from '../composables/useAutoClearFieldErrors';
@@ -151,4 +148,3 @@ watch(
   }
 );
 </script>
-
