@@ -4,6 +4,10 @@
  */
 
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import {
+  buildReportBrandingHtml,
+  getReportBrandingRows
+} from './reportBranding.js';
 
 // Coerce nullable metric values into safe numeric output.
 const toNumber = (value) => Number(value || 0);
@@ -119,6 +123,8 @@ export const buildManagerCsvContent = (state) => {
     lines.push([]);
   };
 
+  const generatedAt = formatDisplayTimestamp(new Date());
+  lines.push(...getReportBrandingRows('Manager Report', generatedAt));
   addSection('Summary', ['Metric', 'Value'], getSummaryRows(state, false));
   addSection('Sales Trend', ['Period', 'Total Sales (UGX)'], getSalesTrendRows(state, false));
   addSection('Top Products', ['Product', 'Kilograms Sold'], getTopProductsRows(state, false));
@@ -132,6 +138,7 @@ export const buildManagerCsvContent = (state) => {
 
 // Build Excel-compatible HTML document for spreadsheet imports.
 export const buildManagerExcelContent = (state) => {
+  const generatedAt = formatDisplayTimestamp(new Date());
   const buildTable = (title, headers, rows) => {
     const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
     const headerRow = headers.length
@@ -155,8 +162,23 @@ export const buildManagerExcelContent = (state) => {
     <html>
       <head>
         <meta charset="UTF-8" />
+        <style>
+          body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; }
+          .report-branding { margin-bottom: 24px; }
+          .report-branding-main { display: flex; align-items: center; gap: 16px; }
+          .report-brand-logo { width: 68px; height: 68px; object-fit: contain; }
+          .report-company-name { font-size: 22px; font-weight: 700; }
+          .report-system-name { color: #475569; margin-top: 4px; }
+          .report-title { margin-top: 8px; font-size: 16px; font-weight: 600; }
+          .report-generated-at { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+        </style>
       </head>
       <body>
+        ${buildReportBrandingHtml({
+          reportTitle: 'Manager Report',
+          generatedAt,
+          escapeHtml
+        })}
         ${buildTable('Summary', ['Metric', 'Value'], getSummaryRows(state, false))}
         ${buildTable('Sales Trend', ['Period', 'Total Sales (UGX)'], getSalesTrendRows(state, false))}
         ${buildTable('Top Products', ['Product', 'Kilograms Sold'], getTopProductsRows(state, false))}
@@ -200,6 +222,13 @@ export const buildManagerReportHtml = (state) => {
         <title>Manager Report</title>
         <style>
           body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; margin: 24px; }
+          .report-branding { margin-bottom: 24px; }
+          .report-branding-main { display: flex; align-items: center; gap: 16px; }
+          .report-brand-logo { width: 68px; height: 68px; object-fit: contain; }
+          .report-company-name { font-size: 24px; font-weight: 700; }
+          .report-system-name { color: #475569; margin-top: 4px; }
+          .report-title { margin-top: 8px; font-size: 16px; font-weight: 600; color: #1e293b; }
+          .report-generated-at { margin: 8px 0 0; color: #64748b; font-size: 12px; }
           h1 { margin: 0 0 6px; font-size: 22px; }
           h2 { margin: 24px 0 10px; font-size: 16px; color: #1e293b; }
           p { margin: 0 0 16px; color: #64748b; font-size: 12px; }
@@ -210,8 +239,11 @@ export const buildManagerReportHtml = (state) => {
         </style>
       </head>
       <body>
-        <h1>Manager Report</h1>
-        <p>Generated ${escapeHtml(generatedAt)}</p>
+        ${buildReportBrandingHtml({
+          reportTitle: 'Manager Report',
+          generatedAt,
+          escapeHtml
+        })}
 
         <h2>Summary</h2>
         <table class="summary">

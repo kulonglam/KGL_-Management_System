@@ -1,6 +1,10 @@
 //  Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
  
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import {
+  buildReportBrandingHtml,
+  getReportBrandingRows
+} from './reportBranding.js';
 
 // Coerce nullable numeric fields from dashboard state into numbers.
 const toNumber = (value) => Number(value || 0);
@@ -124,6 +128,8 @@ export const buildDirectorCsvContent = (state) => {
     lines.push([]);
   };
 
+  const generatedAt = formatDisplayTimestamp(new Date());
+  lines.push(...getReportBrandingRows('Director Report', generatedAt));
   addSection('Summary', ['Metric', 'Value'], getDirectorSummaryRows(state, false));
   const branchSection = getDirectorBranchSection(state, false);
   addSection('Branch Totals', branchSection.headers, branchSection.rows);
@@ -136,6 +142,7 @@ export const buildDirectorCsvContent = (state) => {
 
 // Build Excel-compatible HTML content for direct spreadsheet opening.
 export const buildDirectorExcelContent = (state) => {
+  const generatedAt = formatDisplayTimestamp(new Date());
   const buildTable = (title, headers, rows) => {
     const columnCount = Math.max(headers.length || 1, ...rows.map((row) => row.length || 0), 1);
     const headerRow = headers.length
@@ -163,8 +170,23 @@ export const buildDirectorExcelContent = (state) => {
     <html>
       <head>
         <meta charset="UTF-8" />
+        <style>
+          body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; }
+          .report-branding { margin-bottom: 24px; }
+          .report-branding-main { display: flex; align-items: center; gap: 16px; }
+          .report-brand-logo { width: 68px; height: 68px; object-fit: contain; }
+          .report-company-name { font-size: 22px; font-weight: 700; }
+          .report-system-name { color: #475569; margin-top: 4px; }
+          .report-title { margin-top: 8px; font-size: 16px; font-weight: 600; }
+          .report-generated-at { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+        </style>
       </head>
       <body>
+        ${buildReportBrandingHtml({
+          reportTitle: 'Director Report',
+          generatedAt,
+          escapeHtml
+        })}
         ${buildTable('Summary', ['Metric', 'Value'], summaryRows)}
         ${buildTable('Branch Totals', branchSection.headers, branchSection.rows)}
         ${buildTable('Sales Trend', trendSection.headers, trendSection.rows)}
@@ -205,6 +227,13 @@ export const buildDirectorReportHtml = (state) => {
         <title>Director Report</title>
         <style>
           body { font-family: "Segoe UI", Tahoma, sans-serif; color: #0f172a; margin: 24px; }
+          .report-branding { margin-bottom: 24px; }
+          .report-branding-main { display: flex; align-items: center; gap: 16px; }
+          .report-brand-logo { width: 68px; height: 68px; object-fit: contain; }
+          .report-company-name { font-size: 24px; font-weight: 700; }
+          .report-system-name { color: #475569; margin-top: 4px; }
+          .report-title { margin-top: 8px; font-size: 16px; font-weight: 600; color: #1e293b; }
+          .report-generated-at { margin: 8px 0 0; color: #64748b; font-size: 12px; }
           h1 { margin: 0 0 6px; font-size: 22px; }
           h2 { margin: 24px 0 10px; font-size: 16px; color: #1e293b; }
           p { margin: 0 0 16px; color: #64748b; font-size: 12px; }
@@ -215,8 +244,11 @@ export const buildDirectorReportHtml = (state) => {
         </style>
       </head>
       <body>
-        <h1>Director Report</h1>
-        <p>Generated ${escapeHtml(generatedAt)}</p>
+        ${buildReportBrandingHtml({
+          reportTitle: 'Director Report',
+          generatedAt,
+          escapeHtml
+        })}
 
         <h2>Summary</h2>
         <table class="summary">

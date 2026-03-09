@@ -3,11 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildDirectorCsvContent,
-  buildDirectorFileName
+  buildDirectorFileName,
+  buildDirectorReportHtml
 } from '../src/utils/reports/directorReportExport.js';
 import {
   buildManagerCsvContent,
-  buildManagerFileName
+  buildManagerFileName,
+  buildManagerReportHtml
 } from '../src/utils/reports/managerReportExport.js';
 
 test('buildDirectorFileName sanitizes labels and formats filename', () => {
@@ -41,6 +43,7 @@ test('buildDirectorCsvContent includes report sections and escapes values', () =
   });
 
   assert.ok(csv.startsWith('\ufeff'));
+  assert.match(csv, /Karibu Groceries LTD/);
   assert.match(csv, /Summary/);
   assert.match(csv, /Branch Totals/);
   assert.match(csv, /"North, Branch"/);
@@ -85,8 +88,95 @@ test('buildManagerCsvContent includes key sections', () => {
   });
 
   assert.ok(csv.startsWith('\ufeff'));
+  assert.match(csv, /Karibu Groceries LTD/);
   assert.match(csv, /Summary/);
   assert.match(csv, /Sales Trend/);
   assert.match(csv, /Dealer Performance/);
+});
+
+test('buildDirectorReportHtml includes company branding and logo when available', () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      if (selector !== '.app-brand-logo') return null;
+      return {
+        getAttribute(name) {
+          return name === 'src' ? 'https://kgl-frontend.onrender.com/assets/logo.png' : '';
+        }
+      };
+    }
+  };
+
+  try {
+    const html = buildDirectorReportHtml({
+      selectedPeriodLabel: 'Weekly',
+      selectedBranchLabel: 'All Branches',
+      formattedRange: '01/01/2026 - 07/01/2026',
+      totalTransactions: 3,
+      totalRevenue: 1200000,
+      grandTotal: { cash: 700000, credit: 500000, totalKg: 800 },
+      procurementTotal: 400000,
+      branchLabels: ['Maganjo'],
+      branchTotals: {
+        Maganjo: { cash: 700000, credit: 500000, totalKg: 800 }
+      },
+      procurementTotals: {},
+      trendLabels: ['Mon'],
+      trendSeries: [1200000]
+    });
+
+    assert.match(html, /Karibu Groceries LTD/);
+    assert.match(html, /Wholesale Produce Management System/);
+    assert.match(html, /assets\/logo\.png/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
+});
+
+test('buildManagerReportHtml includes company branding and logo when available', () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    querySelector(selector) {
+      if (selector !== '.app-brand-logo') return null;
+      return {
+        getAttribute(name) {
+          return name === 'src' ? 'https://kgl-frontend.onrender.com/assets/logo.png' : '';
+        }
+      };
+    }
+  };
+
+  try {
+    const html = buildManagerReportHtml({
+      selectedPeriodLabel: 'Weekly',
+      userBranch: 'Maganjo',
+      formattedReportRange: '01/01/2026 - 07/01/2026',
+      totalTransactions: 12,
+      stats: {
+        cashSales: 500000,
+        creditSales: 350000,
+        procurementTotal: 150000,
+        procurementCount: 4,
+        inventoryValue: 2000000,
+        inventoryItems: 12
+      },
+      lowStockItemsLength: 2,
+      creditCollection: {
+        collected: 200000,
+        outstanding: 150000
+      },
+      salesOverTime: [{ label: 'Mon', amount: 850000 }],
+      topProducts: [{ name: 'Beans', totalKg: 200 }],
+      stockByProduct: [{ name: 'Beans', totalKg: 400 }],
+      agentPerformance: [{ name: 'Alex', amount: 300000 }],
+      dealerPerformance: [{ name: 'Lam Traders', amount: 150000 }]
+    });
+
+    assert.match(html, /Karibu Groceries LTD/);
+    assert.match(html, /Wholesale Produce Management System/);
+    assert.match(html, /assets\/logo\.png/);
+  } finally {
+    globalThis.document = originalDocument;
+  }
 });
 
