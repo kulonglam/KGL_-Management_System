@@ -17,9 +17,6 @@
             class="form-control"
             placeholder="Leave blank for a type default"
           />
-          <small class="text-muted optional-note">
-            Use a name for produce-specific pricing such as Red Beans.
-          </small>
         </div>
         <div>
           <label class="form-label" for="price-produce-type">Produce Type</label>
@@ -56,13 +53,6 @@
         </div>
       </div>
       <small v-if="error" class="text-danger d-block mt-2">{{ error }}</small>
-      <small class="text-muted d-block mt-2">
-        Leave produce name blank to create one default price for every produce name in that type.
-      </small>
-      <small class="text-muted d-block mt-1">
-        Example: keep `Beans` default at 36000, then add `Red Beans` at 35000 and `Yellow Beans` at
-        36000 as separate rows.
-      </small>
     </div>
   </div>
 </template>
@@ -130,11 +120,6 @@ const priceUgxModel = computed({
 
 .create-action {
   min-width: 150px;
-}
-
-.optional-note {
-  display: inline-block;
-  margin-top: 0.35rem;
 }
 
 .price-input-wrap {
