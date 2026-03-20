@@ -137,7 +137,7 @@ Use [DEMO_WALKTHROUGH.md](./DEMO_WALKTHROUGH.md) as the script for:
 - recorded walkthrough
 - viva or panel demonstration
 
-Before submission, replace the placeholder in `DEMO_WALKTHROUGH.md` with your final video or live demo link.
+Before submission, replace the placeholder in `DEMO_WALKTHROUGH.md`.
 
 ## Deployment
 
