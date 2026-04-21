@@ -15,7 +15,7 @@ import { validatePasswordStrength } from './services/authService.js';
 
 dotenv.config();
 
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || 'Karibu@2026!';
+const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || '';
 const BRANCHES = ['Maganjo', 'Matugga'];
 const PRODUCE_PRICES = {
   Beans: 35000,
