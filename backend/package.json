@@ -36,5 +36,12 @@
     "nodemon": "^3.0.1",
     "prettier": "^3.5.3",
     "supertest": "^7.1.0"
+  },
+  "overrides": {
+    "minimatch": "3.1.5",
+    "qs": "6.16.0",
+    "nodemon": {
+      "minimatch": "10.2.6"
+    }
   }
 }
