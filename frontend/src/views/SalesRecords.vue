@@ -74,8 +74,7 @@
         </div>
 
         <div v-if="loading" class="text-center py-5 text-muted">Loading sales records...</div>
-        <div v-else-if="salesRecords.length === 0" class="empty-state">No sales records found.</div>
-        <div v-else-if="filteredSalesRecords.length === 0" class="empty-state">
+        <div v-else-if="salesRecords.length === 0" class="empty-state">
           No sales records match your current filters.
         </div>
         <div v-else class="table-responsive">
@@ -93,7 +92,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in paginatedSalesRecords" :key="item._id">
+              <tr v-for="item in salesRecords" :key="item._id">
                 <td data-label="Produce Name">{{ item.produceName || '-' }}</td>
                 <td data-label="Produce Type">{{ item.produceType || '-' }}</td>
                 <td data-label="Tonnage (kg)" class="text-end">
@@ -129,8 +128,8 @@
         </div>
         <TablePagination
           :current-page="currentPage"
-          :total-pages="totalSalesPages"
-          :total-items="filteredSalesRecords.length"
+          :total-pages="listTotalPages"
+          :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
           id-prefix="sales-records"
@@ -287,6 +286,8 @@ import ConfirmDialog from '../components/common/ConfirmDialog.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { inventoryAPI, salesAPI } from '../services/api';
+import { debounce } from '../utils/debounce.js';
+import { asListPayload } from '../utils/listPayload.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayDateTime } from '../utils/dateFormat.js';
@@ -294,6 +295,8 @@ import { formatDisplayDateTime } from '../utils/dateFormat.js';
 const authStore = useAuthStore(pinia);
 const user = ref({});
 const salesRecords = ref([]);
+const listTotal = ref(0);
+const listTotalPages = ref(1);
 const inventory = ref([]);
 const loading = ref(false);
 const loadError = ref('');
@@ -349,15 +352,15 @@ const overviewItems = computed(() => [
   },
   {
     label: 'Cash Records',
-    value: salesRecords.value.length.toLocaleString('en-UG'),
-    meta: 'Loaded branch entries'
+    value: listTotal.value.toLocaleString('en-UG'),
+    meta: 'Matching branch entries'
   },
   {
     label: 'Visible Results',
-    value: filteredSalesRecords.value.length.toLocaleString('en-UG'),
+    value: salesRecords.value.length.toLocaleString('en-UG'),
     meta: activeFilterCount.value
       ? `${activeFilterCount.value} filter(s) applied`
-      : 'No filters applied'
+      : 'Current page'
   },
   {
     label: 'Cash Value',
@@ -370,8 +373,17 @@ const loadSalesRecords = async () => {
   loading.value = true;
   loadError.value = '';
   try {
-    const response = await salesAPI.getAll();
-    salesRecords.value = response.data || [];
+    const response = await salesAPI.getAll({
+      page: currentPage.value,
+      limit: pageSize.value,
+      search: searchQuery.value,
+      produceType: selectedProduceType.value,
+      sort: sortBy.value
+    });
+    const payload = asListPayload(response.data);
+    salesRecords.value = payload.items;
+    listTotal.value = payload.total;
+    listTotalPages.value = payload.totalPages;
   } catch (fetchError) {
     loadError.value = fetchError.response?.data?.message || 'Failed to load sales records.';
   } finally {
@@ -391,7 +403,7 @@ const loadInventory = async () => {
 };
 
 const produceTypeOptions = computed(() =>
-  Array.from(new Set(salesRecords.value.map((item) => item.produceType).filter(Boolean))).sort()
+  Array.from(new Set(inventory.value.map((item) => item.produceType).filter(Boolean))).sort()
 );
 
 const editProduceNameOptions = computed(() =>
@@ -443,46 +455,8 @@ const editAmountPreview = computed(() => {
 });
 
 // Apply search, optional type filter, then sorting so table output stays predictable across controls.
-const filteredSalesRecords = computed(() => {
-  const query = searchQuery.value.toLowerCase();
-  const searched = salesRecords.value.filter((item) => {
-    if (!query) return true;
-    const haystack = [item.produceName, item.produceType, item.buyerName, item.salesAgentName]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(query);
-  });
-
-  const filtered =
-    selectedProduceType.value === 'all'
-      ? searched
-      : searched.filter((item) => item.produceType === selectedProduceType.value);
-
-  const sorted = [...filtered];
-  if (sortBy.value === 'oldest') {
-    sorted.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-  } else if (sortBy.value === 'amount_desc') {
-    sorted.sort((a, b) => Number(b.amountPaidUgx || 0) - Number(a.amountPaidUgx || 0));
-  } else if (sortBy.value === 'quantity_desc') {
-    sorted.sort((a, b) => Number(b.tonnageKg || 0) - Number(a.tonnageKg || 0));
-  } else {
-    sorted.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  }
-  return sorted;
-});
-
-const totalSalesPages = computed(() =>
-  Math.max(1, Math.ceil(filteredSalesRecords.value.length / pageSize.value))
-);
-
-const paginatedSalesRecords = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  return filteredSalesRecords.value.slice(start, start + pageSize.value);
-});
-
 const goToPage = (page) => {
-  const nextPage = Math.max(1, Math.min(totalSalesPages.value, Number(page || 1)));
+  const nextPage = Math.max(1, Math.min(listTotalPages.value, Number(page || 1)));
   currentPage.value = nextPage;
 };
 
@@ -595,17 +569,27 @@ watch(
 );
 
 watch(pageSize, () => {
-  currentPage.value = 1;
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+    return;
+  }
+  loadSalesRecords();
 });
 
-watch(salesRecords, () => {
-  if (currentPage.value > totalSalesPages.value) {
-    currentPage.value = totalSalesPages.value;
-  }
+watch(currentPage, () => {
+  loadSalesRecords();
 });
+
+const debouncedReloadSales = debounce(() => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+    return;
+  }
+  loadSalesRecords();
+}, 300);
 
 watch([searchQuery, selectedProduceType, sortBy], () => {
-  currentPage.value = 1;
+  debouncedReloadSales();
 });
 
 const resetFilters = () => {

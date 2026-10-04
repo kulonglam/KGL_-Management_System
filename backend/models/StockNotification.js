@@ -2,6 +2,7 @@
  
 
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define stock notification schema.
@@ -10,7 +11,7 @@ const stockNotificationSchema = new mongoose.Schema(
     branch: {
       type: String,
       required: true,
-      enum: ['Maganjo', 'Matugga']
+      ...createBranchSchemaField()
     },
     produceName: {
       type: String,
@@ -28,7 +29,7 @@ const stockNotificationSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: ['out_of_stock'],
+      enum: ['out_of_stock', 'low_stock'],
       default: 'out_of_stock'
     },
     message: {

@@ -62,7 +62,9 @@
     <ProcurementRecordsTable
       :procurements="procurements"
       :loading="loadingList"
+      :total-items="listTotal"
       @refresh="loadProcurements"
+      @query="handleListQuery"
       @edit="startEdit"
       @delete="openDeleteDialog"
     />
@@ -99,12 +101,21 @@ import {
 import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { asListPayload } from '../utils/listPayload.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Authenticated user metadata used for branch-aware display.
 const user = ref({});
 // Loaded procurement records displayed in the table.
 const procurements = ref([]);
+const listTotal = ref(0);
+const listQuery = ref({
+  page: 1,
+  limit: 20,
+  search: '',
+  produceType: 'all',
+  sort: 'newest'
+});
 // Tracks list-fetch loading state.
 const loadingList = ref(false);
 // Selected record id currently being edited in modal.
@@ -138,13 +149,32 @@ const resetForm = () => {
 const loadProcurements = async () => {
   loadingList.value = true;
   try {
-    const response = await procurementAPI.getAll();
-    procurements.value = response.data;
+    const response = await procurementAPI.getAll({
+      page: listQuery.value.page,
+      limit: listQuery.value.limit,
+      search: listQuery.value.search,
+      produceType: listQuery.value.produceType,
+      sort: listQuery.value.sort
+    });
+    const payload = asListPayload(response.data);
+    procurements.value = Array.isArray(payload.items) ? payload.items : [];
+    listTotal.value = payload.total;
   } catch (fetchError) {
     setError(fetchError.response?.data?.message || 'Failed to load procurement records');
   } finally {
     loadingList.value = false;
   }
+};
+
+const handleListQuery = (query) => {
+  listQuery.value = {
+    page: query.page || 1,
+    limit: query.limit || 20,
+    search: query.search || '',
+    produceType: query.produceType || 'all',
+    sort: query.sort || 'newest'
+  };
+  loadProcurements();
 };
 
 // Open edit modal and hydrate form with selected record values.

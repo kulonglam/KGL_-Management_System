@@ -76,13 +76,44 @@ const parseProfileImageUpdate = (rawValue) => {
 // Create a signed JWT for a user, embedding tokenVersion and a unique JTI claim.
 const generateToken = (id, tokenVersion = 0) => {
   return jwt.sign(
-    { id, tokenVersion, jti: randomUUID() },
+    { id, tokenVersion, typ: 'access', jti: randomUUID() },
     process.env.JWT_SECRET,
     {
       expiresIn: process.env.JWT_EXPIRES_IN || '12h',
       ...getJwtClaimOptions()
     }
   );
+};
+
+const generateRefreshToken = (id, refreshTokenVersion = 0) =>
+  jwt.sign(
+    { id, refreshTokenVersion, typ: 'refresh', jti: randomUUID() },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+      ...getJwtClaimOptions()
+    }
+  );
+
+const generateMfaToken = (id) =>
+  jwt.sign(
+    { id, typ: 'mfa', jti: randomUUID() },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: '5m',
+      ...getJwtClaimOptions()
+    }
+  );
+
+const createRecoveryCodes = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 8 }, () => {
+    let code = '';
+    for (let i = 0; i < 10; i += 1) {
+      code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    return `${code.slice(0, 5)}-${code.slice(5)}`;
+  });
 };
 
 // Return the generic login failure payload used to avoid leaking account state.
@@ -117,7 +148,8 @@ const toUserPayload = (user, includeToken = false) => {
     username: user.username,
     profileImage: user.profileImage || '',
     role: user.role,
-    branch: user.branch
+    branch: user.branch,
+    mfaEnabled: Boolean(user.mfaEnabled)
   };
 
   if (includeToken) {
@@ -197,7 +229,7 @@ const revokeUserTokens = async (userId) => {
 
   const user = await User.findByIdAndUpdate(
     userId,
-    { $inc: { tokenVersion: 1 } },
+    { $inc: { tokenVersion: 1, refreshTokenVersion: 1 } },
     { new: true, runValidators: false }
   );
 
@@ -384,5 +416,8 @@ export {
   revokeUserTokens,
   validatePasswordStrength,
   registerUser,
-  updateUserRecord
+  updateUserRecord,
+  generateRefreshToken,
+  generateMfaToken,
+  createRecoveryCodes
 };

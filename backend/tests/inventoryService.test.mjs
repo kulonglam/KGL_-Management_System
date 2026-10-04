@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildInventorySnapshot } from '../services/inventoryService.js';
+import { assertProcurementKeepsStockNonNegative, buildInventorySnapshot } from '../services/inventoryService.js';
 
 // Handle sort snapshot.
 const sortSnapshot = (rows) =>
@@ -130,4 +130,31 @@ test('buildInventorySnapshot merges canonical produce name aliases', () => {
   assert.equal(snapshot[0].produceName, 'Red Beans');
   assert.equal(snapshot[0].produceType, 'Beans');
   assert.equal(snapshot[0].totalTonnageKg, 900);
+});
+
+test('assertProcurementKeepsStockNonNegative rejects a delete that would leave negative stock', () => {
+  const snapshot = [
+    {
+      produceName: 'Red Beans',
+      produceType: 'Beans',
+      branch: 'Maganjo',
+      totalTonnageKg: 200,
+      sellingPrice: 35000
+    }
+  ];
+
+  assert.throws(
+    () =>
+      assertProcurementKeepsStockNonNegative({
+        snapshot,
+        branch: 'Maganjo',
+        previousProduceName: 'Red Beans',
+        previousProduceType: 'Beans',
+        previousTonnageKg: 1000,
+        nextProduceName: 'Red Beans',
+        nextProduceType: 'Beans',
+        nextTonnageKg: 0
+      }),
+    /would leave stock/
+  );
 });

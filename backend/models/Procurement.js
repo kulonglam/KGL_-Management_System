@@ -1,6 +1,7 @@
 //  Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
  
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -56,7 +57,7 @@ const procurementSchema = new mongoose.Schema(
       set: normalizeLocalPhone,
       match: LOCAL_PHONE_PATTERN
     },
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     sellingPrice: { type: Number, required: true, min: 10000 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
   },

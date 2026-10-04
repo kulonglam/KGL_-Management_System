@@ -80,6 +80,7 @@ export default {
         cashCount: 0,
         creditSales: 0,
         creditCount: 0,
+        overdueCount: 0,
         totalKg: 0
       }
     };
@@ -184,6 +185,11 @@ export default {
           label: 'Credit Sales',
           value: this.formatStatCurrency(this.stats.creditSales),
           meta: `${this.stats.creditCount} transaction(s)`
+        },
+        {
+          label: 'Overdue credit',
+          value: String(this.stats.overdueCount || 0),
+          meta: 'Past due in your name'
         }
       ];
     }
@@ -194,21 +200,26 @@ export default {
       this.loading = true;
       this.loadError = '';
       try {
-        const [salesRes, creditRes] = await Promise.all([
+        const [salesRes, creditRes, overdueRes] = await Promise.all([
           salesAPI.getAll(),
-          creditSalesAPI.getAll()
+          creditSalesAPI.getAll(),
+          creditSalesAPI.getAll({ status: 'overdue', notify: true })
         ]);
+
+        const salesRows = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data?.items || [];
+        const creditRows = Array.isArray(creditRes.data) ? creditRes.data : creditRes.data?.items || [];
+        const overdueRows = Array.isArray(overdueRes.data) ? overdueRes.data : overdueRes.data?.items || [];
 
         const { startOfDay, endOfDay } = this.getTodayRange();
 
         // Filter by current user and today's date
-        const mySales = salesRes.data.filter((s) => {
+        const mySales = salesRows.filter((s) => {
           if (s.salesAgentName !== this.user.name) return false;
           const saleDate = new Date(s.date);
           return saleDate >= startOfDay && saleDate < endOfDay;
         });
 
-        const myCreditSales = creditRes.data.filter((c) => {
+        const myCreditSales = creditRows.filter((c) => {
           if (c.salesAgentName !== this.user.name) return false;
           const dispatchDate = new Date(c.dateOfDispatch);
           return dispatchDate >= startOfDay && dispatchDate < endOfDay;
@@ -223,6 +234,7 @@ export default {
         this.stats.totalKg =
           mySales.reduce((sum, s) => sum + s.tonnageKg, 0) +
           myCreditSales.reduce((sum, c) => sum + c.tonnageKg, 0);
+        this.stats.overdueCount = overdueRows.filter((item) => item.salesAgentName === this.user.name).length;
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Unable to load sales summary.';
       } finally {

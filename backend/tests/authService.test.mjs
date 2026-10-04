@@ -25,7 +25,7 @@ test('revokeUserTokens rotates tokenVersion for the specified user', async (t) =
   assert.equal(result, expectedUser);
   assert.deepEqual(receivedArgs, [
     'user-123',
-    { $inc: { tokenVersion: 1 } },
+    { $inc: { tokenVersion: 1, refreshTokenVersion: 1 } },
     { new: true, runValidators: false }
   ]);
 });

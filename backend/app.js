@@ -27,6 +27,8 @@ import trustedBuyerRoutes from './routes/trustedBuyerRoutes.js';
 import priceRoutes from './routes/priceRoutes.js';
 import stockNotificationRoutes from './routes/stockNotificationRoutes.js';
 import opsRoutes from './routes/opsRoutes.js';
+import branchRoutes from './routes/branchRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 
 // Create app.
 const createApp = () => {
@@ -68,18 +70,32 @@ const createApp = () => {
   }
   app.use('/', opsRoutes);
 
-  // Routes
-  app.use('/api/auth', authRoutes);
-  app.use('/api/procurement', procurementRoutes);
-  app.use('/api/sales', salesRoutes);
-  app.use('/api/credit-sales', creditSalesRoutes);
-  app.use('/api/inventory', inventoryRoutes);
-  app.use('/api/trusted-buyers', trustedBuyerRoutes);
-  app.use('/api/prices', priceRoutes);
-  app.use('/api/notifications', stockNotificationRoutes);
+  const mountVersionedApi = (router) => {
+    router.get('/', (_req, res) => {
+      res.json({
+        name: 'Karibu Groceries LTD API',
+        version: 'v1'
+      });
+    });
+    router.use('/auth', authRoutes);
+    router.use('/procurement', procurementRoutes);
+    router.use('/sales', salesRoutes);
+    router.use('/credit-sales', creditSalesRoutes);
+    router.use('/inventory', inventoryRoutes);
+    router.use('/trusted-buyers', trustedBuyerRoutes);
+    router.use('/prices', priceRoutes);
+    router.use('/notifications', stockNotificationRoutes);
+    router.use('/branches', branchRoutes);
+    router.use('/audit-logs', auditRoutes);
+  };
 
-  app.get('/', (req, res) => {
-    res.json({ message: 'Karibu Groceries LTD API' });
+  const apiV1 = express.Router();
+  mountVersionedApi(apiV1);
+  app.use('/api/v1', apiV1);
+  app.use('/api', apiV1);
+
+  app.get('/', (_req, res) => {
+    res.json({ message: 'Karibu Groceries LTD API', currentVersion: 'v1' });
   });
 
   app.use(notFound);

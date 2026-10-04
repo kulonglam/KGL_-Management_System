@@ -5,6 +5,7 @@ import express from 'express';
 const router = express.Router();
 import {
   getPrices,
+  getPriceById,
   getPriceHistory,
   createPrice,
   updatePrice,
@@ -41,6 +42,15 @@ router.get(
   mongoIdParamValidation,
   validateRequest,
   getPriceHistory
+);
+
+router.get(
+  '/:id',
+  protect,
+  authorize('manager'),
+  mongoIdParamValidation,
+  validateRequest,
+  getPriceById
 );
 
 // PUT /api/prices/:id: update one price rule and propagate the new selling price.

@@ -126,6 +126,7 @@
       </div>
     </div>
 
+    <ReceiptDialog :sale="lastReceipt" sale-type="Cash sale" @close="lastReceipt = null" />
   </div>
 </template>
 
@@ -142,6 +143,7 @@ import { useStockValidation } from '../composables/useStockValidation';
 import { formatUgx } from '../utils/numberFormat';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import ReceiptDialog from '../components/common/ReceiptDialog.vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
 import { salesValidationSchema } from '../utils/formSchemas.js';
@@ -154,6 +156,7 @@ const inventory = ref([]);
 const form = ref(createInitialForm());
 // Controls visibility of pre-submit review modal.
 const showReviewModal = ref(false);
+const lastReceipt = ref(null);
 // DOM ref used for review modal focus management.
 const reviewModalRef = ref(null);
 const authStore = useAuthStore(pinia);
@@ -261,7 +264,8 @@ const confirmSaveSale = async () => {
   beginSubmit();
 
   try {
-    await salesAPI.create(form.value);
+    const response = await salesAPI.create(form.value);
+    lastReceipt.value = response.data;
     setSuccess('Sale recorded successfully!');
     showReviewModal.value = false;
     resetForm({ preserveFeedback: true });

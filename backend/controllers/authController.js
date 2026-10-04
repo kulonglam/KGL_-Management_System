@@ -1,5 +1,6 @@
 // Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
@@ -16,9 +17,17 @@ import {
   getGenericLoginFailure,
   revokeUserTokens,
   registerUser,
-  updateUserRecord
+  updateUserRecord,
+  generateRefreshToken,
+  generateMfaToken,
+  createRecoveryCodes
 } from '../services/authService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
+import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '../utils/cookies.js';
+import { buildOtpAuthUri, generateTotpSecret, verifyTotpCode } from '../utils/totp.js';
+import { recordAudit } from '../services/auditService.js';
 
 const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
@@ -50,6 +59,20 @@ const login = async (req, res) => {
         await user.save();
       }
       await ensureLegacyDirectorTotalsAccess(user);
+      if (user.mfaEnabled) {
+        return res.json({
+          mfaRequired: true,
+          mfaToken: generateMfaToken(user._id)
+        });
+      }
+      setRefreshCookie(res, generateRefreshToken(user._id, Number(user.refreshTokenVersion || 0)));
+      await recordAudit({
+        actor: user,
+        action: 'login',
+        entityType: 'user',
+        entityId: user._id,
+        branch: user.branch || ''
+      });
       return res.json(toUserPayload(user, true));
     } else {
       if (user) {
@@ -82,6 +105,7 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
   try {
     await revokeUserTokens(req.user?._id);
+    clearRefreshCookie(res);
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
     logger.error('auth.logout.error', {
@@ -191,14 +215,31 @@ const getUsers = async (req, res) => {
       filter.role = mongoose.trusted({ $in: ['manager', 'sales_agent'] });
     }
 
+    const requestedRole = String(req.query.role || 'all');
+    if (requestedRole !== 'all' && ['manager', 'sales_agent', 'director'].includes(requestedRole)) {
+      filter.role = requestedRole;
+    }
+
+    Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'username', 'role', 'branch']));
+
     const pagination = parsePagination(req.query);
-    const usersQuery = User.find(filter).select('-password').sort({ createdAt: -1 }).lean();
+    const sort = resolveSort(req.query.sort, {
+      name_asc: { name: 1 },
+      name_desc: { name: -1 },
+      recent: { createdAt: -1 }
+    }, { createdAt: -1 });
+    const usersQuery = User.find(filter).select('-password').sort(sort).lean();
 
     if (pagination.enabled) {
       usersQuery.skip(pagination.skip).limit(pagination.limit);
     }
 
     const users = await usersQuery;
+    const branchScope = req.user.role === 'manager' ? { branch: req.user.branch } : {};
+    const summary = {
+      managerCount: await User.countDocuments({ ...branchScope, role: 'manager' }),
+      salesAgentCount: await User.countDocuments({ ...branchScope, role: 'sales_agent' })
+    };
     if (!pagination.enabled) {
       return res.json(users);
     }
@@ -210,7 +251,8 @@ const getUsers = async (req, res) => {
         page: pagination.page,
         limit: pagination.limit,
         total
-      })
+      }),
+      summary
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -258,4 +300,210 @@ const deleteUser = async (req, res) => {
   }
 };
 
-export { login, logout, getMe, updateMe, register, getUsers, updateUser, deleteUser };
+const issueSession = (res, user) => {
+  setRefreshCookie(res, generateRefreshToken(user._id, Number(user.refreshTokenVersion || 0)));
+  return toUserPayload(user, true);
+};
+
+const refreshSession = async (req, res) => {
+  try {
+    const token = readRefreshCookie(req);
+    if (!token) {
+      return res.status(401).json({ message: 'Not authorized, no token' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: getJwtAlgorithms(),
+      ...getJwtClaimOptions()
+    });
+    if (decoded.typ !== 'refresh') {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user || Number(decoded.refreshTokenVersion) !== Number(user.refreshTokenVersion || 0)) {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    return res.json(issueSession(res, user));
+  } catch (error) {
+    return res.status(401).json({ message: 'Not authorized, token failed' });
+  }
+};
+
+const resetPasswordWithRecoveryCode = async (req, res) => {
+  try {
+    const { username, recoveryCode, newPassword } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(GENERIC_LOGIN_FAILURE.statusCode).json({ message: GENERIC_LOGIN_FAILURE.message });
+    }
+
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    const hashes = Array.isArray(user.recoveryCodeHashes) ? user.recoveryCodeHashes : [];
+    let matchedIndex = -1;
+    for (let i = 0; i < hashes.length; i += 1) {
+      if (await bcrypt.compare(String(recoveryCode || '').trim().toUpperCase(), hashes[i])) {
+        matchedIndex = i;
+        break;
+      }
+    }
+
+    if (matchedIndex < 0) {
+      return res.status(GENERIC_LOGIN_FAILURE.statusCode).json({ message: GENERIC_LOGIN_FAILURE.message });
+    }
+
+    hashes.splice(matchedIndex, 1);
+    user.recoveryCodeHashes = hashes;
+    user.password = await hashPassword(newPassword);
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    user.refreshTokenVersion = Number(user.refreshTokenVersion || 0) + 1;
+    await user.save();
+    clearRefreshCookie(res);
+    return res.json({ message: 'Password reset successfully. Sign in with your new password.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const issueRecoveryCodes = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const codes = createRecoveryCodes();
+    user.recoveryCodeHashes = await Promise.all(codes.map((code) => hashPassword(code)));
+    await user.save();
+    return res.json({
+      recoveryCodes: codes,
+      message: 'Store these recovery codes now. They will not be shown again.'
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const issueRecoveryCodesForUser = async (req, res) => {
+  try {
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const accessError = getManagerUserAccessError(req.user, targetUser);
+    if (accessError) {
+      return res.status(accessError.statusCode).json({ message: accessError.message });
+    }
+    const codes = createRecoveryCodes();
+    targetUser.recoveryCodeHashes = await Promise.all(codes.map((code) => hashPassword(code)));
+    await targetUser.save();
+    await recordAudit({
+      actor: req.user,
+      action: 'auth',
+      entityType: 'user',
+      entityId: targetUser._id,
+      branch: targetUser.branch,
+      metadata: { recoveryCodesIssued: true }
+    });
+    return res.json({
+      username: targetUser.username,
+      recoveryCodes: codes,
+      message: 'Give these codes to the staff member now. They will not be shown again.'
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const setupMfa = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const secret = generateTotpSecret();
+    user.mfaPendingSecret = secret;
+    await user.save();
+    return res.json({
+      secret,
+      otpauthUri: buildOtpAuthUri({ username: user.username, secret })
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const enableMfa = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const secret = user.mfaPendingSecret || user.mfaSecret;
+    if (!secret || !verifyTotpCode(secret, req.body.code)) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+    user.mfaSecret = secret;
+    user.mfaPendingSecret = '';
+    user.mfaEnabled = true;
+    await user.save();
+    return res.json({ mfaEnabled: true });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const disableMfa = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const passwordOk = await bcrypt.compare(String(req.body.password || ''), user.password);
+    if (!passwordOk) {
+      return res.status(400).json({ message: 'Invalid password' });
+    }
+    if (user.mfaEnabled && !verifyTotpCode(user.mfaSecret, req.body.code)) {
+      return res.status(400).json({ message: 'Invalid authenticator code' });
+    }
+    user.mfaEnabled = false;
+    user.mfaSecret = '';
+    user.mfaPendingSecret = '';
+    await user.save();
+    return res.json({ mfaEnabled: false });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+const verifyMfaLogin = async (req, res) => {
+  try {
+    const { mfaToken, code } = req.body;
+    const decoded = jwt.verify(mfaToken, process.env.JWT_SECRET, {
+      algorithms: getJwtAlgorithms(),
+      ...getJwtClaimOptions()
+    });
+    if (decoded.typ !== 'mfa') {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+    const user = await User.findById(decoded.id);
+    if (!user?.mfaEnabled || !verifyTotpCode(user.mfaSecret, code)) {
+      return res.status(GENERIC_LOGIN_FAILURE.statusCode).json({ message: GENERIC_LOGIN_FAILURE.message });
+    }
+    await ensureLegacyDirectorTotalsAccess(user);
+    return res.json(issueSession(res, user));
+  } catch (error) {
+    return res.status(401).json({ message: 'Not authorized, token failed' });
+  }
+};
+
+export {
+  login,
+  logout,
+  getMe,
+  updateMe,
+  register,
+  getUsers,
+  updateUser,
+  deleteUser,
+  refreshSession,
+  resetPasswordWithRecoveryCode,
+  issueRecoveryCodes,
+  issueRecoveryCodesForUser,
+  setupMfa,
+  enableMfa,
+  disableMfa,
+  verifyMfaLogin
+};

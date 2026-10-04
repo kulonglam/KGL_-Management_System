@@ -7,6 +7,7 @@ import {
   findDuplicateTrustedBuyer
 } from '../services/trustedBuyerService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 
 // GET /api/trusted-buyers: list trusted buyers visible to requester scope with optional pagination.
 const getTrustedBuyers = async (req, res) => {
@@ -16,8 +17,15 @@ const getTrustedBuyers = async (req, res) => {
       filter.branch = req.user.branch;
     }
 
+    Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'nationalId', 'location', 'contact']));
+
     const pagination = parsePagination(req.query);
-    const buyersQuery = TrustedBuyer.find(filter).sort({ createdAt: -1 }).lean();
+    const sort = resolveSort(req.query.sort, {
+      name_asc: { name: 1 },
+      name_desc: { name: -1 },
+      recent: { createdAt: -1 }
+    }, { createdAt: -1 });
+    const buyersQuery = TrustedBuyer.find(filter).sort(sort).lean();
 
     if (pagination.enabled) {
       buyersQuery.skip(pagination.skip).limit(pagination.limit);
@@ -29,6 +37,7 @@ const getTrustedBuyers = async (req, res) => {
     }
 
     const total = await TrustedBuyer.countDocuments(filter);
+    const uniqueLocations = (await TrustedBuyer.distinct('location', filter)).filter(Boolean).length;
 
     return res.json({
       items: buyers,
@@ -36,7 +45,10 @@ const getTrustedBuyers = async (req, res) => {
         page: pagination.page,
         limit: pagination.limit,
         total
-      })
+      }),
+      summary: {
+        uniqueLocations
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

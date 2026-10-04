@@ -1,12 +1,13 @@
 // Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
 
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define price setting schema.
 const priceSettingSchema = new mongoose.Schema(
   {
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     produceName: {
       type: String,
       minlength: 2,

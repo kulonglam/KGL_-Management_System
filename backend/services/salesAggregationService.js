@@ -8,9 +8,7 @@ import {
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 import { formatDisplayDate } from '../utils/dateFormat.js';
-
-// Branch identifiers supported by aggregation endpoints.
-const BRANCHES = ['Maganjo', 'Matugga'];
+import { getRegisteredBranches } from '../config/branches.js';
 // Allowed period filters for trend calculations.
 const PERIODS = new Set(['weekly', 'monthly', 'yearly']);
 // Strict specific-date input format (YYYY-MM-DD).
@@ -59,7 +57,9 @@ const normalizeBranch = (value) => {
     return 'all';
   }
 
-  const matched = BRANCHES.find((branch) => branch.toLowerCase() === requested.toLowerCase());
+  const matched = getRegisteredBranches().find(
+    (branch) => branch.toLowerCase() === requested.toLowerCase()
+  );
   return matched || null;
 };
 
@@ -173,7 +173,7 @@ const buildAggregationContext = ({ period, branch, specificDate }) => {
     return { error: parsedSpecificDate.error };
   }
 
-  const selectedBranches = normalizedBranch === 'all' ? BRANCHES : [normalizedBranch];
+  const selectedBranches = normalizedBranch === 'all' ? getRegisteredBranches() : [normalizedBranch];
   const trendBuckets = buildTrendBuckets(normalizedPeriod, parsedSpecificDate.specificDate);
   const rangeStart = new Date(trendBuckets[0].start);
   const rangeEnd = new Date(trendBuckets[trendBuckets.length - 1].end);

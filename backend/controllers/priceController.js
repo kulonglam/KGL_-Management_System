@@ -18,6 +18,22 @@ const getPrices = async (req, res) => {
   }
 };
 
+// GET /api/prices/:id: return one managed price setting for the manager's branch.
+const getPriceById = async (req, res) => {
+  try {
+    const setting = await PriceSetting.findById(req.params.id);
+    if (!setting) {
+      return res.status(404).json({ message: 'Price setting not found' });
+    }
+    if (setting.branch !== req.user.branch) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    res.json(setting);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 // GET /api/prices/:id/history: return immutable audit history for one managed price setting.
 const getPriceHistory = async (req, res) => {
   try {
@@ -190,7 +206,7 @@ const deletePrice = async (req, res) => {
   }
 };
 
-export { getPrices, getPriceHistory, createPrice, updatePrice, deletePrice };
+export { getPrices, getPriceById, getPriceHistory, createPrice, updatePrice, deletePrice };
 
 
 

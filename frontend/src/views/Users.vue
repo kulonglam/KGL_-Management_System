@@ -112,6 +112,9 @@
                     <button class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
                       Edit
                     </button>
+                    <button class="btn btn-sm btn-outline-secondary" @click="issueRecoveryCodes(item)">
+                      Recovery codes
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
                       Delete
                     </button>
@@ -124,7 +127,7 @@
         <TablePagination
           :current-page="currentPage"
           :total-pages="totalUserPages"
-          :total-items="displayedUsers.length"
+          :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
           id-prefix="users-table"
@@ -230,6 +233,21 @@
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteUser"
     />
+
+    <div v-if="recoveryCodes.length" class="modal-mask" @click.self="recoveryCodes = []">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recovery-codes-title">
+        <div class="modal-header">
+          <h5 id="recovery-codes-title" class="mb-0">Recovery codes for {{ recoveryUsername }}</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="recoveryCodes = []"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Share these codes once. They will not be shown again.</p>
+          <ul>
+            <li v-for="code in recoveryCodes" :key="code"><code>{{ code }}</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -242,6 +260,8 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { debounce } from '../utils/debounce.js';
+import { asListPayload } from '../utils/listPayload.js';
 
 export default {
   name: 'Users',
@@ -254,6 +274,9 @@ export default {
     return {
       user: {},
       users: [],
+      listTotal: 0,
+      listTotalPages: 1,
+      listSummary: {},
       loadingList: false,
       loadError: '',
       searchQuery: '',
@@ -278,49 +301,29 @@ export default {
         userId: '',
         userName: '',
         processing: false
-      }
+      },
+      recoveryCodes: [],
+      recoveryUsername: ''
     };
   },
   computed: {
     // Build table rows as search -> role filter -> sort so state changes remain predictable.
     displayedUsers() {
-      const query = this.searchQuery.trim().toLowerCase();
-      const searched = this.users.filter((item) => {
-        if (!query) return true;
-        const haystack = [item.name, item.username, this.formatRole(item.role), item.branch]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(query);
-      });
-
-      const filteredByRole =
-        this.roleFilter === 'all'
-          ? searched
-          : searched.filter((item) => item.role === this.roleFilter);
-
-      const sorted = [...filteredByRole];
-      if (this.sortBy === 'name_desc') {
-        sorted.sort((a, b) => String(b.name || '').localeCompare(String(a.name || '')));
-      } else if (this.sortBy === 'recent') {
-        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      } else {
-        sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-      }
-      return sorted;
+      return this.users;
     },
     totalUserPages() {
-      return Math.max(1, Math.ceil(this.displayedUsers.length / this.pageSize));
+      return this.listTotalPages;
     },
     paginatedUsers() {
-      const start = (this.currentPage - 1) * this.pageSize;
-      return this.displayedUsers.slice(start, start + this.pageSize);
+      return this.users;
     },
     managerCount() {
-      return this.users.filter((item) => item.role === 'manager').length;
+      return Number(this.listSummary.managerCount ?? this.users.filter((item) => item.role === 'manager').length);
     },
     salesAgentCount() {
-      return this.users.filter((item) => item.role === 'sales_agent').length;
+      return Number(
+        this.listSummary.salesAgentCount ?? this.users.filter((item) => item.role === 'sales_agent').length
+      );
     },
     overviewItems() {
       const visibleMeta =
@@ -336,7 +339,7 @@ export default {
         },
         {
           label: 'Total Staff',
-          value: this.users.length.toLocaleString('en-UG'),
+          value: this.listTotal.toLocaleString('en-UG'),
           meta: visibleMeta
         },
         {
@@ -353,28 +356,37 @@ export default {
     }
   },
   watch: {
-    pageSize() {
-      this.currentPage = 1;
+    currentPage() {
+      this.loadUsers();
     },
-    users() {
-      if (this.currentPage > this.totalUserPages) {
-        this.currentPage = this.totalUserPages;
+    pageSize() {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
       }
+      this.loadUsers();
     },
     searchQuery() {
-      this.currentPage = 1;
+      this.scheduleUserReload();
     },
     roleFilter() {
-      this.currentPage = 1;
+      this.scheduleUserReload();
     },
     sortBy() {
-      this.currentPage = 1;
+      this.scheduleUserReload();
     }
   },
-  async created() {
+  created() {
+    this.scheduleUserReload = debounce(() => {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
+      }
+      this.loadUsers();
+    }, 300);
     const authStore = useAuthStore(pinia);
     this.user = authStore.user || {};
-    await this.loadUsers();
+    this.loadUsers();
   },
   methods: {
     // Load branch users visible to the current manager.
@@ -382,8 +394,18 @@ export default {
       this.loadingList = true;
       this.loadError = '';
       try {
-        const response = await authAPI.listUsers();
-        this.users = response.data;
+        const response = await authAPI.listUsers({
+          page: this.currentPage,
+          limit: this.pageSize,
+          search: this.searchQuery,
+          role: this.roleFilter,
+          sort: this.sortBy
+        });
+        const payload = asListPayload(response.data);
+        this.users = payload.items;
+        this.listTotal = payload.total;
+        this.listTotalPages = payload.totalPages;
+        this.listSummary = payload.summary || {};
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Failed to load users.';
       } finally {
@@ -395,6 +417,7 @@ export default {
       this.roleFilter = 'all';
       this.sortBy = 'name_asc';
       this.currentPage = 1;
+      this.loadUsers();
     },
     goToPage(page) {
       const nextPage = Math.max(1, Math.min(this.totalUserPages, Number(page || 1)));
@@ -434,6 +457,18 @@ export default {
           (this.editingId ? 'Failed to update user' : 'Failed to create user');
       } finally {
         this.loading = false;
+      }
+    },
+    async issueRecoveryCodes(item) {
+      this.error = '';
+      this.success = '';
+      try {
+        const response = await authAPI.issueUserRecoveryCodes(item._id);
+        this.recoveryUsername = response.data?.username || item.username;
+        this.recoveryCodes = response.data?.recoveryCodes || [];
+        this.success = response.data?.message || 'Recovery codes generated.';
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Failed to issue recovery codes.';
       }
     },
     startEdit(item) {

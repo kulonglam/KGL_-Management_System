@@ -146,7 +146,7 @@
       <TablePagination
         :current-page="currentPage"
         :total-pages="totalPages"
-        :total-items="filteredProcurements.length"
+        :total-items="resultTotal"
         :page-size="pageSize"
         :page-size-options="pageSizeOptions"
         id-prefix="procurement-records"
@@ -171,10 +171,14 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  totalItems: {
+    type: Number,
+    default: null
   }
 });
 
-defineEmits(['refresh', 'edit', 'delete']);
+const emit = defineEmits(['refresh', 'edit', 'delete', 'query']);
 
 const currentPage = ref(1);
 const pageSize = ref(20);
@@ -182,6 +186,11 @@ const pageSizeOptions = [10, 20, 50, 100];
 const searchQuery = ref('');
 const selectedProduceType = ref('all');
 const sortBy = ref('newest');
+
+const useServerList = computed(() => props.totalItems != null);
+const resultTotal = computed(() =>
+  useServerList.value ? Number(props.totalItems || 0) : filteredProcurements.value.length
+);
 
 const produceTypeOptions = computed(() =>
   Array.from(new Set(props.procurements.map((record) => record.produceType).filter(Boolean))).sort()
@@ -209,6 +218,9 @@ const sortLabelMap = {
 
 // Apply search, optional produce-type filter, then selected sort order.
 const filteredProcurements = computed(() => {
+  if (useServerList.value) {
+    return props.procurements;
+  }
   const query = searchQuery.value.toLowerCase();
   const bySearch = props.procurements.filter((record) => {
     if (!query) return true;
@@ -245,23 +257,24 @@ const filteredProcurements = computed(() => {
   return sorted;
 });
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredProcurements.value.length / pageSize.value))
-);
+const totalPages = computed(() => Math.max(1, Math.ceil(resultTotal.value / pageSize.value)));
 
 const paginatedProcurements = computed(() => {
+  if (useServerList.value) {
+    return props.procurements;
+  }
   const start = (currentPage.value - 1) * pageSize.value;
   return filteredProcurements.value.slice(start, start + pageSize.value);
 });
 const overviewItems = computed(() => [
   {
     label: 'Procurements',
-    value: props.procurements.length.toLocaleString('en-UG'),
-    meta: 'Loaded branch records'
+    value: resultTotal.value.toLocaleString('en-UG'),
+    meta: 'Matching branch records'
   },
   {
     label: 'Visible Results',
-    value: filteredProcurements.value.length.toLocaleString('en-UG'),
+    value: paginatedProcurements.value.length.toLocaleString('en-UG'),
     meta: activeFilterCount.value
       ? `${activeFilterCount.value} filter(s) applied`
       : 'No filters applied'
@@ -295,6 +308,7 @@ watch(pageSize, () => {
 watch(
   () => props.procurements,
   () => {
+    if (useServerList.value) return;
     if (currentPage.value > totalPages.value) {
       currentPage.value = totalPages.value;
     }
@@ -303,6 +317,17 @@ watch(
 
 watch([searchQuery, selectedProduceType, sortBy], () => {
   currentPage.value = 1;
+});
+
+watch([currentPage, pageSize, searchQuery, selectedProduceType, sortBy], () => {
+  if (!useServerList.value) return;
+  emit('query', {
+    page: currentPage.value,
+    limit: pageSize.value,
+    search: searchQuery.value,
+    produceType: selectedProduceType.value,
+    sort: sortBy.value
+  });
 });
 
 const resetFilters = () => {

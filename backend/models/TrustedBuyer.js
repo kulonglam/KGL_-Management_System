@@ -1,6 +1,7 @@
 // Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
  
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Configure alphanumeric words pattern.
@@ -13,7 +14,7 @@ const trustedBuyerSchema = new mongoose.Schema(
     nationalId: { type: String, required: true, match: /^(CM|CF)[0-9]{12}$/ },
     location: { type: String, required: true, minlength: 2, match: ALPHANUMERIC_WORDS_PATTERN },
     contact: { type: String, required: true, set: normalizeLocalPhone, match: LOCAL_PHONE_PATTERN },
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
   },
   {

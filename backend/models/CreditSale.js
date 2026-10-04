@@ -1,6 +1,7 @@
 //  Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
  
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
@@ -38,10 +39,11 @@ const creditSaleSchema = new mongoose.Schema(
     },
     tonnageKg: { type: Number, required: true, min: 1 },
     dateOfDispatch: { type: Date, required: true },
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     trustedBuyer: { type: mongoose.Schema.Types.ObjectId, ref: 'TrustedBuyer', required: true },
     isPaid: { type: Boolean, default: false },
+    lastOverdueNoticeAt: { type: Date, default: null },
     payments: [
       {
         amountUgx: { type: Number, required: true, min: 1 },

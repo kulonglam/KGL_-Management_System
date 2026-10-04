@@ -122,7 +122,7 @@
         <TablePagination
           :current-page="currentPage"
           :total-pages="totalBuyerPages"
-          :total-items="displayedBuyers.length"
+          :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
           id-prefix="trusted-buyers-table"
@@ -274,6 +274,8 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { trustedBuyerValidationSchema } from '../utils/formSchemas.js';
 import { validateValues } from '../utils/formValidation.js';
+import { debounce } from '../utils/debounce.js';
+import { asListPayload } from '../utils/listPayload.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
@@ -289,6 +291,9 @@ export default {
     return {
       user: {},
       buyers: [],
+      listTotal: 0,
+      listTotalPages: 1,
+      listSummary: {},
       loadingList: false,
       loadError: '',
       searchQuery: '',
@@ -318,36 +323,18 @@ export default {
   },
   computed: {
     displayedBuyers() {
-      const query = this.searchQuery.trim().toLowerCase();
-      const filtered = this.buyers.filter((item) => {
-        if (!query) return true;
-        const haystack = [item.name, item.nationalId, item.location, item.contact, item.branch]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(query);
-      });
-
-      const sorted = [...filtered];
-      if (this.sortBy === 'name_desc') {
-        sorted.sort((a, b) => String(b.name || '').localeCompare(String(a.name || '')));
-      } else if (this.sortBy === 'recent') {
-        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      } else {
-        sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-      }
-
-      return sorted;
+      return this.buyers;
     },
     totalBuyerPages() {
-      return Math.max(1, Math.ceil(this.displayedBuyers.length / this.pageSize));
+      return this.listTotalPages;
     },
     paginatedBuyers() {
-      const start = (this.currentPage - 1) * this.pageSize;
-      return this.displayedBuyers.slice(start, start + this.pageSize);
+      return this.buyers;
     },
     uniqueLocations() {
-      return new Set(this.buyers.map((item) => item.location).filter(Boolean)).size;
+      return Number(
+        this.listSummary.uniqueLocations ?? new Set(this.buyers.map((item) => item.location).filter(Boolean)).size
+      );
     },
     overviewItems() {
       const visibleMeta =
@@ -363,7 +350,7 @@ export default {
         },
         {
           label: 'Approved Buyers',
-          value: this.buyers.length.toLocaleString('en-UG'),
+          value: this.listTotal.toLocaleString('en-UG'),
           meta: visibleMeta
         },
         {
@@ -385,25 +372,34 @@ export default {
     }
   },
   watch: {
-    pageSize() {
-      this.currentPage = 1;
+    currentPage() {
+      this.loadBuyers();
     },
-    buyers() {
-      if (this.currentPage > this.totalBuyerPages) {
-        this.currentPage = this.totalBuyerPages;
+    pageSize() {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
       }
+      this.loadBuyers();
     },
     searchQuery() {
-      this.currentPage = 1;
+      this.scheduleBuyerReload();
     },
     sortBy() {
-      this.currentPage = 1;
+      this.scheduleBuyerReload();
     }
   },
-  async created() {
+  created() {
+    this.scheduleBuyerReload = debounce(() => {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
+      }
+      this.loadBuyers();
+    }, 300);
     const authStore = useAuthStore(pinia);
     this.user = authStore.user || {};
-    await this.loadBuyers();
+    this.loadBuyers();
   },
   methods: {
     // Load trusted buyers available for this manager branch.
@@ -411,11 +407,20 @@ export default {
       this.loadingList = true;
       this.loadError = '';
       try {
-        const response = await trustedBuyersAPI.getAll();
-        this.buyers = response.data.map((item) => ({
+        const response = await trustedBuyersAPI.getAll({
+          page: this.currentPage,
+          limit: this.pageSize,
+          search: this.searchQuery,
+          sort: this.sortBy
+        });
+        const payload = asListPayload(response.data);
+        this.buyers = payload.items.map((item) => ({
           ...item,
           contact: normalizeLocalPhone(item.contact) || item.contact
         }));
+        this.listTotal = payload.total;
+        this.listTotalPages = payload.totalPages;
+        this.listSummary = payload.summary || {};
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Failed to load trusted buyers.';
       } finally {

@@ -12,29 +12,30 @@ const sanitizeApiUrl = (value) => {
   const raw = String(value || '').trim();
   if (!raw) return '';
 
-  // Accept mistakenly pasted ".env style" values such as "VITE_API_URL=https://...".
   const withoutPrefix = raw.startsWith('VITE_API_URL=') ? raw.slice('VITE_API_URL='.length) : raw;
-  const unquoted = withoutPrefix.replace(/^['"]|['"]$/g, '').trim();
-
-  return unquoted;
+  return withoutPrefix.replace(/^['"]|['"]$/g, '').trim();
 };
 
-// Resolve API base URL from environment with local fallback.
-const API_URL = sanitizeApiUrl(import.meta.env.VITE_API_URL) || 'http://localhost:5000/api';
+const API_URL = sanitizeApiUrl(import.meta.env.VITE_API_URL) || '/api/v1';
 const RETRY_DELAY_MS = 250;
 
-// Shared axios client used by all domain API wrappers.
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Promise-based sleep utility used by lightweight retry flow.
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Attach bearer token from Pinia session before each outgoing request.
+let refreshPromise = null;
+
+const isAuthRefreshUrl = (url = '') =>
+  String(url).includes('/auth/refresh') ||
+  String(url).includes('/auth/login') ||
+  String(url).includes('/auth/password-reset');
+
 api.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore(pinia);
@@ -45,12 +46,28 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Normalize envelope responses shaped as { success, data, error }.
+const normalizeErrorPayload = (error) => {
+  const payload = error.response?.data;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    Object.prototype.hasOwnProperty.call(payload, 'success') &&
+    Object.prototype.hasOwnProperty.call(payload, 'data') &&
+    Object.prototype.hasOwnProperty.call(payload, 'error')
+  ) {
+    const detailMessages = Array.isArray(payload.error?.details)
+      ? payload.error.details.map((detail) => detail?.message).filter(Boolean)
+      : [];
+    error.response.data = {
+      ...payload,
+      message: detailMessages[0] || payload.error?.message || 'Request failed'
+    };
+  }
+};
+
 api.interceptors.response.use(
   (response) => {
     const payload = response.data;
@@ -77,92 +94,107 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    const payload = error.response?.data;
-    if (
-      payload &&
-      typeof payload === 'object' &&
-      Object.prototype.hasOwnProperty.call(payload, 'success') &&
-      Object.prototype.hasOwnProperty.call(payload, 'data') &&
-      Object.prototype.hasOwnProperty.call(payload, 'error')
-    ) {
-      const detailMessages = Array.isArray(payload.error?.details)
-        ? payload.error.details.map((detail) => detail?.message).filter(Boolean)
-        : [];
-      const normalizedMessage =
-        detailMessages[0] ||
-        payload.error?.message ||
-        'Request failed';
-      error.response.data = {
-        ...payload,
-        message: normalizedMessage
-      };
+    if (statusCode === 401 && !config.__authRetryAttempted && !isAuthRefreshUrl(config.url)) {
+      config.__authRetryAttempted = true;
+      const authStore = useAuthStore(pinia);
+      try {
+        if (!refreshPromise) {
+          refreshPromise = api.post('/auth/refresh').finally(() => {
+            refreshPromise = null;
+          });
+        }
+        const refreshed = await refreshPromise;
+        const payload = refreshed.data || {};
+        if (payload.token) {
+          authStore.setSession(payload.token, payload);
+          return api(config);
+        }
+      } catch {
+        authStore.clearSession();
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          window.location.assign('/');
+        }
+      }
     }
+
+    normalizeErrorPayload(error);
     return Promise.reject(error);
   }
 );
 
-// Authentication and user-management endpoints.
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
+  verifyMfa: (data) => api.post('/auth/login/mfa', data),
+  refresh: () => api.post('/auth/refresh'),
+  resetPassword: (data) => api.post('/auth/password-reset', data),
   logout: () => api.post('/auth/logout'),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
   updateMe: (data) => api.put('/auth/me', data),
-  listUsers: () => api.get('/auth/users'),
+  issueRecoveryCodes: () => api.post('/auth/recovery-codes'),
+  setupMfa: () => api.post('/auth/mfa/setup'),
+  enableMfa: (data) => api.post('/auth/mfa/enable', data),
+  disableMfa: (data) => api.post('/auth/mfa/disable', data),
+  listUsers: (params = {}) => api.get('/auth/users', { params }),
   updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
-  deleteUser: (id) => api.delete(`/auth/users/${id}`)
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
+  issueUserRecoveryCodes: (id) => api.post(`/auth/users/${id}/recovery-codes`)
 };
 
-// Procurement lifecycle endpoints.
 export const procurementAPI = {
-  getAll: () => api.get('/procurement'),
+  getAll: (params = {}) => api.get('/procurement', { params }),
   create: (data) => api.post('/procurement', data),
   update: (id, data) => api.put(`/procurement/${id}`, data),
   delete: (id) => api.delete(`/procurement/${id}`)
 };
 
-// Cash sales and aggregated sales reporting endpoints.
 export const salesAPI = {
-  getAll: () => api.get('/sales'),
+  getAll: (params = {}) => api.get('/sales', { params }),
   create: (data) => api.post('/sales', data),
   update: (id, data) => api.put(`/sales/${id}`, data),
   getAggregation: (params = {}) => api.get('/sales/aggregation', { params }),
   delete: (id) => api.delete(`/sales/${id}`)
 };
 
-// Credit-sale lifecycle and repayment endpoints.
 export const creditSalesAPI = {
-  getAll: () => api.get('/credit-sales'),
+  getAll: (params = {}) => api.get('/credit-sales', { params }),
   create: (data) => api.post('/credit-sales', data),
   update: (id, data) => api.put(`/credit-sales/${id}`, data),
   repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data),
   delete: (id) => api.delete(`/credit-sales/${id}`)
 };
 
-// Inventory read endpoints.
 export const inventoryAPI = {
   get: () => api.get('/inventory')
 };
 
-// Stock notification endpoints.
 export const notificationsAPI = {
   getAll: (params = {}) => api.get('/notifications', { params }),
-  markAsRead: (id) => api.put(`/notifications/${id}/read`)
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllRead: () => api.put('/notifications/read-all')
 };
 
-// Trusted-buyer CRUD endpoints.
 export const trustedBuyersAPI = {
-  getAll: () => api.get('/trusted-buyers'),
+  getAll: (params = {}) => api.get('/trusted-buyers', { params }),
   create: (data) => api.post('/trusted-buyers', data),
   update: (id, data) => api.put(`/trusted-buyers/${id}`, data),
   delete: (id) => api.delete(`/trusted-buyers/${id}`)
 };
 
-// Branch produce-price management endpoints.
 export const priceAPI = {
   getAll: () => api.get('/prices'),
   getHistory: (id) => api.get(`/prices/${id}/history`),
   create: (data) => api.post('/prices', data),
   update: (id, data) => api.put(`/prices/${id}`, data),
   delete: (id) => api.delete(`/prices/${id}`)
+};
+
+export const branchAPI = {
+  list: () => api.get('/branches'),
+  create: (data) => api.post('/branches', data),
+  update: (id, data) => api.put(`/branches/${id}`, data)
+};
+
+export const auditAPI = {
+  list: (params = {}) => api.get('/audit-logs', { params })
 };

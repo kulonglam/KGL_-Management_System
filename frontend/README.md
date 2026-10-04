@@ -16,7 +16,7 @@ Copy `.env.example` to `.env`.
 
 Example:
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=/api/v1
 ```
 
 ## Run
@@ -38,11 +38,11 @@ npm run preview
 - Sales agent: sales workflows with role-limited actions
 
 ## Seeded Login Credentials
-All seeded users use password `password123`.
+All seeded users use password `Karibu@2026!`.
 
 - Director: `orban`
-- Managers: `managerA` (Maganjo), `managerB` (Matugga)
-- Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
+- Managers: `kulong` (Maganjo), `lam` (Matugga)
+- Sales agents: `wuol`, `makhol` (Maganjo), `nyar`, `chuol` (Matugga)
 
 ## Quality Commands
 ```bash

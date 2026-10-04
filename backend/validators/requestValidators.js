@@ -2,14 +2,13 @@
  
 import { body, param, query } from 'express-validator';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
+import { isRegisteredBranch } from '../config/branches.js';
 
 // Configure produce types.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
 // Configure source types.
 const SOURCE_TYPES = ['individual', 'company', 'kgl_farm'];
-// Configure branches.
-const BRANCHES = ['Maganjo', 'Matugga'];
-// Configure alphanumeric text.
+const ROLES = ['director', 'manager', 'sales_agent'];
 const ALPHANUMERIC_TEXT = /^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/;
 // Configure phone pattern.
 const PHONE_PATTERN = LOCAL_PHONE_PATTERN;
@@ -56,8 +55,6 @@ const FORM_VALIDATION_RULES = {
   }
 };
 
-// Configure roles.
-const ROLES = ['director', 'manager', 'sales_agent'];
 const procurementRules = FORM_VALIDATION_RULES.procurement;
 const saleRules = FORM_VALIDATION_RULES.sale;
 const creditSaleRules = FORM_VALIDATION_RULES.creditSale;
@@ -72,7 +69,11 @@ const paginationValidation = [
   query('limit')
     .optional()
     .isInt({ min: 1, max: 200 })
-    .withMessage('limit must be between 1 and 200')
+    .withMessage('limit must be between 1 and 200'),
+  query('search').optional().isString().trim().isLength({ max: 80 }).withMessage('search is too long'),
+  query('status').optional().isString().trim(),
+  query('produceType').optional().isString().trim(),
+  query('sort').optional().isString().trim()
 ];
 
 // Configure login validation.
@@ -116,7 +117,12 @@ const registerValidation = [
     .matches(PASSWORD_COMPLEXITY_PATTERN)
     .withMessage('password must include uppercase, lowercase, number, and symbol'),
   body('role').trim().isIn(ROLES).withMessage('Invalid role'),
-  body('branch').optional({ values: 'falsy' }).trim().isIn(BRANCHES).withMessage('Invalid branch')
+  body('branch').optional({ values: 'falsy' }).trim().custom((value) => {
+    if (value && !isRegisteredBranch(value)) {
+      throw new Error('Invalid branch');
+    }
+    return true;
+  })
 ];
 
 // Configure profile update validation.
@@ -157,7 +163,12 @@ const userUpdateValidation = [
     .isLength({ min: 2 })
     .withMessage('username must be at least 2 characters'),
   body('role').optional().trim().isIn(ROLES).withMessage('Invalid role'),
-  body('branch').optional().trim().isIn(BRANCHES).withMessage('Invalid branch'),
+  body('branch').optional().trim().custom((value) => {
+    if (value && !isRegisteredBranch(value)) {
+      throw new Error('Invalid branch');
+    }
+    return true;
+  }),
   body('password')
     .optional()
     .isLength({ min: 10 })
@@ -520,6 +531,38 @@ const priceUpdateValidation = [
     .withMessage(`priceUgx must be at least ${VALIDATION_LIMITS.moneyMinUgx}`)
 ];
 
+const passwordResetValidation = [
+  body('username')
+    .trim()
+    .notEmpty()
+    .withMessage('username is required')
+    .isLength({ min: 2 })
+    .withMessage('username must be at least 2 characters'),
+  body('recoveryCode').trim().notEmpty().withMessage('recoveryCode is required'),
+  body('newPassword')
+    .notEmpty()
+    .withMessage('newPassword is required')
+    .isLength({ min: 10 })
+    .withMessage('newPassword must be at least 10 characters')
+    .matches(PASSWORD_COMPLEXITY_PATTERN)
+    .withMessage('newPassword must include uppercase, lowercase, number, and symbol')
+];
+
+const mfaCodeValidation = [
+  body('code').trim().matches(/^\d{6}$/).withMessage('code must be a 6-digit authenticator value'),
+  body('mfaToken').optional().isString()
+];
+
+const mfaDisableValidation = [
+  body('password').notEmpty().withMessage('password is required'),
+  body('code').optional().trim().matches(/^\d{6}$/).withMessage('code must be a 6-digit authenticator value')
+];
+
+const mfaLoginValidation = [
+  body('mfaToken').notEmpty().withMessage('mfaToken is required'),
+  body('code').trim().matches(/^\d{6}$/).withMessage('code must be a 6-digit authenticator value')
+];
+
 export {
   mongoIdParamValidation,
   paginationValidation,
@@ -538,5 +581,9 @@ export {
   trustedBuyerCreateValidation,
   trustedBuyerUpdateValidation,
   priceCreateValidation,
-  priceUpdateValidation
+  priceUpdateValidation,
+  passwordResetValidation,
+  mfaCodeValidation,
+  mfaDisableValidation,
+  mfaLoginValidation
 };

@@ -134,7 +134,7 @@
         <!-- Main Content -->
         <main id="main-content-region" class="main-content px-md-4 py-4" tabindex="-1">
           <div class="main-content-body">
-            <div v-if="user.role === 'manager'" class="notice-stack mb-3">
+            <div v-if="canSeeStockNotices" class="notice-stack mb-3">
               <div v-if="stockNotifications.length > 0" class="card notice-card">
                 <div class="card-body">
                   <div class="notice-header">
@@ -304,6 +304,9 @@ export default {
     currentYear() {
       return new Date().getFullYear();
     },
+    canSeeStockNotices() {
+      return this.user.role === 'manager' || this.user.role === 'sales_agent';
+    },
     roleLabel() {
       // Friendly labels for role codes stored in auth payload.
       const roles = {
@@ -319,6 +322,8 @@ export default {
       if (isDirectorOrban(this.user)) {
         items.push(
           { path: '/dashboard/director', icon: 'bi bi-grid', label: 'Dashboard' },
+          { path: '/dashboard/branches', icon: 'bi bi-diagram-3', label: 'Branches' },
+          { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
       } else if (this.user.role === 'director') {
@@ -352,6 +357,7 @@ export default {
             label: 'Trusted Buyers'
           },
           { path: '/dashboard/users', icon: 'bi bi-people', label: 'Users' },
+          { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
       } else if (this.user.role === 'sales_agent') {
@@ -412,6 +418,7 @@ export default {
             '/dashboard/price-management',
             '/dashboard/trusted-buyers',
             '/dashboard/users',
+            '/dashboard/audit-logs',
             '/dashboard/profile'
           ])
         }
@@ -446,16 +453,18 @@ export default {
     }
   },
   created() {
-    if (this.user.role === 'manager') {
+    if (this.canSeeStockNotices) {
       this.loadStockAlert();
       this.loadStockNotifications();
-      this.ensureActiveManagerSectionOpen();
+      if (this.user.role === 'manager') {
+        this.ensureActiveManagerSectionOpen();
+      }
     }
   },
   mounted() {
     window.addEventListener('resize', this.handleViewportResize);
     window.addEventListener('keydown', this.handleEscapeKey);
-    if (this.user.role === 'manager') {
+    if (this.canSeeStockNotices) {
       this.startStockMonitor();
     }
   },
@@ -675,7 +684,10 @@ export default {
     async loadStockNotifications() {
       try {
         const response = await notificationsAPI.getAll({ unread: true });
-        this.stockNotifications = response.data || [];
+        const payload = Array.isArray(response.data)
+          ? response.data
+          : response.data?.items || [];
+        this.stockNotifications = payload;
       } catch (error) {
         console.error('Failed to load stock notifications:', error);
       }
@@ -691,9 +703,14 @@ export default {
       }
     },
     async markAllNotificationsRead() {
-      const notificationIds = this.stockNotifications.map((notification) => notification._id);
-      for (let i = 0; i < notificationIds.length; i += 1) {
-        await this.markNotificationRead(notificationIds[i]);
+      try {
+        await notificationsAPI.markAllRead();
+        this.stockNotifications = [];
+      } catch (error) {
+        const notificationIds = this.stockNotifications.map((notification) => notification._id);
+        for (let i = 0; i < notificationIds.length; i += 1) {
+          await this.markNotificationRead(notificationIds[i]);
+        }
       }
     },
     formatNotificationTime(value) {

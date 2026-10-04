@@ -7,7 +7,7 @@ import CreditSale from '../models/CreditSale.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import mongoose from 'mongoose';
 import { calculateInventoryByBranch } from './inventoryService.js';
-import { createOutOfStockNotification } from './stockNotificationService.js';
+import { syncStockLevelNotifications } from './stockNotificationService.js';
 import { withStockLock } from './stockLockService.js';
 import {
   normalizeProduceName,
@@ -197,13 +197,12 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
         isPaid: false
       });
 
-        if (remainingStock <= 0) {
-          await createOutOfStockNotification({
-            branch: actorUser.branch,
-            produceName: item.produceName,
-            produceType: item.produceType
-          });
-        }
+        await syncStockLevelNotifications({
+          branch: actorUser.branch,
+          produceName: item.produceName,
+          produceType: item.produceType,
+          remainingStock
+        });
 
       return creditSale;
     }

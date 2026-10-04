@@ -152,6 +152,7 @@
         </div>
       </div>
     </div>
+    <ReceiptDialog :sale="lastReceipt" sale-type="Credit sale" @close="lastReceipt = null" />
   </div>
 </template>
 
@@ -171,6 +172,7 @@ import { useStockValidation } from '../composables/useStockValidation';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import FormAlerts from '../components/common/FormAlerts.vue';
+import ReceiptDialog from '../components/common/ReceiptDialog.vue';
 import CreditBuyerSection from '../components/credit/CreditBuyerSection.vue';
 import CreditProduceSection from '../components/credit/CreditProduceSection.vue';
 import CreditDispatchSection from '../components/credit/CreditDispatchSection.vue';
@@ -189,6 +191,7 @@ const inventory = ref([]);
 const form = ref(createInitialForm());
 // Controls visibility of review modal prior to final save.
 const showReviewModal = ref(false);
+const lastReceipt = ref(null);
 // DOM ref used for keyboard focus handling in review modal.
 const reviewModalRef = ref(null);
 const authStore = useAuthStore(pinia);
@@ -355,7 +358,8 @@ const confirmSaveCreditSale = async () => {
   beginSubmit();
 
   try {
-    await creditSalesAPI.create(form.value);
+    const response = await creditSalesAPI.create(form.value);
+    lastReceipt.value = response.data;
     setSuccess('Credit sale recorded successfully!');
     showReviewModal.value = false;
     resetForm({ preserveFeedback: true });

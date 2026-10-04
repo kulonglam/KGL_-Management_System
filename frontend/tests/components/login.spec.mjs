@@ -7,7 +7,8 @@ import { expectNoA11yViolations, runA11yAudit } from './a11y-utils.mjs';
 
 vi.mock('../../src/services/api', () => ({
   authAPI: {
-    login: vi.fn()
+    login: vi.fn(),
+    verifyMfa: vi.fn()
   }
 }));
 
@@ -32,11 +33,12 @@ describe('Login view', () => {
     expect(usernameInput.element.value).toBe('saved-user');
   });
 
-  it('shows reset guidance when forgot password is clicked', async () => {
+  it('opens the recovery page when forgot password is clicked', async () => {
+    const push = vi.fn();
     const wrapper = mount(Login, {
       global: {
         mocks: {
-          $router: { push: vi.fn() }
+          $router: { push }
         }
       }
     });
@@ -44,7 +46,7 @@ describe('Login view', () => {
     const forgotButton = wrapper.find('button.btn-link');
     await forgotButton.trigger('click');
 
-    expect(wrapper.text()).toContain('Please contact your manager or system administrator');
+    expect(push).toHaveBeenCalledWith('/reset-password');
   });
 
   it('submits credentials, remembers username, and redirects by role', async () => {
@@ -76,7 +78,7 @@ describe('Login view', () => {
       username: 'manager-user',
       password: 'secret123'
     });
-    expect(sessionStorage.getItem('token')).toBe('token-1');
+    expect(sessionStorage.getItem('token')).toBeNull();
     expect(localStorage.getItem('rememberedUsername')).toBe('manager-user');
     expect(push).toHaveBeenCalledWith('/dashboard/manager');
   });

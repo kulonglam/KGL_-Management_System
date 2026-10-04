@@ -88,6 +88,21 @@
               </div>
             </div>
 
+            <div v-if="mfaRequired" class="mb-4">
+              <label for="mfa-code" class="form-label small text-uppercase fw-bold text-muted"
+                >Authenticator code</label
+              >
+              <input
+                id="mfa-code"
+                v-model.trim="mfaCode"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                class="form-control"
+                placeholder="6-digit code"
+                autocomplete="one-time-code"
+              />
+            </div>
             <div class="d-flex justify-content-between align-items-center mb-4">
               <div class="form-check">
                 <input
@@ -103,7 +118,7 @@
               <button
                 type="button"
                 class="btn btn-link p-0 small text-decoration-none fw-bold text-success"
-                @click="showResetHelp"
+                @click="$router.push('/reset-password')"
               >
                 Forgot Password?
               </button>
@@ -127,7 +142,7 @@
               :disabled="loading"
             >
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              {{ loading ? 'Signing in...' : 'Sign In' }}
+              {{ loading ? 'Signing in...' : mfaRequired ? 'Verify code' : 'Sign In' }}
             </button>
           </form>
         </div>
@@ -161,7 +176,10 @@ export default {
       showPassword: false,
       loading: false,
       error: '',
-      helpMessage: ''
+      helpMessage: '',
+      mfaRequired: false,
+      mfaToken: '',
+      mfaCode: ''
     };
   },
   created() {
@@ -173,38 +191,48 @@ export default {
   },
   methods: {
     // Show a non-technical password-reset instruction for users.
-    showResetHelp() {
-      this.helpMessage = 'Please contact your manager or system administrator to reset your password.';
+    completeLogin(authPayload) {
+      const { token, ...user } = authPayload;
+      const authStore = useAuthStore(pinia);
+      authStore.setSession(token, user);
+      if (this.rememberMe) {
+        localStorage.setItem('rememberedUsername', this.credentials.username.trim());
+      } else {
+        localStorage.removeItem('rememberedUsername');
+      }
+      this.$router.push(getHomeRouteForUser(user));
     },
-    // Submit login credentials and hydrate client session on success.
     async handleLogin() {
       this.loading = true;
       this.error = '';
       this.helpMessage = '';
 
       try {
+        if (this.mfaRequired) {
+          const response = await authAPI.verifyMfa({
+            mfaToken: this.mfaToken,
+            code: this.mfaCode
+          });
+          this.completeLogin(response?.data);
+          return;
+        }
+
         const payload = {
           username: this.credentials.username.trim(),
           password: this.credentials.password
         };
         const response = await authAPI.login(payload);
         const authPayload = response?.data;
+        if (authPayload?.mfaRequired) {
+          this.mfaRequired = true;
+          this.mfaToken = authPayload.mfaToken;
+          this.helpMessage = 'Enter the 6-digit code from your authenticator app.';
+          return;
+        }
         if (!authPayload || typeof authPayload !== 'object' || !authPayload.token || !authPayload.role) {
           throw new Error('Login service misconfiguration detected. Check frontend API URL settings.');
         }
-
-        const { token, ...user } = authPayload;
-
-        const authStore = useAuthStore(pinia);
-        authStore.setSession(token, user);
-        if (this.rememberMe) {
-          localStorage.setItem('rememberedUsername', payload.username);
-        } else {
-          localStorage.removeItem('rememberedUsername');
-        }
-
-        // Route user to the dashboard permitted by their role and identity rules.
-        this.$router.push(getHomeRouteForUser(user));
+        this.completeLogin(authPayload);
       } catch (error) {
         this.error = error.response?.data?.message || error.message || 'Login failed';
       } finally {

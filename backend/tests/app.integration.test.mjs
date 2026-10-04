@@ -11,8 +11,23 @@ test('GET / responds with API message', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(response.body.success, true);
-  assert.deepEqual(response.body.data, { message: 'Karibu Groceries LTD API' });
+  assert.deepEqual(response.body.data, { message: 'Karibu Groceries LTD API', currentVersion: 'v1' });
   assert.equal(response.body.error, null);
+});
+
+test('GET /api/v1 reports the current API version', async () => {
+  const response = await request(app).get('/api/v1');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.version, 'v1');
+});
+
+test('GET /api/v1/sales without token is unauthorized', async () => {
+  const response = await request(app).get('/api/v1/sales');
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.success, false);
 });
 
 test('GET /api/sales without token is unauthorized', async () => {

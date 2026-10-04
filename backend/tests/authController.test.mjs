@@ -15,6 +15,12 @@ const createRes = () => ({
   json(payload) {
     this.body = payload;
     return this;
+  },
+  cookie() {
+    return this;
+  },
+  clearCookie() {
+    return this;
   }
 });
 

@@ -1,6 +1,7 @@
 // Defines mongoose persistence schema, field constraints, and indexes for this domain entity.
 
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define sale schema.
@@ -25,7 +26,7 @@ const saleSchema = new mongoose.Schema(
     salesAgentName: { type: String, required: true, minlength: 2, match: /^[A-Za-z0-9\s]+$/ },
     date: { type: Date, required: true },
     time: { type: String, required: true },
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
   },
   {

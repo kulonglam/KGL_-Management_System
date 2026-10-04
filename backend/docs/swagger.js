@@ -31,8 +31,12 @@ const swaggerSpec = {
   },
   servers: [
     {
-      url: 'http://localhost:5000',
-      description: 'Local development server'
+      url: 'http://localhost:5000/api/v1',
+      description: 'API v1'
+    },
+    {
+      url: 'http://localhost:5000/api',
+      description: 'Legacy alias of v1'
     }
   ],
   tags: [
@@ -444,7 +448,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/login': {
+    '/auth/login': {
       post: {
         tags: ['Auth'],
         summary: 'Login',
@@ -459,7 +463,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/logout': {
+    '/auth/logout': {
       post: {
         tags: ['Auth'],
         summary: 'Logout current user',
@@ -470,7 +474,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/register': {
+    '/auth/register': {
       post: {
         tags: ['Users'],
         summary: 'Register user (manager only)',
@@ -489,7 +493,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/me': {
+    '/auth/me': {
       get: {
         tags: ['Auth'],
         summary: 'Get current user',
@@ -519,7 +523,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/users': {
+    '/auth/users': {
       get: {
         tags: ['Users'],
         summary: 'Get users (manager only)',
@@ -534,7 +538,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/auth/users/{id}': {
+    '/auth/users/{id}': {
       put: {
         tags: ['Users'],
         summary: 'Update user',
@@ -568,7 +572,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/procurement': {
+    '/procurement': {
       get: {
         tags: ['Procurement'],
         summary: 'Get procurement records',
@@ -602,7 +606,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/procurement/{id}': {
+    '/procurement/{id}': {
       get: {
         tags: ['Procurement'],
         summary: 'Get procurement by id',
@@ -649,7 +653,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/sales': {
+    '/sales': {
       get: {
         tags: ['Sales'],
         summary: 'Get sales',
@@ -681,7 +685,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/sales/aggregation': {
+    '/sales/aggregation': {
       get: {
         tags: ['Sales'],
         summary: 'Get sales aggregation (director + Mr. Orban only)',
@@ -693,7 +697,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/sales/{id}': {
+    '/sales/{id}': {
       delete: {
         tags: ['Sales'],
         summary: 'Delete sale',
@@ -707,7 +711,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/credit-sales': {
+    '/credit-sales': {
       get: {
         tags: ['Credit Sales'],
         summary: 'Get credit sales',
@@ -739,7 +743,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/credit-sales/{id}/payment': {
+    '/credit-sales/{id}/payment': {
       put: {
         tags: ['Credit Sales'],
         summary: 'Update credit sale payment status',
@@ -762,7 +766,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/credit-sales/{id}/repay': {
+    '/credit-sales/{id}/repay': {
       post: {
         tags: ['Credit Sales'],
         summary: 'Repay credit sale balance',
@@ -783,7 +787,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/credit-sales/{id}': {
+    '/credit-sales/{id}': {
       delete: {
         tags: ['Credit Sales'],
         summary: 'Delete credit sale',
@@ -797,7 +801,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/inventory': {
+    '/inventory': {
       get: {
         tags: ['Inventory'],
         summary: 'Get inventory overview',
@@ -809,7 +813,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/trusted-buyers': {
+    '/trusted-buyers': {
       get: {
         tags: ['Trusted Buyers'],
         summary: 'Get trusted buyers',
@@ -841,7 +845,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/trusted-buyers/{id}': {
+    '/trusted-buyers/{id}': {
       put: {
         tags: ['Trusted Buyers'],
         summary: 'Update trusted buyer',
@@ -874,7 +878,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/prices': {
+    '/prices': {
       get: {
         tags: ['Prices'],
         summary: 'Get price matrix',
@@ -907,7 +911,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/prices/{id}': {
+    '/prices/{id}': {
       put: {
         tags: ['Prices'],
         summary: 'Update price',
@@ -942,7 +946,7 @@ const swaggerSpec = {
         }
       }
     },
-    '/api/prices/{id}/history': {
+    '/prices/{id}/history': {
       get: {
         tags: ['Prices'],
         summary: 'Get price history',

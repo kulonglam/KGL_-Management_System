@@ -12,6 +12,8 @@ import {
   normalizeProduceType
 } from '../utils/produceNormalization.js';
 
+const LOW_STOCK_THRESHOLD_KG = 500;
+
 // Resolve canonical produce name from current or legacy procurement fields.
 const resolveProcurementName = (item) => normalizeProduceName(item.produceName || item.name || '');
 
@@ -128,7 +130,7 @@ const getInventoryOverview = async (filter = {}) => {
   const snapshot = await calculateInventoryByFilter(filter);
   const inventory = snapshot.filter((item) => item.totalTonnageKg > 0);
   const outOfStockItems = snapshot.filter((item) => item.totalTonnageKg <= 0);
-  const lowStockItems = inventory.filter((item) => item.totalTonnageKg < 500);
+  const lowStockItems = inventory.filter((item) => item.totalTonnageKg < LOW_STOCK_THRESHOLD_KG);
 
   const totalValue = inventory.reduce(
     (sum, item) => sum + item.totalTonnageKg * item.sellingPrice,
@@ -149,9 +151,68 @@ const getInventoryOverview = async (filter = {}) => {
   };
 };
 
+const findInventoryBucket = (snapshot, produceName, produceType, branch) =>
+  snapshot.find(
+    (entry) =>
+      normalizeProduceNameKey(entry.produceName) === normalizeProduceNameKey(produceName) &&
+      normalizeProduceType(entry.produceType) === normalizeProduceType(produceType) &&
+      entry.branch === branch
+  ) || null;
+
+const getBucketTonnage = (snapshot, produceName, produceType, branch) =>
+  Number(findInventoryBucket(snapshot, produceName, produceType, branch)?.totalTonnageKg || 0);
+
+const createStockIntegrityError = (projectedTonnageKg) => {
+  const error = new Error(
+    `This procurement change would leave stock at ${projectedTonnageKg} kg. Reduce sales first or keep enough inbound tonnage.`
+  );
+  error.statusCode = 400;
+  return error;
+};
+
+const assertProcurementKeepsStockNonNegative = ({
+  snapshot,
+  branch,
+  previousProduceName,
+  previousProduceType,
+  previousTonnageKg = 0,
+  nextProduceName,
+  nextProduceType,
+  nextTonnageKg = 0
+}) => {
+  const previousName = previousProduceName || nextProduceName;
+  const previousType = previousProduceType || nextProduceType;
+  const sameBucket =
+    normalizeProduceNameKey(previousName) === normalizeProduceNameKey(nextProduceName || previousName) &&
+    normalizeProduceType(previousType) === normalizeProduceType(nextProduceType || previousType);
+
+  if (sameBucket) {
+    const current = getBucketTonnage(snapshot, previousName, previousType, branch);
+    const projected = current - Number(previousTonnageKg || 0) + Number(nextTonnageKg || 0);
+    if (projected < 0) {
+      throw createStockIntegrityError(projected);
+    }
+    return projected;
+  }
+
+  const previousProjected =
+    getBucketTonnage(snapshot, previousName, previousType, branch) - Number(previousTonnageKg || 0);
+  if (previousProjected < 0) {
+    throw createStockIntegrityError(previousProjected);
+  }
+
+  return (
+    getBucketTonnage(snapshot, nextProduceName, nextProduceType, branch) + Number(nextTonnageKg || 0)
+  );
+};
+
 export {
+  LOW_STOCK_THRESHOLD_KG,
+  assertProcurementKeepsStockNonNegative,
   buildInventorySnapshot,
   calculateInventoryByBranch,
   calculateInventoryByFilter,
+  findInventoryBucket,
+  getBucketTonnage,
   getInventoryOverview
 };

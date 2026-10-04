@@ -41,7 +41,7 @@ All seeded accounts use password `Karibu@2026!`.
 - Director: `orban`
 - Manager (Maganjo): `kulong`
 - Manager (Matugga): `lam`
-- Sales Agents: `agent1A`, `agent2A`, `agent1B`, `agent2B`
+- Sales Agents: `wuol`, `makhol`, `nyar`, `chuol`
 
 ## Recommended Demo Script
 
@@ -51,7 +51,7 @@ Goal: prove that users only see what their role allows.
 
 Steps:
 
-1. Log in as `agent1A`.
+1. Log in as `wuol`.
 2. Show the sales-agent sidebar.
 3. Confirm that procurement, users, and price management are not available.
 4. Try to open a manager-only page directly and show that access is blocked.
@@ -88,7 +88,7 @@ Goal: prove that sales depend on available stock and reduce tonnage.
 
 Steps:
 
-1. Stay logged in as manager or switch to `agent1A`.
+1. Stay logged in as manager or switch to `wuol`.
 2. Open `Sales`.
 3. Select a produce item from available stock.
 4. Enter a quantity larger than available stock and show rejection.

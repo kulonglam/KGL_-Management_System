@@ -19,8 +19,11 @@ const app = createApp(App);
 app.use(pinia);
 installCustomValidationMessages();
 
-const authStore = useAuthStore(pinia);
-authStore.hydrateFromStorage();
+const startApp = async () => {
+  const authStore = useAuthStore(pinia);
+  await authStore.restoreSession();
+  app.use(router);
+  app.mount('#app');
+};
 
-app.use(router);
-app.mount('#app');
+startApp();

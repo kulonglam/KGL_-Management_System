@@ -27,7 +27,11 @@ const protect = async (req, res, next) => {
       ...getJwtClaimOptions()
     });
 
-    // Get user from token
+    if (decoded.typ && decoded.typ !== 'access') {
+      logger.warn('auth.token.rejected', { reason: 'wrong_token_type', typ: decoded.typ });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) {
       logger.warn('auth.token.rejected', { reason: 'user_not_found', userId: decoded.id || null });

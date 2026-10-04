@@ -40,7 +40,9 @@ npm run dev
 npm start
 ```
 
-API base URL: `http://localhost:5000`
+API base URL: `http://localhost:5000/api/v1` (unversioned `/api` is the same v1 surface)
+
+Health checks remain at `http://localhost:5000/healthz` and `http://localhost:5000/readyz`.
 
 ## Seed Data
 Warning: this clears existing seed-related collections before inserting sample data.
@@ -53,7 +55,7 @@ Seeded password for all users: `Karibu@2026!`
 
 - Director: `orban`
 - Managers: `kulong` (Maganjo), `lam` (Matugga)
-- Sales agents: `agent1A`, `agent2A` (Maganjo), `agent1B`, `agent2B` (Matugga)
+- Sales agents: `wuol`, `makhol` (Maganjo), `nyar`, `chuol` (Matugga)
 
 ## Health and Ops Endpoints
 - `GET /healthz`

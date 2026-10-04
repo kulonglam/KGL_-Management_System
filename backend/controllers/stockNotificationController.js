@@ -68,4 +68,16 @@ const markStockNotificationRead = async (req, res) => {
   }
 };
 
-export { getStockNotifications, markStockNotificationRead };
+const markAllStockNotificationsRead = async (req, res) => {
+  try {
+    const result = await StockNotification.updateMany(
+      { branch: req.user.branch, isRead: false },
+      { $set: { isRead: true, readAt: new Date() } }
+    );
+    return res.json({ modifiedCount: result.modifiedCount || 0 });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+};
+
+export { getStockNotifications, markStockNotificationRead, markAllStockNotificationsRead };

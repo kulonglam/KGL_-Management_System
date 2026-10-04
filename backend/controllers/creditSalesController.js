@@ -8,6 +8,8 @@ import {
   repayCreditSaleRecord
 } from '../services/creditSalesService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { buildSearchFilter, startOfToday, resolveSort } from '../utils/listQuery.js';
+import { queueMessage } from '../services/messageService.js';
 
 // GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
 const getAllCreditSales = async (req, res) => {
@@ -19,10 +21,41 @@ const getAllCreditSales = async (req, res) => {
       filter.branch = req.user.branch;
     }
 
+    Object.assign(
+      filter,
+      buildSearchFilter(req.query.search, [
+        'buyerName',
+        'nationalId',
+        'produceName',
+        'produceType',
+        'salesAgentName',
+        'contact'
+      ])
+    );
+    const summaryFilter = { ...filter };
+
+    const status = String(req.query.status || 'all');
+    if (status === 'paid') {
+      filter.isPaid = true;
+    } else if (status === 'outstanding') {
+      filter.isPaid = false;
+      filter.dueDate = { $gte: startOfToday() };
+    } else if (status === 'overdue') {
+      filter.isPaid = false;
+      filter.dueDate = { $lt: startOfToday() };
+      filter.balanceUgx = { $gt: 0 };
+    }
+
     const pagination = parsePagination(req.query);
+    const sort = resolveSort(req.query.sort, {
+      newest: { dateOfDispatch: -1, createdAt: -1 },
+      oldest: { dateOfDispatch: 1, createdAt: 1 },
+      balance_desc: { balanceUgx: -1 },
+      due_soon: { dueDate: 1 }
+    });
     const creditSalesQuery = CreditSale.find(filter)
       .populate('recordedBy', 'name')
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .lean();
 
     if (pagination.enabled) {
@@ -30,11 +63,51 @@ const getAllCreditSales = async (req, res) => {
     }
 
     const creditSales = await creditSalesQuery;
+    const shouldNotifyOverdue =
+      String(req.query.notify || '') === 'true' &&
+      (req.user.role === 'manager' || req.user.role === 'sales_agent');
+    if (shouldNotifyOverdue) {
+      const overdueItems = creditSales.filter(
+        (item) => !item.isPaid && Number(item.balanceUgx || 0) > 0 && new Date(item.dueDate) < startOfToday()
+      );
+      await Promise.all(
+        overdueItems.slice(0, 20).map((item) =>
+          queueMessage({
+            channel: 'in_app',
+            to: req.user.username,
+            subject: 'Overdue credit sale',
+            body: `${item.buyerName} has an overdue balance of ${Math.round(Number(item.balanceUgx || 0))} UGX.`,
+            relatedType: 'credit_sale',
+            relatedId: item._id,
+            branch: item.branch
+          })
+        )
+      );
+    }
     if (!pagination.enabled) {
       return res.json(creditSales);
     }
 
     const total = await CreditSale.countDocuments(filter);
+    const today = startOfToday();
+    const [paidCount, overdueCount, outstandingCount, balanceRows] = await Promise.all([
+      CreditSale.countDocuments({ ...summaryFilter, isPaid: true }),
+      CreditSale.countDocuments({
+        ...summaryFilter,
+        isPaid: false,
+        dueDate: { $lt: today },
+        balanceUgx: { $gt: 0 }
+      }),
+      CreditSale.countDocuments({
+        ...summaryFilter,
+        isPaid: false,
+        dueDate: { $gte: today }
+      }),
+      CreditSale.aggregate([
+        { $match: { ...summaryFilter, isPaid: false } },
+        { $group: { _id: null, total: { $sum: '$balanceUgx' } } }
+      ])
+    ]);
 
     return res.json({
       items: creditSales,
@@ -42,7 +115,13 @@ const getAllCreditSales = async (req, res) => {
         page: pagination.page,
         limit: pagination.limit,
         total
-      })
+      }),
+      summary: {
+        paidCount,
+        overdueCount,
+        outstandingCount,
+        outstandingBalance: Number(balanceRows[0]?.total || 0)
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -4,6 +4,11 @@ import mongoose from 'mongoose';
 import connectDB from './config/database.js';
 import { validateEnv } from './config/env.js';
 import createApp from './app.js';
+import { ensureDefaultBranches } from './services/branchService.js';
+import {
+  startOverdueCreditNotifier,
+  stopOverdueCreditNotifier
+} from './services/overdueCreditNotifier.js';
 import logger from './utils/logger.js';
 
 dotenv.config();
@@ -15,8 +20,10 @@ const PORT = Number(process.env.PORT || 5000);
 // Handle start server.
 const startServer = async () => {
   await connectDB();
+  await ensureDefaultBranches();
 
   const app = createApp();
+  const overdueTimer = startOverdueCreditNotifier();
   const server = app.listen(PORT, () => {
     logger.info('server.started', { port: PORT, env: process.env.NODE_ENV || 'development' });
   });
@@ -30,6 +37,7 @@ const startServer = async () => {
 
     server.close(async () => {
       try {
+        stopOverdueCreditNotifier(overdueTimer);
         await mongoose.disconnect();
         logger.info('server.shutdown.complete', { signal });
         process.exit(0);

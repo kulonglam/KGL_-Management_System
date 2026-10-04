@@ -3,7 +3,8 @@
 import express from 'express';
 import {
   getStockNotifications,
-  markStockNotificationRead
+  markStockNotificationRead,
+  markAllStockNotificationsRead
 } from '../controllers/stockNotificationController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validation.js';
@@ -16,7 +17,7 @@ const router = express.Router();
 router.get(
   '/',
   protect,
-  authorize('manager'),
+  authorize('manager', 'sales_agent'),
   paginationValidation,
   validateRequest,
   getStockNotifications
@@ -24,9 +25,16 @@ router.get(
 
 // PUT /api/notifications/:id/read: mark one notification as read.
 router.put(
+  '/read-all',
+  protect,
+  authorize('manager', 'sales_agent'),
+  markAllStockNotificationsRead
+);
+
+router.put(
   '/:id/read',
   protect,
-  authorize('manager'),
+  authorize('manager', 'sales_agent'),
   mongoIdParamValidation,
   validateRequest,
   markStockNotificationRead

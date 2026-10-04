@@ -124,6 +124,7 @@
               >
                 <option value="all">All statuses</option>
                 <option value="outstanding">Outstanding</option>
+                <option value="overdue">Overdue</option>
                 <option value="paid">Paid</option>
               </select>
             </div>
@@ -148,8 +149,7 @@
         </div>
 
         <div v-if="loadingList" class="text-center py-5 text-muted">Loading credit sales records...</div>
-        <div v-else-if="creditSales.length === 0" class="empty-state">No credit sales records found.</div>
-        <div v-else-if="filteredCreditSales.length === 0" class="empty-state">
+        <div v-else-if="creditSales.length === 0" class="empty-state">
           No credit sales records match your current filters.
         </div>
         <div v-else class="table-responsive">
@@ -170,7 +170,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in paginatedCreditSales" :key="item._id" :class="{ 'table-active': repayId === item._id }">
+              <tr v-for="item in creditSales" :key="item._id" :class="{ 'table-active': repayId === item._id }">
                 <td data-label="Buyer">{{ item.buyerName }}</td>
                 <td data-label="NIN">{{ item.nationalId || '-' }}</td>
                 <td data-label="Location">{{ item.location || '-' }}</td>
@@ -185,9 +185,9 @@
                 <td data-label="Status">
                   <span
                     class="badge"
-                    :class="getBalance(item) > 0 ? 'bg-warning text-dark' : 'bg-success'"
+                    :class="statusBadgeClass(item)"
                   >
-                    {{ getBalance(item) > 0 ? 'Outstanding' : 'Paid' }}
+                    {{ statusLabel(item) }}
                   </span>
                 </td>
                 <td data-label="Produce">{{ item.produceName }} ({{ item.produceType }})</td>
@@ -228,8 +228,8 @@
         </div>
         <TablePagination
           :current-page="currentPage"
-          :total-pages="totalCreditPages"
-          :total-items="filteredCreditSales.length"
+          :total-pages="listTotalPages"
+          :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
           id-prefix="credit-sales-records"
@@ -400,6 +400,8 @@ import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
+import { debounce } from '../utils/debounce.js';
+import { asListPayload } from '../utils/listPayload.js';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.js';
 import { formatDisplayDate } from '../utils/dateFormat.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
@@ -415,6 +417,9 @@ export default {
     return {
       user: {},
       creditSales: [],
+      listTotal: 0,
+      listTotalPages: 1,
+      listSummary: {},
       loadingList: false,
       loadError: '',
       currentPage: 1,
@@ -454,10 +459,17 @@ export default {
       }
     };
   },
-  async created() {
+  created() {
+    this.scheduleCreditReload = debounce(() => {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
+      }
+      this.loadCreditSales();
+    }, 300);
     const authStore = useAuthStore(pinia);
     this.user = authStore.user || {};
-    await this.loadCreditSales();
+    this.loadCreditSales();
   },
   computed: {
     // Repayment/edit actions are restricted to managers.
@@ -467,66 +479,24 @@ export default {
     selectedCreditSale() {
       return this.creditSales.find((c) => c._id === this.repayId);
     },
-    // Apply search, repayment-status filtering, then selected sort order for deterministic table results.
-    filteredCreditSales() {
-      const query = this.searchQuery.trim().toLowerCase();
-
-      const searched = this.creditSales.filter((item) => {
-        if (!query) return true;
-        const haystack = [
-          item.buyerName,
-          item.nationalId,
-          item.produceName,
-          item.produceType,
-          item.salesAgentName,
-          item.contact
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(query);
-      });
-
-      const filteredByStatus =
-        this.statusFilter === 'all'
-          ? searched
-          : searched.filter((item) => {
-              const balance = this.getBalance(item);
-              return this.statusFilter === 'outstanding' ? balance > 0 : balance === 0;
-            });
-
-      const sorted = [...filteredByStatus];
-      if (this.sortBy === 'oldest') {
-        sorted.sort((a, b) => new Date(a.dateOfDispatch || 0) - new Date(b.dateOfDispatch || 0));
-      } else if (this.sortBy === 'balance_desc') {
-        sorted.sort((a, b) => this.getBalance(b) - this.getBalance(a));
-      } else if (this.sortBy === 'due_soon') {
-        sorted.sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0));
-      } else {
-        sorted.sort((a, b) => new Date(b.dateOfDispatch || 0) - new Date(a.dateOfDispatch || 0));
-      }
-
-      return sorted;
-    },
     totalCreditPages() {
-      return Math.max(1, Math.ceil(this.filteredCreditSales.length / this.pageSize));
-    },
-    paginatedCreditSales() {
-      const start = (this.currentPage - 1) * this.pageSize;
-      return this.filteredCreditSales.slice(start, start + this.pageSize);
+      return this.listTotalPages;
     },
     balanceForSelected() {
       if (!this.selectedCreditSale) return 0;
       return this.getBalance(this.selectedCreditSale);
     },
     outstandingCount() {
-      return this.creditSales.filter((item) => this.getBalance(item) > 0).length;
+      return Number(this.listSummary.outstandingCount ?? this.creditSales.filter((item) => this.getBalance(item) > 0).length);
     },
     paidCount() {
-      return this.creditSales.filter((item) => this.getBalance(item) === 0).length;
+      return Number(this.listSummary.paidCount ?? this.creditSales.filter((item) => this.getBalance(item) === 0).length);
     },
     outstandingBalance() {
-      return this.creditSales.reduce((sum, item) => sum + this.getBalance(item), 0);
+      return Number(
+        this.listSummary.outstandingBalance ??
+          this.creditSales.reduce((sum, item) => sum + this.getBalance(item), 0)
+      );
     },
     activeFilterCount() {
       let count = 0;
@@ -549,8 +519,8 @@ export default {
         },
         {
           label: 'Credit Records',
-          value: this.creditSales.length.toLocaleString('en-UG'),
-          meta: `${this.filteredCreditSales.length.toLocaleString('en-UG')} visible`
+          value: this.listTotal.toLocaleString('en-UG'),
+          meta: `${this.creditSales.length.toLocaleString('en-UG')} on this page`
         },
         {
           label: 'Outstanding',
@@ -566,22 +536,24 @@ export default {
     }
   },
   watch: {
-    pageSize() {
-      this.currentPage = 1;
+    currentPage() {
+      this.loadCreditSales();
     },
-    creditSales() {
-      if (this.currentPage > this.totalCreditPages) {
-        this.currentPage = this.totalCreditPages;
+    pageSize() {
+      if (this.currentPage !== 1) {
+        this.currentPage = 1;
+        return;
       }
+      this.loadCreditSales();
     },
     searchQuery() {
-      this.currentPage = 1;
+      this.scheduleCreditReload();
     },
     statusFilter() {
-      this.currentPage = 1;
+      this.scheduleCreditReload();
     },
     sortBy() {
-      this.currentPage = 1;
+      this.scheduleCreditReload();
     }
   },
   methods: {
@@ -590,11 +562,21 @@ export default {
       this.loadingList = true;
       this.loadError = '';
       try {
-        const response = await creditSalesAPI.getAll();
-        this.creditSales = response.data.map((item) => ({
+        const response = await creditSalesAPI.getAll({
+          page: this.currentPage,
+          limit: this.pageSize,
+          search: this.searchQuery,
+          status: this.statusFilter,
+          sort: this.sortBy
+        });
+        const payload = asListPayload(response.data);
+        this.creditSales = payload.items.map((item) => ({
           ...item,
           contact: normalizeLocalPhone(item.contact) || item.contact
         }));
+        this.listTotal = payload.total;
+        this.listTotalPages = payload.totalPages;
+        this.listSummary = payload.summary || {};
       } catch (error) {
         this.loadError = error.response?.data?.message || 'Failed to load credit sales records.';
       } finally {
@@ -755,6 +737,22 @@ export default {
     },
     getBalance(item) {
       return getCreditSaleBalance(item);
+    },
+    isOverdue(item) {
+      if (!item || this.getBalance(item) <= 0) return false;
+      const due = new Date(item.dueDate);
+      if (Number.isNaN(due.getTime())) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return due < today;
+    },
+    statusLabel(item) {
+      if (this.getBalance(item) === 0) return 'Paid';
+      return this.isOverdue(item) ? 'Overdue' : 'Outstanding';
+    },
+    statusBadgeClass(item) {
+      if (this.getBalance(item) === 0) return 'bg-success';
+      return this.isOverdue(item) ? 'bg-danger' : 'bg-warning text-dark';
     },
     formatDate(value) {
       return formatDisplayDate(value);

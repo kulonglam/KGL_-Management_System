@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth';
 import { getHomeRouteForUser, isDirectorOrban } from '../utils/directorAccess.js';
 
 const Login = () => import('../views/Login.vue');
+const PasswordReset = () => import('../views/PasswordReset.vue');
 const DashboardLayout = () => import('../views/DashboardLayout.vue');
 const DirectorDashboard = () => import('../views/DirectorDashboard.vue');
 const ManagerDashboard = () => import('../views/ManagerDashboard.vue');
@@ -20,6 +21,8 @@ const Users = () => import('../views/Users.vue');
 const TrustedBuyers = () => import('../views/TrustedBuyers.vue');
 const PriceManagement = () => import('../views/PriceManagement.vue');
 const Profile = () => import('../views/Profile.vue');
+const Branches = () => import('../views/Branches.vue');
+const AuditLogs = () => import('../views/AuditLogs.vue');
 const NotFound = () => import('../views/NotFound.vue');
 
 // Route table grouped under dashboard layout with per-route role metadata.
@@ -28,6 +31,11 @@ const routes = [
     path: '/',
     name: 'Login',
     component: Login
+  },
+  {
+    path: '/reset-password',
+    name: 'PasswordReset',
+    component: PasswordReset
   },
   {
     path: '/dashboard',
@@ -111,6 +119,18 @@ const routes = [
         name: 'PriceManagement',
         component: PriceManagement,
         meta: { role: 'manager' }
+      },
+      {
+        path: 'branches',
+        name: 'Branches',
+        component: Branches,
+        meta: { role: 'director', requiresOrbanDirector: true }
+      },
+      {
+        path: 'audit-logs',
+        name: 'AuditLogs',
+        component: AuditLogs,
+        meta: { roles: ['director', 'manager'] }
       },
       {
         path: 'profile',

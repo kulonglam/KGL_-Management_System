@@ -1,6 +1,6 @@
 # Karibu Groceries LTD Management System - User Manual
 
-Last Updated: 2026-03-09
+Last Updated: 2026-10-04
 
 ## 1. Purpose
 
@@ -21,19 +21,21 @@ The system supports:
 
 ### Director
 
-- Access: Director Dashboard, Profile
-- Main use: view cross-branch totals, trends, and report exports
+- Access: Director Dashboard, Branches, Audit Log, Profile
+- Main use: view cross-branch totals, trends, and report exports; add extra branches; review audit history
 - Restriction: cannot record procurement, sales, credit sales, users, or prices
+- MFA and recovery codes: enable TOTP and generate recovery codes from Profile. Extra branches can be deactivated later; Maganjo and Matugga stay active.
 
 ### Manager
 
-- Access: manager dashboard, procurement, sales, credit sales, records, inventory, trusted buyers, users, price management, profile
+- Access: manager dashboard, procurement, sales, credit sales, records, inventory, trusted buyers, users, price management, audit log, profile
 - Main use: run branch operations and branch administration
 - Restriction: can work only within own branch
+- Password recovery: generate your own codes in Profile, or issue one-time recovery codes for a staff member from Users
 
 ### Sales Agent
 
-- Access: sales dashboard, sales, credit sales, records, inventory, profile
+- Access: sales dashboard, sales, credit sales, records, inventory, stock notifications, profile
 - Main use: record branch sales and monitor personal branch activity
 - Restriction: cannot record procurement, manage prices, manage users, or repay credit balances
 
@@ -64,6 +66,7 @@ The system supports:
 Optional:
 
 - `Remember username` stores only the username on the current device.
+- `Forgot Password` opens recovery. Use a recovery code from Profile, or ask your manager to issue codes from Users, then submit username + one code + a new password.
 
 ### Logout
 
@@ -210,7 +213,7 @@ Thresholds:
 
 Notifications:
 
-- unread stock notifications appear in the header
+- unread stock notifications appear in the header (out of stock and low stock below 500 kg)
 - managers can acknowledge single notifications or all
 
 ### 6.7 Manage Branch Users
@@ -251,6 +254,7 @@ Path: `Sales Records`
 Path: `Credit Sales Records`
 
 - view balances, due dates, and payment status
+- filter Outstanding, Overdue, or Paid
 - managers can record repayments
 
 Repayment rules:

@@ -132,6 +132,38 @@
         </form>
       </div>
     </div>
+
+    <div class="card profile-card mt-4">
+      <div class="card-header">
+        <h5 class="mb-0">Account recovery and MFA</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          Generate recovery codes for password reset, then optionally enable an authenticator app.
+        </p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn btn-outline-primary btn-sm" :disabled="securityBusy" @click="generateRecoveryCodes">
+            Generate recovery codes
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm" :disabled="securityBusy" @click="setupMfa">
+            Set up authenticator
+          </button>
+        </div>
+        <div v-if="otpauthUri" class="mb-3">
+          <label class="form-label" for="mfa-setup-code">Authenticator secret</label>
+          <input id="mfa-secret" class="form-control mb-2" :value="mfaSecret" readonly />
+          <p class="small text-muted">{{ otpauthUri }}</p>
+          <input id="mfa-setup-code" v-model.trim="mfaCode" class="form-control" placeholder="Enter 6-digit code" maxlength="6" />
+          <button type="button" class="btn btn-primary btn-sm mt-2" @click="enableMfa">Enable MFA</button>
+        </div>
+        <div v-if="recoveryCodes.length" class="alert alert-warning">
+          <strong>Save these codes now:</strong>
+          <ul class="mb-0 mt-2">
+            <li v-for="code in recoveryCodes" :key="code">{{ code }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -157,6 +189,11 @@ export default {
       error: '',
       success: '',
       profileImagePreview: '',
+      securityBusy: false,
+      recoveryCodes: [],
+      otpauthUri: '',
+      mfaSecret: '',
+      mfaCode: '',
       profileImageChanged: false,
       form: {
         _id: '',
@@ -305,6 +342,46 @@ export default {
         this.error = error.response?.data?.message || 'Failed to update profile';
       } finally {
         this.saving = false;
+      }
+    },
+    async generateRecoveryCodes() {
+      this.securityBusy = true;
+      this.error = '';
+      try {
+        const response = await authAPI.issueRecoveryCodes();
+        this.recoveryCodes = response.data?.recoveryCodes || [];
+        this.success = response.data?.message || 'Recovery codes generated.';
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Unable to generate recovery codes.';
+      } finally {
+        this.securityBusy = false;
+      }
+    },
+    async setupMfa() {
+      this.securityBusy = true;
+      this.error = '';
+      try {
+        const response = await authAPI.setupMfa();
+        this.mfaSecret = response.data?.secret || '';
+        this.otpauthUri = response.data?.otpauthUri || '';
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Unable to start MFA setup.';
+      } finally {
+        this.securityBusy = false;
+      }
+    },
+    async enableMfa() {
+      this.securityBusy = true;
+      this.error = '';
+      try {
+        await authAPI.enableMfa({ code: this.mfaCode });
+        this.success = 'Authenticator MFA is enabled.';
+        this.otpauthUri = '';
+        this.mfaCode = '';
+      } catch (error) {
+        this.error = error.response?.data?.message || 'Unable to enable MFA.';
+      } finally {
+        this.securityBusy = false;
       }
     },
     formatRole(role) {

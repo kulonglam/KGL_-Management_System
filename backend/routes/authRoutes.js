@@ -9,7 +9,15 @@ import {
   updateMe,
   getUsers,
   updateUser,
-  deleteUser
+  deleteUser,
+  refreshSession,
+  resetPasswordWithRecoveryCode,
+  issueRecoveryCodes,
+  issueRecoveryCodesForUser,
+  setupMfa,
+  enableMfa,
+  disableMfa,
+  verifyMfaLogin
 } from '../controllers/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { authLimiter, writeLimiter } from '../middleware/rateLimiter.js';
@@ -20,7 +28,11 @@ import {
   profileUpdateValidation,
   paginationValidation,
   userUpdateValidation,
-  mongoIdParamValidation
+  mongoIdParamValidation,
+  passwordResetValidation,
+  mfaCodeValidation,
+  mfaDisableValidation,
+  mfaLoginValidation
 } from '../validators/requestValidators.js';
 
 // Configure router.
@@ -36,7 +48,15 @@ router.use(noStore);
 
 // POST /api/auth/login: authenticate credentials and return signed session details.
 router.post('/login', authLimiter, loginValidation, validateRequest, login);
-// POST /api/auth/logout: revoke the active bearer token version for the current user.
+router.post('/login/mfa', authLimiter, mfaLoginValidation, validateRequest, verifyMfaLogin);
+router.post('/refresh', authLimiter, refreshSession);
+router.post(
+  '/password-reset',
+  authLimiter,
+  passwordResetValidation,
+  validateRequest,
+  resetPasswordWithRecoveryCode
+);
 router.post('/logout', protect, writeLimiter, logout);
 // POST /api/auth/register: create a new branch user account (manager only).
 router.post('/register', protect, authorize('manager'),
@@ -50,6 +70,10 @@ router.post('/register', protect, authorize('manager'),
 router.get('/me', protect, getMe);
 // PUT /api/auth/me: update current user profile fields and optional password.
 router.put('/me', protect, writeLimiter, profileUpdateValidation, validateRequest, updateMe);
+router.post('/recovery-codes', protect, writeLimiter, issueRecoveryCodes);
+router.post('/mfa/setup', protect, writeLimiter, setupMfa);
+router.post('/mfa/enable', protect, writeLimiter, mfaCodeValidation, validateRequest, enableMfa);
+router.post('/mfa/disable', protect, writeLimiter, mfaDisableValidation, validateRequest, disableMfa);
 
 // GET /api/auth/users: list branch users for manager administration screens.
 router.get(
@@ -80,6 +104,16 @@ router.delete(
   mongoIdParamValidation,
   validateRequest,
   deleteUser
+);
+
+router.post(
+  '/users/:id/recovery-codes',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  issueRecoveryCodesForUser
 );
 
 export default router;

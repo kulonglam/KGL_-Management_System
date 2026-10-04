@@ -95,15 +95,15 @@ npm run dev
 
 Frontend default URL: `http://localhost:5173`
 
+API versioning: the canonical base is `/api/v1` (for example `http://localhost:5000/api/v1/auth/login`). The unversioned `/api` prefix is an alias of v1.
+
 ## Seeded Login Credentials
 
 All seeded users use password `Karibu@2026!`.
 
 - Director: `orban`
-- Manager (Maganjo): `kulong`
-- Manager (Matugga): `lam`
-- Sales Agent (Maganjo): `agent1A`, `agent2A`
-- Sales Agent (Matugga): `agent1B`, `agent2B`
+- Managers: `kulong`, `lam`
+- Sales agents: `wuol`, `makhol`, `nyar`, `chuol`
 
 ## Related Documents
 

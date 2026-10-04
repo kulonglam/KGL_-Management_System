@@ -262,7 +262,7 @@ Seed accounts:
 
 - Director: `orban`
 - Managers: `kulong`, `lam`
-- Sales agents: `agent1A`, `agent2A`, `agent1B`, `agent2B`
+- Sales agents: `wuol`, `makhol`, `nyar`, `chuol`
 - Default password: `Karibu@2026!`
 
 ## Seed Command

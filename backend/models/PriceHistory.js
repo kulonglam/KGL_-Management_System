@@ -1,11 +1,12 @@
 // Stores an immutable audit trail of manager price changes.
  
 import mongoose from 'mongoose';
+import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 const priceHistorySchema = new mongoose.Schema(
   {
-    branch: { type: String, required: true, enum: ['Maganjo', 'Matugga'] },
+    branch: createBranchSchemaField(),
     priceSettingId: { type: mongoose.Schema.Types.ObjectId, required: true },
     action: {
       type: String,

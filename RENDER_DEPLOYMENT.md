@@ -31,7 +31,7 @@ If you enable Swagger in production, also set:
 If your real service URLs differ from the defaults in `render.yaml`, update:
 - backend `JWT_ISSUER`
 - backend `ALLOWED_ORIGINS`
-- frontend `VITE_API_URL`
+- frontend `VITE_API_URL` (use `https://<backend-host>/api/v1`)
 
 ## 4. Seed Fresh Data
 After backend deploy succeeds:

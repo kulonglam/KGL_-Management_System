@@ -3,15 +3,17 @@ import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
 import mongoose from 'mongoose';
-import { calculateInventoryByBranch, calculateInventoryByFilter } from '../services/inventoryService.js';
-import { createOutOfStockNotification } from '../services/stockNotificationService.js';
+import { calculateInventoryByBranch, calculateInventoryByFilter, getBucketTonnage } from '../services/inventoryService.js';
+import { syncStockLevelNotifications } from '../services/stockNotificationService.js';
 import { withStockLock } from '../services/stockLockService.js';
 import {
   resolveProduceTypeForSale,
   buildAggregationContext,
   buildSalesAggregationPayload
 } from '../services/salesAggregationService.js';
+import { recordAudit } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 import {
   normalizeProduceName,
   normalizeProduceNameKey,
@@ -28,10 +30,24 @@ const getAllSales = async (req, res) => {
       filter.branch = req.user.branch;
     }
 
+    Object.assign(
+      filter,
+      buildSearchFilter(req.query.search, ['produceName', 'produceType', 'buyerName', 'salesAgentName'])
+    );
+    if (req.query.produceType && req.query.produceType !== 'all') {
+      filter.produceType = req.query.produceType;
+    }
+
     const pagination = parsePagination(req.query);
+    const sort = resolveSort(req.query.sort, {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      amount_desc: { amountPaidUgx: -1 },
+      quantity_desc: { tonnageKg: -1 }
+    });
     const salesQuery = Sale.find(filter)
       .populate('recordedBy', 'name')
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .lean();
 
     if (pagination.enabled) {
@@ -124,18 +140,24 @@ const createSale = async (req, res) => {
           recordedBy: req.user._id
         });
 
-        if (remainingStock <= 0) {
-          await createOutOfStockNotification({
-            branch: req.user.branch,
-            produceName: item.produceName,
-            produceType: item.produceType
-          });
-        }
+        await syncStockLevelNotifications({
+          branch: req.user.branch,
+          produceName: item.produceName,
+          produceType: item.produceType,
+          remainingStock
+        });
 
         return createdSale;
       }
     );
 
+    await recordAudit({
+      actor: req.user,
+      action: 'create',
+      entityType: 'sale',
+      entityId: sale._id,
+      branch: req.user.branch
+    });
     res.status(201).json(sale);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -212,6 +234,20 @@ const deleteSale = async (req, res) => {
     }
 
     await sale.deleteOne();
+    const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
+    await syncStockLevelNotifications({
+      branch: sale.branch,
+      produceName: sale.produceName,
+      produceType: sale.produceType,
+      remainingStock: getBucketTonnage(snapshot, sale.produceName, sale.produceType, sale.branch)
+    });
+    await recordAudit({
+      actor: req.user,
+      action: 'delete',
+      entityType: 'sale',
+      entityId: sale._id,
+      branch: sale.branch
+    });
     res.json({ message: 'Sale deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -348,15 +384,13 @@ const updateSale = async (req, res) => {
 
         await sale.save();
 
-        // Notify only when the post-correction stock drops to zero.
         const remainingStock = availableTonnage - requestedTonnage;
-        if (remainingStock <= 0) {
-          await createOutOfStockNotification({
-            branch: sale.branch,
-            produceName: sale.produceName,
-            produceType: sale.produceType
-          });
-        }
+        await syncStockLevelNotifications({
+          branch: sale.branch,
+          produceName: sale.produceName,
+          produceType: sale.produceType,
+          remainingStock
+        });
 
         return sale;
       }

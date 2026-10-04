@@ -60,5 +60,8 @@ jobs:
       - name: Audit frontend dependencies
         run: npm run audit
 
+      - name: Test frontend
+        run: npm test
+
       - name: Build frontend
         run: npm run build

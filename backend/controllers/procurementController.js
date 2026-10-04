@@ -2,12 +2,20 @@
  
 
 import Procurement from '../models/Procurement.js';
-import { resolveOutOfStockNotification } from '../services/stockNotificationService.js';
+import { syncStockLevelNotifications } from '../services/stockNotificationService.js';
 import {
   resolveSellingPriceDetails,
   canManagerAccessBranch
 } from '../services/procurementService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import {
+  assertProcurementKeepsStockNonNegative,
+  calculateInventoryByFilter,
+  getBucketTonnage
+} from '../services/inventoryService.js';
+import { withStockLock } from '../services/stockLockService.js';
+import { recordAudit } from '../services/auditService.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -39,10 +47,25 @@ const getAllProcurement = async (req, res) => {
       filter.branch = req.user.branch;
     }
 
+    Object.assign(
+      filter,
+      buildSearchFilter(req.query.search, ['produceName', 'produceType', 'dealerName', 'sourceType', 'branch'])
+    );
+    if (req.query.produceType && req.query.produceType !== 'all') {
+      filter.produceType = req.query.produceType;
+    }
+
     const pagination = parsePagination(req.query);
+    const sort = resolveSort(req.query.sort, {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      tonnage_desc: { tonnageKg: -1 },
+      cost_desc: { costUgx: -1 },
+      dealer_asc: { dealerName: 1 }
+    });
     const procurementsQuery = Procurement.find(filter)
       .populate('recordedBy', 'name')
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .lean();
 
     if (pagination.enabled) {
@@ -107,10 +130,20 @@ const createProcurement = async (req, res) => {
       recordedBy: req.user._id
     });
 
-    await resolveOutOfStockNotification({
+    const snapshot = await calculateInventoryByFilter({ branch: req.user.branch });
+    await syncStockLevelNotifications({
       branch: req.user.branch,
       produceName,
-      produceType
+      produceType,
+      remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
+    });
+    await recordAudit({
+      actor: req.user,
+      action: 'create',
+      entityType: 'procurement',
+      entityId: procurement._id,
+      branch: req.user.branch,
+      metadata: { produceName, produceType, tonnageKg: procurement.tonnageKg }
     });
 
     res.status(201).json(procurement);
@@ -202,16 +235,76 @@ const updateProcurement = async (req, res) => {
       updatePayload.produceType = priceResolution.produceType || normalizeProduceType(updatePayload.produceType);
     }
 
-    const updatedProcurement = await Procurement.findByIdAndUpdate(
-      req.params.id,
-      updatePayload,
-      { new: true, runValidators: true }
+    const nextProduceName = updatePayload.produceName;
+    const nextProduceType = updatePayload.produceType;
+    const nextTonnageKg =
+      fieldsToApply.tonnageKg !== undefined ? Number(fieldsToApply.tonnageKg) : Number(procurement.tonnageKg);
+
+    const updatedProcurement = await withStockLock(
+      {
+        branch: procurement.branch,
+        produceName: nextProduceName,
+        produceType: nextProduceType
+      },
+      async () => {
+        const snapshot = await calculateInventoryByFilter({ branch: procurement.branch });
+        assertProcurementKeepsStockNonNegative({
+          snapshot,
+          branch: procurement.branch,
+          previousProduceName: currentProduceName,
+          previousProduceType: currentProduceType,
+          previousTonnageKg: Number(procurement.tonnageKg || 0),
+          nextProduceName,
+          nextProduceType,
+          nextTonnageKg
+        });
+
+        const saved = await Procurement.findByIdAndUpdate(req.params.id, updatePayload, {
+          new: true,
+          runValidators: true
+        });
+
+        const afterSnapshot = await calculateInventoryByFilter({ branch: procurement.branch });
+        await syncStockLevelNotifications({
+          branch: procurement.branch,
+          produceName: saved.produceName || saved.name,
+          produceType: saved.produceType || saved.type,
+          remainingStock: getBucketTonnage(
+            afterSnapshot,
+            saved.produceName || saved.name,
+            saved.produceType || saved.type,
+            procurement.branch
+          )
+        });
+
+        if (
+          normalizeProduceName(currentProduceName) !== normalizeProduceName(saved.produceName || '') ||
+          normalizeProduceType(currentProduceType) !== normalizeProduceType(saved.produceType || '')
+        ) {
+          await syncStockLevelNotifications({
+            branch: procurement.branch,
+            produceName: currentProduceName,
+            produceType: currentProduceType,
+            remainingStock: getBucketTonnage(
+              afterSnapshot,
+              currentProduceName,
+              currentProduceType,
+              procurement.branch
+            )
+          });
+        }
+
+        return saved;
+      }
     );
 
-    await resolveOutOfStockNotification({
+    await recordAudit({
+      actor: req.user,
+      action: 'update',
+      entityType: 'procurement',
+      entityId: updatedProcurement._id,
       branch: procurement.branch,
-      produceName: updatedProcurement.produceName || updatedProcurement.name,
-      produceType: updatedProcurement.produceType || updatedProcurement.type
+      metadata: { produceName: nextProduceName, produceType: nextProduceType, tonnageKg: nextTonnageKg }
     });
 
     res.json(normalizeProcurementPayload(updatedProcurement.toObject()));
@@ -234,7 +327,55 @@ const deleteProcurement = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
-    await procurement.deleteOne();
+    await withStockLock(
+      {
+        branch: procurement.branch,
+        produceName: procurement.produceName,
+        produceType: procurement.produceType
+      },
+      async () => {
+        const snapshot = await calculateInventoryByFilter({ branch: procurement.branch });
+        assertProcurementKeepsStockNonNegative({
+          snapshot,
+          branch: procurement.branch,
+          previousProduceName: procurement.produceName,
+          previousProduceType: procurement.produceType,
+          previousTonnageKg: Number(procurement.tonnageKg || 0),
+          nextProduceName: procurement.produceName,
+          nextProduceType: procurement.produceType,
+          nextTonnageKg: 0
+        });
+
+        await procurement.deleteOne();
+
+        const afterSnapshot = await calculateInventoryByFilter({ branch: procurement.branch });
+        await syncStockLevelNotifications({
+          branch: procurement.branch,
+          produceName: procurement.produceName,
+          produceType: procurement.produceType,
+          remainingStock: getBucketTonnage(
+            afterSnapshot,
+            procurement.produceName,
+            procurement.produceType,
+            procurement.branch
+          )
+        });
+      }
+    );
+
+    await recordAudit({
+      actor: req.user,
+      action: 'delete',
+      entityType: 'procurement',
+      entityId: procurement._id,
+      branch: procurement.branch,
+      metadata: {
+        produceName: procurement.produceName,
+        produceType: procurement.produceType,
+        tonnageKg: procurement.tonnageKg
+      }
+    });
+
     res.json({ message: 'Procurement record deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
