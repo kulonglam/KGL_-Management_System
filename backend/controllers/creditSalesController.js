@@ -9,7 +9,6 @@ import {
 } from '../services/creditSalesService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, startOfToday, resolveSort, trustedQuery } from '../utils/listQuery.js';
-import { queueMessage } from '../services/messageService.js';
 
 // GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
 const getAllCreditSales = async (req, res) => {
@@ -62,35 +61,6 @@ const getAllCreditSales = async (req, res) => {
     }
 
     const creditSales = await creditSalesQuery;
-    const shouldNotifyOverdue =
-      String(req.query.notify || '') === 'true' &&
-      (req.user.role === 'manager' || req.user.role === 'sales_agent');
-    if (shouldNotifyOverdue) {
-      const overdueItems = creditSales
-        .filter(
-          (item) => !item.isPaid && Number(item.balanceUgx || 0) > 0 && new Date(item.dueDate) < startOfToday()
-        )
-        .slice(0, 20);
-      await Promise.all(
-        overdueItems.map((item) =>
-          queueMessage({
-            channel: 'in_app',
-            to: req.user.username,
-            subject: 'Overdue credit sale',
-            body: `${item.buyerName} has an overdue balance of ${Math.round(Number(item.balanceUgx || 0))} UGX.`,
-            relatedType: 'credit_sale',
-            relatedId: item._id,
-            branch: item.branch
-          })
-        )
-      );
-      if (overdueItems.length > 0) {
-        await CreditSale.updateMany(
-          { _id: trustedQuery({ $in: overdueItems.map((item) => item._id) }) },
-          { $set: { lastOverdueNoticeAt: new Date() } }
-        );
-      }
-    }
     if (!pagination.enabled) {
       return res.json(creditSales);
     }
