@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import mongoose from 'mongoose';
+import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
 test('buildSearchFilter returns empty object when search is blank', () => {
@@ -35,4 +36,23 @@ test('buildPaginationMeta computes total pages', () => {
     total: 45,
     totalPages: 3
   });
+});
+
+test('sanitizeFilter rewrites untrusted overdue operators but keeps trustedQuery', () => {
+  mongoose.set('sanitizeFilter', true);
+  const due = new Date('2026-01-01T00:00:00.000Z');
+  const rewritten = mongoose.sanitizeFilter({
+    isPaid: false,
+    dueDate: { $lt: due },
+    balanceUgx: { $gt: 0 }
+  });
+  assert.deepEqual(rewritten.balanceUgx, { $eq: { $gt: 0 } });
+
+  const safe = mongoose.sanitizeFilter({
+    isPaid: false,
+    dueDate: trustedQuery({ $lt: due }),
+    balanceUgx: trustedQuery({ $gt: 0 })
+  });
+  assert.equal(safe.balanceUgx.$gt, 0);
+  assert.equal(new Date(safe.dueDate.$lt).toISOString(), due.toISOString());
 });

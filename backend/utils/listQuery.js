@@ -1,4 +1,10 @@
+import mongoose from 'mongoose';
+
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Mark server-built Mongo operators as trusted so sanitizeFilter does not
+// rewrite { $gt: 0 } into { $eq: { $gt: 0 } } and then CastError.
+const trustedQuery = (value) => mongoose.trusted(value);
 
 const buildSearchFilter = (search, fields = []) => {
   const query = String(search || '').trim();
@@ -8,7 +14,7 @@ const buildSearchFilter = (search, fields = []) => {
 
   return {
     $or: fields.map((field) => ({
-      [field]: { $regex: escapeRegex(query), $options: 'i' }
+      [field]: trustedQuery({ $regex: escapeRegex(query), $options: 'i' })
     }))
   };
 };
@@ -26,4 +32,4 @@ const resolveSort = (sortKey, sortMap = {}, fallback = { createdAt: -1 }) => {
   return fallback;
 };
 
-export { buildSearchFilter, startOfToday, resolveSort };
+export { buildSearchFilter, startOfToday, resolveSort, trustedQuery };

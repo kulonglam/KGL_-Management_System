@@ -1,7 +1,7 @@
 import CreditSale from '../models/CreditSale.js';
 import User from '../models/User.js';
 import { queueMessage } from './messageService.js';
-import { startOfToday } from '../utils/listQuery.js';
+import { startOfToday, trustedQuery } from '../utils/listQuery.js';
 import logger from '../utils/logger.js';
 
 const NOTICE_COOLDOWN_MS = Number(process.env.OVERDUE_NOTICE_COOLDOWN_MS || 24 * 60 * 60 * 1000);
@@ -12,9 +12,12 @@ const notifyOverdueCreditSales = async () => {
   const staleBefore = new Date(Date.now() - NOTICE_COOLDOWN_MS);
   const overdueItems = await CreditSale.find({
     isPaid: false,
-    balanceUgx: { $gt: 0 },
-    dueDate: { $lt: dueBefore },
-    $or: [{ lastOverdueNoticeAt: null }, { lastOverdueNoticeAt: { $lte: staleBefore } }]
+    balanceUgx: trustedQuery({ $gt: 0 }),
+    dueDate: trustedQuery({ $lt: dueBefore }),
+    $or: [
+      { lastOverdueNoticeAt: null },
+      { lastOverdueNoticeAt: trustedQuery({ $lte: staleBefore }) }
+    ]
   })
     .sort({ dueDate: 1 })
     .limit(SCAN_LIMIT)
@@ -27,7 +30,7 @@ const notifyOverdueCreditSales = async () => {
   const branchNames = [...new Set(overdueItems.map((item) => item.branch).filter(Boolean))];
   const managers = await User.find({
     role: 'manager',
-    branch: { $in: branchNames }
+    branch: trustedQuery({ $in: branchNames })
   })
     .select('username branch')
     .lean();

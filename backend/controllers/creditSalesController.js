@@ -8,7 +8,7 @@ import {
   repayCreditSaleRecord
 } from '../services/creditSalesService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-import { buildSearchFilter, startOfToday, resolveSort } from '../utils/listQuery.js';
+import { buildSearchFilter, startOfToday, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { queueMessage } from '../services/messageService.js';
 
 // GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
@@ -37,11 +37,11 @@ const getAllCreditSales = async (req, res) => {
       filter.isPaid = true;
     } else if (status === 'outstanding') {
       filter.isPaid = false;
-      filter.dueDate = { $gte: startOfToday() };
+      filter.dueDate = trustedQuery({ $gte: startOfToday() });
     } else if (status === 'overdue') {
       filter.isPaid = false;
-      filter.dueDate = { $lt: startOfToday() };
-      filter.balanceUgx = { $gt: 0 };
+      filter.dueDate = trustedQuery({ $lt: startOfToday() });
+      filter.balanceUgx = trustedQuery({ $gt: 0 });
     }
     const summaryFilter = { ...filter };
 
@@ -86,7 +86,7 @@ const getAllCreditSales = async (req, res) => {
       );
       if (overdueItems.length > 0) {
         await CreditSale.updateMany(
-          { _id: { $in: overdueItems.map((item) => item._id) } },
+          { _id: trustedQuery({ $in: overdueItems.map((item) => item._id) }) },
           { $set: { lastOverdueNoticeAt: new Date() } }
         );
       }
@@ -102,13 +102,13 @@ const getAllCreditSales = async (req, res) => {
       CreditSale.countDocuments({
         ...summaryFilter,
         isPaid: false,
-        dueDate: { $lt: today },
-        balanceUgx: { $gt: 0 }
+        dueDate: trustedQuery({ $lt: today }),
+        balanceUgx: trustedQuery({ $gt: 0 })
       }),
       CreditSale.countDocuments({
         ...summaryFilter,
         isPaid: false,
-        dueDate: { $gte: today }
+        dueDate: trustedQuery({ $gte: today })
       }),
       CreditSale.aggregate([
         { $match: { ...summaryFilter, isPaid: false } },

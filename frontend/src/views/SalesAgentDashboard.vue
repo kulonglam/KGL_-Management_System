@@ -203,7 +203,7 @@ export default {
         const [salesRes, creditRes, overdueRes] = await Promise.all([
           salesAPI.getAll(),
           creditSalesAPI.getAll(),
-          creditSalesAPI.getAll({ status: 'overdue', notify: true })
+          creditSalesAPI.getAll({ status: 'overdue' })
         ]);
 
         const salesRows = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data?.items || [];
