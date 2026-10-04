@@ -27,8 +27,8 @@ const protect = async (req, res, next) => {
       ...getJwtClaimOptions()
     });
 
-    if (decoded.typ && decoded.typ !== 'access') {
-      logger.warn('auth.token.rejected', { reason: 'wrong_token_type', typ: decoded.typ });
+    if (decoded.typ !== 'access') {
+      logger.warn('auth.token.rejected', { reason: 'wrong_token_type', typ: decoded.typ || 'missing' });
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
 

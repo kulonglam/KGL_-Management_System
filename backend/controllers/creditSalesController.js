@@ -32,8 +32,6 @@ const getAllCreditSales = async (req, res) => {
         'contact'
       ])
     );
-    const summaryFilter = { ...filter };
-
     const status = String(req.query.status || 'all');
     if (status === 'paid') {
       filter.isPaid = true;
@@ -45,6 +43,7 @@ const getAllCreditSales = async (req, res) => {
       filter.dueDate = { $lt: startOfToday() };
       filter.balanceUgx = { $gt: 0 };
     }
+    const summaryFilter = { ...filter };
 
     const pagination = parsePagination(req.query);
     const sort = resolveSort(req.query.sort, {
@@ -67,11 +66,13 @@ const getAllCreditSales = async (req, res) => {
       String(req.query.notify || '') === 'true' &&
       (req.user.role === 'manager' || req.user.role === 'sales_agent');
     if (shouldNotifyOverdue) {
-      const overdueItems = creditSales.filter(
-        (item) => !item.isPaid && Number(item.balanceUgx || 0) > 0 && new Date(item.dueDate) < startOfToday()
-      );
+      const overdueItems = creditSales
+        .filter(
+          (item) => !item.isPaid && Number(item.balanceUgx || 0) > 0 && new Date(item.dueDate) < startOfToday()
+        )
+        .slice(0, 20);
       await Promise.all(
-        overdueItems.slice(0, 20).map((item) =>
+        overdueItems.map((item) =>
           queueMessage({
             channel: 'in_app',
             to: req.user.username,
@@ -83,6 +84,12 @@ const getAllCreditSales = async (req, res) => {
           })
         )
       );
+      if (overdueItems.length > 0) {
+        await CreditSale.updateMany(
+          { _id: { $in: overdueItems.map((item) => item._id) } },
+          { $set: { lastOverdueNoticeAt: new Date() } }
+        );
+      }
     }
     if (!pagination.enabled) {
       return res.json(creditSales);

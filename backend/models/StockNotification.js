@@ -8,11 +8,7 @@ import { normalizeProduceName, normalizeProduceType } from '../utils/produceNorm
 // Define stock notification schema.
 const stockNotificationSchema = new mongoose.Schema(
   {
-    branch: {
-      type: String,
-      required: true,
-      ...createBranchSchemaField()
-    },
+    branch: createBranchSchemaField(),
     produceName: {
       type: String,
       required: true,

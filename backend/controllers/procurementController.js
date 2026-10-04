@@ -115,28 +115,39 @@ const createProcurement = async (req, res) => {
     const produceName = priceResolution.produceName;
     const produceType = priceResolution.produceType;
 
-    const procurement = await Procurement.create({
-      produceName,
-      produceType,
-      sourceType: normalizeSourceType(sourceType),
-      dateReceived,
-      timeReceived,
-      tonnageKg,
-      costUgx,
-      dealerName,
-      dealerContact,
-      branch: req.user.branch,
-      sellingPrice: priceResolution.priceUgx,
-      recordedBy: req.user._id
-    });
+    const procurement = await withStockLock(
+      {
+        branch: req.user.branch,
+        produceName,
+        produceType
+      },
+      async () => {
+        const created = await Procurement.create({
+          produceName,
+          produceType,
+          sourceType: normalizeSourceType(sourceType),
+          dateReceived,
+          timeReceived,
+          tonnageKg,
+          costUgx,
+          dealerName,
+          dealerContact,
+          branch: req.user.branch,
+          sellingPrice: priceResolution.priceUgx,
+          recordedBy: req.user._id
+        });
 
-    const snapshot = await calculateInventoryByFilter({ branch: req.user.branch });
-    await syncStockLevelNotifications({
-      branch: req.user.branch,
-      produceName,
-      produceType,
-      remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
-    });
+        const snapshot = await calculateInventoryByFilter({ branch: req.user.branch });
+        await syncStockLevelNotifications({
+          branch: req.user.branch,
+          produceName,
+          produceType,
+          remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
+        });
+
+        return created;
+      }
+    );
     await recordAudit({
       actor: req.user,
       action: 'create',

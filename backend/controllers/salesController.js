@@ -233,14 +233,23 @@ const deleteSale = async (req, res) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
-    await sale.deleteOne();
-    const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
-    await syncStockLevelNotifications({
-      branch: sale.branch,
-      produceName: sale.produceName,
-      produceType: sale.produceType,
-      remainingStock: getBucketTonnage(snapshot, sale.produceName, sale.produceType, sale.branch)
-    });
+    await withStockLock(
+      {
+        branch: sale.branch,
+        produceName: sale.produceName,
+        produceType: sale.produceType
+      },
+      async () => {
+        await sale.deleteOne();
+        const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
+        await syncStockLevelNotifications({
+          branch: sale.branch,
+          produceName: sale.produceName,
+          produceType: sale.produceType,
+          remainingStock: getBucketTonnage(snapshot, sale.produceName, sale.produceType, sale.branch)
+        });
+      }
+    );
     await recordAudit({
       actor: req.user,
       action: 'delete',

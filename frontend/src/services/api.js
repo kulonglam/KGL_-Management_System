@@ -16,7 +16,30 @@ const sanitizeApiUrl = (value) => {
   return withoutPrefix.replace(/^['"]|['"]$/g, '').trim();
 };
 
-const API_URL = sanitizeApiUrl(import.meta.env.VITE_API_URL) || '/api/v1';
+const resolveApiUrl = () => {
+  const fromEnv = sanitizeApiUrl(import.meta.env.VITE_API_URL);
+  const fallbackPath = '/api/v1';
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+
+  if (fromEnv) {
+    if (/^https?:\/\//i.test(fromEnv)) {
+      return fromEnv.replace(/\/$/, '');
+    }
+    if (origin) {
+      return new URL(fromEnv, origin).toString().replace(/\/$/, '');
+    }
+    return fromEnv;
+  }
+
+  if (origin) {
+    return new URL(fallbackPath, origin).toString().replace(/\/$/, '');
+  }
+
+  return fallbackPath;
+};
+
+const API_URL = resolveApiUrl();
 const RETRY_DELAY_MS = 250;
 
 const api = axios.create({

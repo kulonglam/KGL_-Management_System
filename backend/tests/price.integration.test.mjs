@@ -51,7 +51,7 @@ const setAuthenticatedUser = (user) => {
 
 // Handle auth header for.
 const authHeaderFor = (userId = 'u1') => {
-  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, getJwtClaimOptions());
+  const token = jwt.sign({ id: userId, typ: 'access' }, process.env.JWT_SECRET, getJwtClaimOptions());
   return `Bearer ${token}`;
 };
 
