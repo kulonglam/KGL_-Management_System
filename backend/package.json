@@ -40,6 +40,7 @@
   "overrides": {
     "minimatch": "3.1.5",
     "qs": "6.16.0",
+    "proxy-addr": "2.0.8",
     "nodemon": {
       "minimatch": "10.2.6"
     }
