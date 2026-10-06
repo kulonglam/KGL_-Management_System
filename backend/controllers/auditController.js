@@ -1,4 +1,5 @@
 import AuditLog from '../models/AuditLog.js';
+import { enrichAuditItems } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
 const listAuditLogs = async (req, res) => {
@@ -16,7 +17,7 @@ const listAuditLogs = async (req, res) => {
       query.limit(100);
     }
 
-    const items = await query;
+    const items = await enrichAuditItems(await query);
     if (!pagination.enabled) {
       return res.json(items);
     }

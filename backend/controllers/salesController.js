@@ -11,7 +11,7 @@ import {
   buildAggregationContext,
   buildSalesAggregationPayload
 } from '../services/salesAggregationService.js';
-import { recordAudit } from '../services/auditService.js';
+import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 import {
@@ -19,6 +19,16 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+
+const recordSaleAudit = (actor, action, sale) =>
+  recordAudit({
+    actor,
+    action,
+    entityType: 'sale',
+    entityId: sale._id,
+    branch: sale.branch,
+    metadata: transactionAuditMetadata(sale)
+  });
 
 // GET /api/sales: list sales visible to requester branch scope with optional pagination metadata.
 const getAllSales = async (req, res) => {
@@ -151,13 +161,7 @@ const createSale = async (req, res) => {
       }
     );
 
-    await recordAudit({
-      actor: req.user,
-      action: 'create',
-      entityType: 'sale',
-      entityId: sale._id,
-      branch: req.user.branch
-    });
+    await recordSaleAudit(req.user, 'create', sale);
     res.status(201).json(sale);
   } catch (error) {
     const statusCode = error.statusCode || 400;
@@ -250,13 +254,7 @@ const deleteSale = async (req, res) => {
         });
       }
     );
-    await recordAudit({
-      actor: req.user,
-      action: 'delete',
-      entityType: 'sale',
-      entityId: sale._id,
-      branch: sale.branch
-    });
+    await recordSaleAudit(req.user, 'delete', sale);
     res.json({ message: 'Sale deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -313,6 +311,7 @@ const updateSale = async (req, res) => {
     if (!hasStockSensitiveChanges) {
       applyNonStockFields();
       await sale.save();
+      await recordSaleAudit(req.user, 'update', sale);
       return res.json(sale);
     }
 
@@ -405,6 +404,7 @@ const updateSale = async (req, res) => {
       }
     );
 
+    await recordSaleAudit(req.user, 'update', updatedSale);
     return res.json(updatedSale);
   } catch (error) {
     const statusCode = error.statusCode || 500;

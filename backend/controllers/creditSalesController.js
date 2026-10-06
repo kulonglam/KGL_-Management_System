@@ -7,8 +7,19 @@ import {
   createCreditSaleRecord,
   repayCreditSaleRecord
 } from '../services/creditSalesService.js';
+import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, startOfToday, resolveSort, trustedQuery } from '../utils/listQuery.js';
+
+const recordCreditSaleAudit = (actor, action, creditSale, extra) =>
+  recordAudit({
+    actor,
+    action,
+    entityType: 'creditSale',
+    entityId: creditSale._id,
+    branch: creditSale.branch,
+    metadata: transactionAuditMetadata(creditSale, extra)
+  });
 
 // GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
 const getAllCreditSales = async (req, res) => {
@@ -112,6 +123,7 @@ const createCreditSale = async (req, res) => {
       actorUser: req.user,
       payload: req.body
     });
+    await recordCreditSaleAudit(req.user, 'create', creditSale);
 
     res.status(201).json(creditSale);
   } catch (error) {
@@ -129,6 +141,7 @@ const updatePaymentStatus = async (req, res) => {
       creditSaleId: req.params.id,
       isPaid
     });
+    await recordCreditSaleAudit(req.user, 'update', updated, { isPaid: updated.isPaid });
 
     res.json(updated);
   } catch (error) {
@@ -144,6 +157,10 @@ const repayCreditSale = async (req, res) => {
       actorUser: req.user,
       creditSaleId: req.params.id,
       payload: req.body
+    });
+    const latestPayment = Array.isArray(updated.payments) ? updated.payments.at(-1) : null;
+    await recordCreditSaleAudit(req.user, 'repay', updated, {
+      repaymentAmountUgx: latestPayment?.amountUgx
     });
 
     res.json(updated);
@@ -179,6 +196,7 @@ const updateCreditSale = async (req, res) => {
 
     Object.assign(creditSale, fieldsToApply);
     await creditSale.save();
+    await recordCreditSaleAudit(req.user, 'update', creditSale);
     return res.json(creditSale);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -203,6 +221,7 @@ const deleteCreditSale = async (req, res) => {
     }
 
     await creditSale.deleteOne();
+    await recordCreditSaleAudit(req.user, 'delete', creditSale);
     res.json({ message: 'Credit sale deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
