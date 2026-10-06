@@ -189,7 +189,6 @@
             type="button"
             class="btn-close"
             aria-label="Close repayment dialog"
-            :disabled="repayLoading"
             @click="cancelRepay"
           ></button>
         </div>
@@ -249,7 +248,6 @@
                 <button
                   type="button"
                   class="btn btn-outline-secondary"
-                  :disabled="repayLoading"
                   @click="cancelRepay"
                 >
                   Cancel
@@ -282,7 +280,6 @@
             type="button"
             class="btn-close"
             aria-label="Close edit credit sale dialog"
-            :disabled="editLoading"
             @click="cancelEdit"
           ></button>
         </div>
@@ -386,7 +383,6 @@
                 <button
                   type="button"
                   class="btn btn-outline-secondary"
-                  :disabled="editLoading"
                   @click="cancelEdit"
                 >
                   Cancel
@@ -631,7 +627,6 @@ export default {
       return date.toISOString().slice(0, 10);
     },
     startEdit(item) {
-      if (this.repayLoading) return;
       this.cancelRepay();
       this.editId = item._id;
       this.editForm = {
@@ -649,8 +644,8 @@ export default {
       this.editSuccess = '';
     },
     cancelEdit() {
-      if (this.editLoading) return;
       this.editId = null;
+      this.editLoading = false;
       this.editForm = {
         buyerName: '',
         produceName: '',
@@ -667,20 +662,26 @@ export default {
     },
     async handleEdit() {
       if (!this.editId) return;
+      const requestId = this.editId;
       this.editLoading = true;
       this.editError = '';
       this.editSuccess = '';
       try {
-        await creditSalesAPI.update(this.editId, {
+        await creditSalesAPI.update(requestId, {
           dueDate: this.editForm.dueDate,
           dateOfDispatch: this.editForm.dateOfDispatch
         });
+        if (this.editId !== requestId) return;
         this.editSuccess = 'Credit sale updated successfully!';
         await this.loadCreditSales();
+        if (this.editId !== requestId) return;
       } catch (error) {
+        if (this.editId !== requestId) return;
         this.editError = error.response?.data?.message || 'Failed to update credit sale record.';
       } finally {
-        this.editLoading = false;
+        if (this.editId === requestId) {
+          this.editLoading = false;
+        }
       }
     },
     openDeleteDialog(item) {
@@ -716,7 +717,6 @@ export default {
       }
     },
     startRepay(item) {
-      if (this.editLoading) return;
       this.cancelEdit();
       this.repayId = item._id;
       this.repayForm = {
@@ -727,8 +727,8 @@ export default {
       this.repaySuccess = '';
     },
     cancelRepay() {
-      if (this.repayLoading) return;
       this.repayId = null;
+      this.repayLoading = false;
       this.repayForm = {
         amountUgx: '',
         paidAt: new Date().toISOString().split('T')[0]
@@ -744,26 +744,32 @@ export default {
         this.repayError = validation.error;
         return;
       }
+      const requestId = this.repayId;
       this.repayLoading = true;
       this.repayError = '';
       this.repaySuccess = '';
 
       try {
-        await creditSalesAPI.repay(this.repayId, {
+        await creditSalesAPI.repay(requestId, {
           amountUgx: validation.amount,
           paidAt: this.repayForm.paidAt
         });
+        if (this.repayId !== requestId) return;
         this.repaySuccess = 'Payment recorded successfully!';
         await this.loadCreditSales();
+        if (this.repayId !== requestId) return;
         const updated = this.creditSales.find((c) => c._id === this.repayId);
         if (!updated || this.getBalance(updated) === 0) {
           this.repayId = null;
         }
         this.repayForm.amountUgx = '';
       } catch (error) {
+        if (this.repayId !== requestId) return;
         this.repayError = error.response?.data?.message || 'Failed to record payment';
       } finally {
-        this.repayLoading = false;
+        if (this.repayId === requestId) {
+          this.repayLoading = false;
+        }
       }
     },
     getBalance(item) {

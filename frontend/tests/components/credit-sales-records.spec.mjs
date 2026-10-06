@@ -73,4 +73,61 @@ describe('CreditSalesRecords repayment dialog', () => {
     expect(wrapper.find('#repay-amount').exists()).toBe(true);
     expect(wrapper.find('.card.mb-4').exists()).toBe(false);
   });
+
+  it('closes the repay dialog while a payment request is still in flight', async () => {
+    let resolveRepay;
+    creditSalesAPI.repay.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRepay = resolve;
+        })
+    );
+
+    const wrapper = mount(CreditSalesRecords, {
+      global: {
+        stubs: {
+          InsightStrip: { template: '<div />' },
+          TablePagination: { template: '<div />' },
+          ConfirmDialog: { template: '<div />' }
+        }
+      }
+    });
+    await flushPromises();
+
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Repay').trigger('click');
+    await wrapper.find('#repay-amount').setValue('1000');
+    await wrapper.find('.repay-modal form').trigger('submit.prevent');
+
+    expect(wrapper.find('.repay-modal').exists()).toBe(true);
+
+    await wrapper.find('.repay-modal .btn-outline-secondary').trigger('click');
+
+    expect(wrapper.find('.repay-modal').exists()).toBe(false);
+    resolveRepay({ data: { ...outstandingSale, balanceUgx: 99000 } });
+    await flushPromises();
+    expect(wrapper.find('.repay-modal').exists()).toBe(false);
+  });
+
+  it('opens Edit even if a repayment request is still loading', async () => {
+    creditSalesAPI.repay.mockImplementation(() => new Promise(() => {}));
+
+    const wrapper = mount(CreditSalesRecords, {
+      global: {
+        stubs: {
+          InsightStrip: { template: '<div />' },
+          TablePagination: { template: '<div />' },
+          ConfirmDialog: { template: '<div />' }
+        }
+      }
+    });
+    await flushPromises();
+
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Repay').trigger('click');
+    await wrapper.find('#repay-amount').setValue('1000');
+    await wrapper.find('.repay-modal form').trigger('submit.prevent');
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Edit').trigger('click');
+
+    expect(wrapper.find('.repay-modal').exists()).toBe(false);
+    expect(wrapper.find('#credit-sale-edit-title').exists()).toBe(true);
+  });
 });
