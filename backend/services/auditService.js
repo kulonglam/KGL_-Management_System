@@ -1,8 +1,10 @@
+import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
 import AuditLog from '../models/AuditLog.js';
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
+import { trustedQuery } from '../utils/listQuery.js';
 
 const TRANSACTION_DETAIL_FIELDS = [
   'produceName',
@@ -57,12 +59,13 @@ const enrichAuditItems = async (items) => {
   const loaded = {};
   await Promise.all(
     Object.entries(missingIds).map(async ([entityType, ids]) => {
-      if (ids.size === 0) {
+      const validIds = [...ids].filter((id) => mongoose.isValidObjectId(id));
+      if (validIds.length === 0) {
         loaded[entityType] = new Map();
         return;
       }
       const docs = await ENTITY_SOURCES[entityType]
-        .find({ _id: { $in: [...ids] } })
+        .find({ _id: trustedQuery({ $in: validIds }) })
         .select(TRANSACTION_DETAIL_FIELDS.join(' '))
         .lean();
       loaded[entityType] = new Map((docs || []).map((doc) => [String(doc._id), doc]));

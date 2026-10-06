@@ -1,5 +1,6 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
 
 import AuditLog from '../models/AuditLog.js';
 import Sale from '../models/Sale.js';
@@ -101,13 +102,13 @@ test('listAuditLogs fills missing details for sales and credit sales', async () 
       {
         _id: 'log-sale',
         entityType: 'sale',
-        entityId: 'sale-1',
+        entityId: '507f1f77bcf86cd799439011',
         metadata: {}
       },
       {
         _id: 'log-credit',
         entityType: 'creditSale',
-        entityId: 'credit-1',
+        entityId: '507f1f77bcf86cd799439012',
         metadata: {}
       },
       {
@@ -124,19 +125,23 @@ test('listAuditLogs fills missing details for sales and credit sales', async () 
       }
     ]);
   AuditLog.countDocuments = async () => 4;
-  Sale.find = findDocs([
-    {
-      _id: 'sale-1',
-      produceName: 'Yellow Beans',
-      produceType: 'Beans',
-      tonnageKg: 20,
-      buyerName: 'Amina Kato',
-      amountPaidUgx: 800000
-    }
-  ]);
+  let saleFilter;
+  Sale.find = (filter) => {
+    saleFilter = filter;
+    return findDocs([
+      {
+        _id: '507f1f77bcf86cd799439011',
+        produceName: 'Yellow Beans',
+        produceType: 'Beans',
+        tonnageKg: 20,
+        buyerName: 'Amina Kato',
+        amountPaidUgx: 800000
+      }
+    ])();
+  };
   CreditSale.find = findDocs([
     {
-      _id: 'credit-1',
+      _id: '507f1f77bcf86cd799439012',
       produceName: 'Maize',
       produceType: 'Grain Maize',
       tonnageKg: 10,
@@ -152,6 +157,9 @@ test('listAuditLogs fills missing details for sales and credit sales', async () 
 
   assert.equal(res.statusCode, 200);
   const [saleLog, creditLog, procurementLog, deletedLog] = res.body.items;
+  mongoose.set('sanitizeFilter', true);
+  const safeSaleFilter = mongoose.sanitizeFilter(saleFilter);
+  assert.deepEqual(safeSaleFilter._id.$in, ['507f1f77bcf86cd799439011']);
   assert.equal(saleLog.metadata.produceName, 'Yellow Beans');
   assert.equal(saleLog.metadata.buyerName, 'Amina Kato');
   assert.equal(saleLog.metadata.amountPaidUgx, 800000);
