@@ -456,6 +456,7 @@ export default {
         paidAt: new Date().toISOString().split('T')[0]
       },
       repayLoading: false,
+      repayOpSeq: 0,
       repayError: '',
       repaySuccess: '',
       editId: null,
@@ -471,6 +472,7 @@ export default {
         dateOfDispatch: ''
       },
       editLoading: false,
+      editOpSeq: 0,
       editError: '',
       editSuccess: '',
       deleteDialog: {
@@ -628,6 +630,8 @@ export default {
     },
     startEdit(item) {
       this.cancelRepay();
+      this.editOpSeq += 1;
+      this.editLoading = false;
       this.editId = item._id;
       this.editForm = {
         buyerName: item.buyerName || '',
@@ -644,6 +648,7 @@ export default {
       this.editSuccess = '';
     },
     cancelEdit() {
+      this.editOpSeq += 1;
       this.editId = null;
       this.editLoading = false;
       this.editForm = {
@@ -662,24 +667,25 @@ export default {
     },
     async handleEdit() {
       if (!this.editId) return;
-      const requestId = this.editId;
+      const saleId = this.editId;
+      const opSeq = (this.editOpSeq += 1);
       this.editLoading = true;
       this.editError = '';
       this.editSuccess = '';
       try {
-        await creditSalesAPI.update(requestId, {
+        await creditSalesAPI.update(saleId, {
           dueDate: this.editForm.dueDate,
           dateOfDispatch: this.editForm.dateOfDispatch
         });
-        if (this.editId !== requestId) return;
+        if (opSeq !== this.editOpSeq) return;
         this.editSuccess = 'Credit sale updated successfully!';
         await this.loadCreditSales();
-        if (this.editId !== requestId) return;
+        if (opSeq !== this.editOpSeq) return;
       } catch (error) {
-        if (this.editId !== requestId) return;
+        if (opSeq !== this.editOpSeq) return;
         this.editError = error.response?.data?.message || 'Failed to update credit sale record.';
       } finally {
-        if (this.editId === requestId) {
+        if (opSeq === this.editOpSeq) {
           this.editLoading = false;
         }
       }
@@ -718,6 +724,8 @@ export default {
     },
     startRepay(item) {
       this.cancelEdit();
+      this.repayOpSeq += 1;
+      this.repayLoading = false;
       this.repayId = item._id;
       this.repayForm = {
         amountUgx: '',
@@ -727,6 +735,7 @@ export default {
       this.repaySuccess = '';
     },
     cancelRepay() {
+      this.repayOpSeq += 1;
       this.repayId = null;
       this.repayLoading = false;
       this.repayForm = {
@@ -744,30 +753,31 @@ export default {
         this.repayError = validation.error;
         return;
       }
-      const requestId = this.repayId;
+      const saleId = this.repayId;
+      const opSeq = (this.repayOpSeq += 1);
       this.repayLoading = true;
       this.repayError = '';
       this.repaySuccess = '';
 
       try {
-        await creditSalesAPI.repay(requestId, {
+        await creditSalesAPI.repay(saleId, {
           amountUgx: validation.amount,
           paidAt: this.repayForm.paidAt
         });
-        if (this.repayId !== requestId) return;
+        if (opSeq !== this.repayOpSeq) return;
         this.repaySuccess = 'Payment recorded successfully!';
         await this.loadCreditSales();
-        if (this.repayId !== requestId) return;
+        if (opSeq !== this.repayOpSeq) return;
         const updated = this.creditSales.find((c) => c._id === this.repayId);
         if (!updated || this.getBalance(updated) === 0) {
           this.repayId = null;
         }
         this.repayForm.amountUgx = '';
       } catch (error) {
-        if (this.repayId !== requestId) return;
+        if (opSeq !== this.repayOpSeq) return;
         this.repayError = error.response?.data?.message || 'Failed to record payment';
       } finally {
-        if (this.repayId === requestId) {
+        if (opSeq === this.repayOpSeq) {
           this.repayLoading = false;
         }
       }

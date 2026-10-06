@@ -130,4 +130,45 @@ describe('CreditSalesRecords repayment dialog', () => {
     expect(wrapper.find('.repay-modal').exists()).toBe(false);
     expect(wrapper.find('#credit-sale-edit-title').exists()).toBe(true);
   });
+
+  it('does not clear a new repay loading state when a cancelled same-sale request finishes', async () => {
+    const resolvers = [];
+    creditSalesAPI.repay.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        })
+    );
+
+    const wrapper = mount(CreditSalesRecords, {
+      global: {
+        stubs: {
+          InsightStrip: { template: '<div />' },
+          TablePagination: { template: '<div />' },
+          ConfirmDialog: { template: '<div />' }
+        }
+      }
+    });
+    await flushPromises();
+
+    const repayButton = () => wrapper.findAll('button').find((button) => button.text().trim() === 'Repay');
+
+    await repayButton().trigger('click');
+    await wrapper.find('#repay-amount').setValue('1000');
+    await wrapper.find('.repay-modal form').trigger('submit.prevent');
+    await wrapper.find('.repay-modal .btn-outline-secondary').trigger('click');
+
+    await repayButton().trigger('click');
+    await wrapper.find('#repay-amount').setValue('2000');
+    await wrapper.find('.repay-modal form').trigger('submit.prevent');
+
+    const submitButton = wrapper.find('.repay-modal button[type="submit"]');
+    expect(submitButton.attributes('disabled')).toBeDefined();
+
+    resolvers[0]({ data: outstandingSale });
+    await flushPromises();
+
+    expect(wrapper.find('.repay-modal').exists()).toBe(true);
+    expect(wrapper.find('.repay-modal button[type="submit"]').attributes('disabled')).toBeDefined();
+  });
 });
