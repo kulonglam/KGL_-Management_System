@@ -21,7 +21,7 @@
     "bootstrap": "^5.3.2",
     "bootstrap-icons": "^1.11.2",
     "pinia": "^2.3.1",
-    "vue": "^3.4.0",
+    "vue": "^3.5.43",
     "vue-chartjs": "^5.3.3",
     "vue-router": "^4.2.5"
   },
@@ -42,6 +42,8 @@
     "form-data": "4.0.6",
     "follow-redirects": "1.16.1",
     "postcss": "8.5.28",
-    "nanoid": "3.3.19"
+    "nanoid": "3.3.19",
+    "@vue/server-renderer": "3.5.43",
+    "source-map-js": "1.2.2"
   }
 }
