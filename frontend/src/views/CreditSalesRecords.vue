@@ -7,73 +7,6 @@
 
     <InsightStrip label="Credit records overview" :items="overviewItems" />
 
-    <div v-if="canRepay && repayId" class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Record Repayment</h5>
-      </div>
-      <div class="card-body">
-        <form @submit.prevent="handleRepay">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label" for="repay-buyer">Buyer</label>
-              <input
-                id="repay-buyer"
-                type="text"
-                class="form-control readonly-display"
-                :value="selectedCreditSale?.buyerName"
-                disabled
-              />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="repay-balance">Balance (UGX)</label>
-              <input
-                id="repay-balance"
-                type="text"
-                class="form-control readonly-display"
-                :value="formatCurrency(balanceForSelected)"
-                disabled
-              />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="repay-amount">Amount Paid (UGX) *</label>
-                <input
-                  id="repay-amount"
-                  type="number"
-                  class="form-control"
-                  v-model="repayForm.amountUgx"
-                  min="1"
-                  :max="balanceForSelected || undefined"
-                  required
-                />
-              </div>
-            <div class="col-md-6">
-              <label class="form-label" for="repay-date">Payment Date</label>
-              <input id="repay-date" type="date" class="form-control" v-model="repayForm.paidAt" />
-            </div>
-          </div>
-
-          <div v-if="repayError" class="alert alert-danger mt-3">{{ repayError }}</div>
-          <div v-if="repaySuccess" class="alert alert-success mt-3">{{ repaySuccess }}</div>
-
-          <div class="form-action-bar">
-            <div class="form-action-copy">
-              <strong>Payments reduce the selected buyer's outstanding balance immediately.</strong>
-              <span>Record the collected amount and payment date, then save the repayment.</span>
-            </div>
-            <div class="form-action-buttons">
-              <button type="submit" class="btn btn-primary" :disabled="repayLoading">
-                <span v-if="repayLoading" class="spinner-border spinner-border-sm me-2"></span>
-                Record Payment
-              </button>
-              <button type="button" class="btn btn-outline-secondary" @click="cancelRepay">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <div
       v-if="loadError"
       class="alert alert-danger d-flex align-items-start justify-content-between gap-3"
@@ -236,6 +169,99 @@
           @update:currentPage="goToPage"
           @update:pageSize="handlePageSizeUpdate"
         />
+      </div>
+    </div>
+
+    <div
+      v-if="canRepay && repayId"
+      class="modal-mask"
+      @click.self="cancelRepay"
+    >
+      <div
+        class="modal-card repay-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="credit-sale-repay-title"
+      >
+        <div class="modal-header">
+          <h5 id="credit-sale-repay-title" class="mb-0">Record Repayment</h5>
+          <button
+            type="button"
+            class="btn-close"
+            aria-label="Close repayment dialog"
+            :disabled="repayLoading"
+            @click="cancelRepay"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <form @submit.prevent="handleRepay">
+            <p class="text-muted small mb-3">
+              Payments reduce this buyer's outstanding balance immediately.
+            </p>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="repay-buyer">Buyer</label>
+                <input
+                  id="repay-buyer"
+                  type="text"
+                  class="form-control readonly-display"
+                  :value="selectedCreditSale?.buyerName"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="repay-balance">Balance (UGX)</label>
+                <input
+                  id="repay-balance"
+                  type="text"
+                  class="form-control readonly-display"
+                  :value="formatCurrency(balanceForSelected)"
+                  disabled
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="repay-amount">Amount Paid (UGX) *</label>
+                <input
+                  id="repay-amount"
+                  type="number"
+                  class="form-control"
+                  v-model="repayForm.amountUgx"
+                  min="1"
+                  :max="balanceForSelected || undefined"
+                  required
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="repay-date">Payment Date</label>
+                <input id="repay-date" type="date" class="form-control" v-model="repayForm.paidAt" />
+              </div>
+            </div>
+
+            <div v-if="repayError" class="alert alert-danger mt-3">{{ repayError }}</div>
+            <div v-if="repaySuccess" class="alert alert-success mt-3">{{ repaySuccess }}</div>
+
+            <div class="form-action-bar">
+              <div class="form-action-copy">
+                <strong>Enter the collected amount and payment date.</strong>
+                <span>Save to apply the repayment to the selected credit sale.</span>
+              </div>
+              <div class="form-action-buttons">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  :disabled="repayLoading"
+                  @click="cancelRepay"
+                >
+                  Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" :disabled="repayLoading">
+                  <span v-if="repayLoading" class="spinner-border spinner-border-sm me-2"></span>
+                  Record Payment
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -605,6 +631,8 @@ export default {
       return date.toISOString().slice(0, 10);
     },
     startEdit(item) {
+      if (this.repayLoading) return;
+      this.cancelRepay();
       this.editId = item._id;
       this.editForm = {
         buyerName: item.buyerName || '',
@@ -688,6 +716,8 @@ export default {
       }
     },
     startRepay(item) {
+      if (this.editLoading) return;
+      this.cancelEdit();
       this.repayId = item._id;
       this.repayForm = {
         amountUgx: '',
@@ -697,6 +727,7 @@ export default {
       this.repaySuccess = '';
     },
     cancelRepay() {
+      if (this.repayLoading) return;
       this.repayId = null;
       this.repayForm = {
         amountUgx: '',
@@ -788,4 +819,10 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.repay-modal {
+  max-width: 640px;
+}
+</style>
 
