@@ -35,7 +35,7 @@
     headers:
       - path: /*
         name: Content-Security-Policy-Report-Only
-        value: "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://kgl-backend.onrender.com; form-action 'self'; worker-src 'self' blob:"
+        value: "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://kgl-backend-7mow.onrender.com; form-action 'self'; worker-src 'self' blob:"
       - path: /*
         name: Referrer-Policy
         value: strict-origin-when-cross-origin

@@ -271,7 +271,7 @@ import brandLogo from '../assets/images/logo.png';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayTimestamp } from '../utils/dateFormat.js';
-import { isDirectorOrban } from '../utils/directorAccess.js';
+import { isDirector } from '../utils/directorAccess.js';
 
 export default {
   name: 'DashboardLayout',
@@ -319,15 +319,13 @@ export default {
     navItems() {
       const items = [];
 
-      if (isDirectorOrban(this.user)) {
+      if (isDirector(this.user)) {
         items.push(
           { path: '/dashboard/director', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/branches', icon: 'bi bi-diagram-3', label: 'Branches' },
           { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
-      } else if (this.user.role === 'director') {
-        items.push({ path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' });
       } else if (this.user.role === 'manager') {
         items.push(
           { path: '/dashboard/manager', icon: 'bi bi-grid', label: 'Dashboard' },

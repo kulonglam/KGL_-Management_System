@@ -2,7 +2,6 @@
  import { createRouter, createWebHistory } from 'vue-router';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { getHomeRouteForUser, isDirectorOrban } from '../utils/directorAccess.js';
 
 const Login = () => import('../views/Login.vue');
 const PasswordReset = () => import('../views/PasswordReset.vue');
@@ -46,7 +45,7 @@ const routes = [
         path: 'director',
         name: 'DirectorDashboard',
         component: DirectorDashboard,
-        meta: { role: 'director', requiresOrbanDirector: true }
+        meta: { role: 'director' }
       },
       {
         path: 'manager',
@@ -124,7 +123,7 @@ const routes = [
         path: 'branches',
         name: 'Branches',
         component: Branches,
-        meta: { role: 'director', requiresOrbanDirector: true }
+        meta: { role: 'director' }
       },
       {
         path: 'audit-logs',
@@ -169,8 +168,6 @@ router.beforeEach((to, from, next) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/');
-  } else if (to.meta.requiresOrbanDirector && !isDirectorOrban(authStore.user)) {
-    next(getHomeRouteForUser(authStore.user));
   } else if (to.meta.role && userRole !== to.meta.role) {
     next('/');
   } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {

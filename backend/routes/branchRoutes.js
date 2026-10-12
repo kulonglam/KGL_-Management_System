@@ -1,6 +1,6 @@
 import express from 'express';
 import { createBranch, listPublicBranches, updateBranch } from '../controllers/branchController.js';
-import { protect, authorize, authorizeDirectorOrban } from '../middleware/auth.js';
+import { protect, authorize, authorizeDirector } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import { body } from 'express-validator';
@@ -13,7 +13,7 @@ router.post(
   '/',
   protect,
   authorize('director'),
-  authorizeDirectorOrban,
+  authorizeDirector,
   writeLimiter,
   [
     body('name').trim().isLength({ min: 2 }).withMessage('name is required'),
@@ -29,7 +29,7 @@ router.put(
   '/:id',
   protect,
   authorize('director'),
-  authorizeDirectorOrban,
+  authorizeDirector,
   writeLimiter,
   ...mongoIdParamValidation,
   body('isActive').exists().withMessage('isActive is required'),

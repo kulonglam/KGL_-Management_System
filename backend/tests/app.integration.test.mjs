@@ -2,9 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import createApp from '../app.js';
+import { skipApiRateLimit } from '../middleware/rateLimiter.js';
 
 // Initialize app.
 const app = createApp();
+
+test('health probes are outside the public API rate limit', () => {
+  assert.equal(skipApiRateLimit({ path: '/healthz' }), true);
+  assert.equal(skipApiRateLimit({ path: '/readyz' }), true);
+  assert.equal(skipApiRateLimit({ path: '/api/v1/sales' }), false);
+});
+
+test('GET /healthz reports the service is up', async () => {
+  const response = await request(app).get('/healthz');
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.status, 'ok');
+});
 
 test('GET / responds with API message', async () => {
   const response = await request(app).get('/');

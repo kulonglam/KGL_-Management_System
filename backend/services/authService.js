@@ -26,18 +26,13 @@ const PASSWORD_POLICY = {
   hasNumber: /[0-9]/,
   hasSymbol: /[^A-Za-z0-9]/
 };
-const ORBAN_DIRECTOR_USERNAME = 'orban';
 const GENERIC_LOGIN_FAILURE = {
   statusCode: 401,
   message: 'Invalid credentials'
 };
 
-// Normalize usernames for exact account-identity comparisons.
-const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
-
-// Return true only for the director account reserved for Mr. Orban.
-const isDirectorOrbanAccount = (user) =>
-  user?.role === 'director' && normalizeUsername(user?.username) === ORBAN_DIRECTOR_USERNAME;
+// Any director account can view cross-branch totals. The seeded username orban is only a demo login.
+const isDirectorAccount = (user) => user?.role === 'director';
 
 // Validate and normalize profile image input; returns update metadata or a validation error string.
 const parseProfileImageUpdate = (rawValue) => {
@@ -159,9 +154,9 @@ const toUserPayload = (user, includeToken = false) => {
   return payload;
 };
 
-// Keep the stored cross-branch flag aligned with the reserved Orban director account.
+// Keep the stored cross-branch flag aligned with the director role.
 const ensureLegacyDirectorTotalsAccess = async (user) => {
-  const shouldHaveTotalsAccess = isDirectorOrbanAccount(user);
+  const shouldHaveTotalsAccess = isDirectorAccount(user);
 
   if (user.canViewCrossBranchTotals !== shouldHaveTotalsAccess) {
     user.canViewCrossBranchTotals = shouldHaveTotalsAccess;
@@ -267,7 +262,6 @@ const createServiceError = (statusCode, message) => {
 // Create a new user after validating profile image, password policy, branch assignment, and role limits.
 const registerUser = async ({ actorUser, payload }) => {
   const { name, username, password, role, branch, profileImage } = payload;
-  const normalizedUsername = normalizeUsername(username);
 
   const parsedProfileImage = parseProfileImageUpdate(profileImage);
   if (parsedProfileImage.error) {
@@ -300,10 +294,6 @@ const registerUser = async ({ actorUser, payload }) => {
   if (role !== 'director' && !assignedBranch) {
     throw createServiceError(400, 'Branch is required');
   }
-  if (role === 'director' && normalizedUsername !== ORBAN_DIRECTOR_USERNAME) {
-    throw createServiceError(400, 'Director role is reserved for the orban account');
-  }
-
   const limitError = await checkRoleLimits(role, assignedBranch);
   if (limitError) {
     throw createServiceError(400, limitError);
@@ -316,7 +306,7 @@ const registerUser = async ({ actorUser, payload }) => {
     profileImage: parsedProfileImage.hasUpdate ? parsedProfileImage.value : '',
     role,
     branch: assignedBranch,
-    canViewCrossBranchTotals: role === 'director' && normalizedUsername === ORBAN_DIRECTOR_USERNAME
+    canViewCrossBranchTotals: role === 'director'
   });
 
   if (!user) {
@@ -343,7 +333,6 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
   const currentBranch = user.branch;
   let nextRole = currentRole;
   let nextBranch = currentBranch;
-  let nextUsername = user.username;
 
   if (actorUser.role === 'manager') {
     const allowedRoles = ['manager', 'sales_agent'];
@@ -357,9 +346,6 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
 
   if (name !== undefined) user.name = name;
   if (username !== undefined) {
-    if (isDirectorOrbanAccount(user) && normalizeUsername(username) !== ORBAN_DIRECTOR_USERNAME) {
-      throw createServiceError(400, 'Mr. Orban account username cannot be changed');
-    }
     const existing = await User.findOne({
       username,
       _id: mongoose.trusted({ $ne: user._id })
@@ -368,12 +354,8 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
       throw createServiceError(400, 'Username already exists');
     }
     user.username = username;
-    nextUsername = username;
   }
   if (role !== undefined) nextRole = role;
-  if (nextRole === 'director' && normalizeUsername(nextUsername) !== ORBAN_DIRECTOR_USERNAME) {
-    throw createServiceError(400, 'Director role is reserved for the orban account');
-  }
 
   const roleOrBranchChanged = nextRole !== currentRole || nextBranch !== currentBranch;
   if (roleOrBranchChanged) {
@@ -390,7 +372,7 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
 
   user.role = nextRole;
   user.branch = nextBranch;
-  user.canViewCrossBranchTotals = nextRole === 'director' && normalizeUsername(nextUsername) === ORBAN_DIRECTOR_USERNAME;
+  user.canViewCrossBranchTotals = nextRole === 'director';
 
   if (password) {
     const passwordPolicyError = validatePasswordStrength(password);
@@ -408,7 +390,7 @@ export {
   parseProfileImageUpdate,
   toUserPayload,
   ensureLegacyDirectorTotalsAccess,
-  isDirectorOrbanAccount,
+  isDirectorAccount,
   checkRoleMinimumAfterRemoval,
   hashPassword,
   getGenericLoginFailure,

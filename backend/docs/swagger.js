@@ -688,7 +688,7 @@ const swaggerSpec = {
     '/sales/aggregation': {
       get: {
         tags: ['Sales'],
-        summary: 'Get sales aggregation (director + Mr. Orban only)',
+        summary: 'Get sales aggregation (director only)',
         security: [{ bearerAuth: [] }],
         responses: {
           200: successResponse({ $ref: '#/components/schemas/SalesAggregation' }),

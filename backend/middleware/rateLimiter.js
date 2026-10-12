@@ -2,13 +2,16 @@
 
 import rateLimit from 'express-rate-limit';
 
-// Configure api limiter.
+const skipApiRateLimit = (req) => req.path === '/healthz' || req.path === '/readyz';
+
+// Configure api limiter. Health probes stay outside the public quota.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.API_RATE_LIMIT_MAX || 300),
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: skipApiRateLimit
 });
 
 // Configure auth limiter.
@@ -29,4 +32,4 @@ const writeLimiter = rateLimit({
   legacyHeaders: false
 });
 
-export { apiLimiter, authLimiter, writeLimiter };
+export { apiLimiter, authLimiter, skipApiRateLimit, writeLimiter };

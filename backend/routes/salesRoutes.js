@@ -9,7 +9,7 @@ import {
   updateSale,
   deleteSale
 } from '../controllers/salesController.js';
-import { protect, authorize, authorizeDirectorOrban } from '../middleware/auth.js';
+import { protect, authorize, authorizeDirector } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import {
@@ -44,7 +44,7 @@ router.get(
   '/aggregation',
   protect,
   authorize('director'),
-  authorizeDirectorOrban,
+  authorizeDirector,
   getSalesAggregation
 );
 

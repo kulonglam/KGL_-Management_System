@@ -51,7 +51,7 @@ Warning: this clears existing seed-related collections before inserting sample d
 npm run seed
 ```
 
-Seeded password for all users: `Karibu@2026!`
+Seeded password for all users: `Karibu@2026!`. Set `SEED_DEFAULT_PASSWORD` in `.env` only when the demo password should be different. The seed checks that password, every date (`YYYY-MM-DD`, stored as that UTC day), stock movements, and schema rules before it clears the database.
 
 - Director: `orban`
 - Managers: `kulong` (Maganjo), `lam` (Matugga)

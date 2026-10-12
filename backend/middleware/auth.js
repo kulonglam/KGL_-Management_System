@@ -2,7 +2,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
-import { isDirectorOrbanAccount } from '../services/authService.js';
+import { isDirectorAccount } from '../services/authService.js';
 import logger from '../utils/logger.js';
 
 const ALLOWED_JWT_ALGORITHMS = getJwtAlgorithms();
@@ -77,25 +77,25 @@ const authorize = (...roles) => {
   };
 };
 
-// Company-specific access rule for cross-branch totals
-const authorizeDirectorOrban = (req, res, next) => {
+// Directors can open cross-branch totals. The check is the role, not a username.
+const authorizeDirector = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authorized' });
   }
 
-  if (isDirectorOrbanAccount(req.user)) {
+  if (isDirectorAccount(req.user)) {
     return next();
   }
 
   logger.warn('auth.access.denied', {
-    reason: 'orban_identity_required',
+    reason: 'director_role_required',
     userId: req.user?._id ? String(req.user._id) : null,
     username: req.user?.username || null,
     role: req.user?.role || null
   });
   return res.status(403).json({
-    message: 'Only Mr. Orban can access this route'
+    message: 'Only a director can access this route'
   });
 };
 
-export { protect, authorize, authorizeDirectorOrban };
+export { protect, authorize, authorizeDirector };

@@ -16,7 +16,35 @@ import { findUnmatchedStockMovements } from './services/inventoryService.js';
 
 dotenv.config();
 
-const DEFAULT_PASSWORD = process.env.SEED_DEFAULT_PASSWORD || '';
+const DOCUMENTED_SEED_PASSWORD = 'Karibu@2026!';
+const ISO_CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const resolveSeedPassword = (raw = process.env.SEED_DEFAULT_PASSWORD) => {
+  const password = String(raw ?? '').trim() || DOCUMENTED_SEED_PASSWORD;
+  const passwordError = validatePasswordStrength(password);
+  if (passwordError) {
+    throw new Error(`SEED_DEFAULT_PASSWORD is invalid: ${passwordError}`);
+  }
+  return password;
+};
+
+const parseSeedDate = (value) => {
+  const match = ISO_CALENDAR_DATE.exec(String(value || '').trim());
+  if (!match) {
+    throw new Error(`Seed date must be YYYY-MM-DD: ${value}`);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isRealDay =
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  if (!isRealDay) {
+    throw new Error(`Seed date is not a real calendar day: ${value}`);
+  }
+  return date;
+};
 const BRANCHES = ['Maganjo', 'Matugga'];
 const PRODUCE_PRICES = {
   Beans: 35000,
@@ -227,7 +255,7 @@ const salesSeed = [
     tonnageKg: 900,
     amountPaidUgx: 31500000,
     buyerName: 'Marys Restaurant',
-    date: '2026-03-5',
+    date: '2026-03-05',
     time: '10:00',
     branch: 'Maganjo',
     recordedByUsername: 'makhol'
@@ -249,7 +277,7 @@ const salesSeed = [
     tonnageKg: 1500,
     amountPaidUgx: 42000000,
     buyerName: 'City Market',
-    date: '2026-03-7',
+    date: '2026-03-07',
     time: '11:30',
     branch: 'Matugga',
     recordedByUsername: 'nyar'
@@ -433,15 +461,60 @@ const assertSeedStockIntegrity = () => {
   throw new Error(`Seed movements do not match a procurement stock bucket: ${details}`);
 };
 
+const collectSeedDates = () => [
+  ...procurementSeed.map((item) => item.dateReceived),
+  ...salesSeed.map((item) => item.date),
+  ...creditSalesSeed.flatMap((item) => [item.dueDate, item.dateOfDispatch])
+];
+
+const assertSeedDates = () => {
+  collectSeedDates().forEach((value) => parseSeedDate(value));
+};
+
+const assertDocsValid = (docs, label) => {
+  for (const doc of docs) {
+    const error = doc.validateSync();
+    if (error) {
+      throw new Error(`Seed ${label} failed validation: ${error.message}`);
+    }
+  }
+};
+
+const validateSeedDocuments = () => {
+  const users = userSeed.map((user) => new User({ ...user, password: DOCUMENTED_SEED_PASSWORD }));
+  assertDocsValid(users, 'user');
+  const userByUsername = new Map(users.map((user) => [user.username, user]));
+
+  const prices = buildPriceRecords().map((record) => new PriceSetting(record));
+  assertDocsValid(prices, 'price');
+
+  const buyers = buildTrustedBuyerRecords(userByUsername).map((record) => new TrustedBuyer(record));
+  assertDocsValid(buyers, 'trusted buyer');
+  const buyerByNin = new Map(buyers.map((buyer) => [buyer.nationalId, buyer]));
+
+  assertDocsValid(
+    buildProcurementRecords(userByUsername).map((record) => new Procurement(record)),
+    'procurement'
+  );
+  assertDocsValid(buildSaleRecords(userByUsername).map((record) => new Sale(record)), 'sale');
+  assertDocsValid(
+    buildCreditSaleRecords(userByUsername, buyerByNin).map((record) => new CreditSale(record)),
+    'credit sale'
+  );
+};
+
+const assertSeedDataset = () => {
+  assertSeedStockIntegrity();
+  assertSeedDates();
+  validateSeedDocuments();
+};
+
 const ensureRequiredEnv = () => {
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI is required to run seedData.js');
   }
 
-  const passwordError = validatePasswordStrength(DEFAULT_PASSWORD);
-  if (passwordError) {
-    throw new Error(`SEED_DEFAULT_PASSWORD is invalid: ${passwordError}`);
-  }
+  resolveSeedPassword();
 };
 
 const connectDatabase = async () => {
@@ -464,7 +537,7 @@ const clearCollections = async () => {
 };
 
 const seedUsers = async () => {
-  const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const hashedPassword = await bcrypt.hash(resolveSeedPassword(), 10);
   const records = userSeed.map((user) => ({
     ...user,
     password: hashedPassword
@@ -474,15 +547,18 @@ const seedUsers = async () => {
   return new Map(users.map((user) => [user.username, user]));
 };
 
-const seedPriceSettings = async () => {
+const buildPriceRecords = () => {
   const records = [];
   BRANCHES.forEach((branch) => {
     Object.entries(PRODUCE_PRICES).forEach(([produceType, priceUgx]) => {
       records.push({ branch, produceType, priceUgx });
     });
   });
+  return records;
+};
 
-  const prices = await PriceSetting.insertMany(records);
+const seedPriceSettings = async () => {
+  const prices = await PriceSetting.insertMany(buildPriceRecords());
   console.log(`Price settings seeded: ${prices.length}`);
 };
 
@@ -494,8 +570,8 @@ const getUserOrThrow = (userByUsername, username) => {
   return user;
 };
 
-const seedTrustedBuyers = async (userByUsername) => {
-  const records = trustedBuyerSeed.map((buyer) => ({
+const buildTrustedBuyerRecords = (userByUsername) =>
+  trustedBuyerSeed.map((buyer) => ({
     name: buyer.name,
     nationalId: buyer.nationalId,
     location: buyer.location,
@@ -504,17 +580,18 @@ const seedTrustedBuyers = async (userByUsername) => {
     recordedBy: getUserOrThrow(userByUsername, buyer.recordedByUsername)._id
   }));
 
-  const buyers = await TrustedBuyer.insertMany(records);
+const seedTrustedBuyers = async (userByUsername) => {
+  const buyers = await TrustedBuyer.insertMany(buildTrustedBuyerRecords(userByUsername));
   console.log(`Trusted buyers seeded: ${buyers.length}`);
   return new Map(buyers.map((buyer) => [buyer.nationalId, buyer]));
 };
 
-const seedProcurements = async (userByUsername) => {
-  const records = procurementSeed.map((item) => ({
+const buildProcurementRecords = (userByUsername) =>
+  procurementSeed.map((item) => ({
     produceName: item.produceName,
     produceType: item.produceType,
     sourceType: item.sourceType,
-    dateReceived: new Date(item.dateReceived),
+    dateReceived: parseSeedDate(item.dateReceived),
     timeReceived: item.timeReceived,
     tonnageKg: item.tonnageKg,
     costUgx: item.costUgx,
@@ -525,12 +602,13 @@ const seedProcurements = async (userByUsername) => {
     recordedBy: getUserOrThrow(userByUsername, item.recordedByUsername)._id
   }));
 
-  const procurements = await Procurement.insertMany(records);
+const seedProcurements = async (userByUsername) => {
+  const procurements = await Procurement.insertMany(buildProcurementRecords(userByUsername));
   console.log(`Procurements seeded: ${procurements.length}`);
 };
 
-const seedSales = async (userByUsername) => {
-  const records = salesSeed.map((item) => {
+const buildSaleRecords = (userByUsername) =>
+  salesSeed.map((item) => {
     const recordedBy = getUserOrThrow(userByUsername, item.recordedByUsername);
     return {
       produceName: item.produceName,
@@ -539,19 +617,20 @@ const seedSales = async (userByUsername) => {
       amountPaidUgx: item.amountPaidUgx,
       buyerName: item.buyerName,
       salesAgentName: recordedBy.name,
-      date: new Date(item.date),
+      date: parseSeedDate(item.date),
       time: item.time,
       branch: item.branch,
       recordedBy: recordedBy._id
     };
   });
 
-  const sales = await Sale.insertMany(records);
+const seedSales = async (userByUsername) => {
+  const sales = await Sale.insertMany(buildSaleRecords(userByUsername));
   console.log(`Sales seeded: ${sales.length}`);
 };
 
-const seedCreditSales = async (userByUsername, buyerByNin) => {
-  const records = creditSalesSeed.map((item) => {
+const buildCreditSaleRecords = (userByUsername, buyerByNin) =>
+  creditSalesSeed.map((item) => {
     const trustedBuyer = buyerByNin.get(item.trustedBuyerNationalId);
     if (!trustedBuyer) {
       throw new Error(
@@ -571,11 +650,11 @@ const seedCreditSales = async (userByUsername, buyerByNin) => {
       amountPaidUgx: item.amountPaidUgx,
       balanceUgx: item.balanceUgx,
       salesAgentName: salesAgent.name,
-      dueDate: new Date(item.dueDate),
+      dueDate: parseSeedDate(item.dueDate),
       produceName: item.produceName,
       produceType: item.produceType,
       tonnageKg: item.tonnageKg,
-      dateOfDispatch: new Date(item.dateOfDispatch),
+      dateOfDispatch: parseSeedDate(item.dateOfDispatch),
       branch: item.branch,
       recordedBy: salesAgent._id,
       trustedBuyer: trustedBuyer._id,
@@ -584,7 +663,7 @@ const seedCreditSales = async (userByUsername, buyerByNin) => {
         ? [
             {
               amountUgx: item.amountPaidUgx,
-              paidAt: new Date(item.dateOfDispatch),
+              paidAt: parseSeedDate(item.dateOfDispatch),
               receivedBy: paymentReceivedBy._id
             }
           ]
@@ -592,13 +671,16 @@ const seedCreditSales = async (userByUsername, buyerByNin) => {
     };
   });
 
-  const creditSales = await CreditSale.insertMany(records);
+const seedCreditSales = async (userByUsername, buyerByNin) => {
+  const creditSales = await CreditSale.insertMany(
+    buildCreditSaleRecords(userByUsername, buyerByNin)
+  );
   console.log(`Credit sales seeded: ${creditSales.length}`);
 };
 
 const printLoginSummary = () => {
   console.log('\n=== Seed Login Credentials ===');
-  console.log(`Password for all users: ${DEFAULT_PASSWORD}`);
+  console.log(`Password for all users: ${resolveSeedPassword()}`);
   console.log('Director: orban');
   console.log('Managers: kulong (Maganjo), lam (Matugga)');
   console.log('Sales Agents: wuol, makhol, nyar, chuol');
@@ -606,7 +688,7 @@ const printLoginSummary = () => {
 };
 
 const main = async () => {
-  assertSeedStockIntegrity();
+  assertSeedDataset();
   ensureRequiredEnv();
   await connectDatabase();
 
@@ -640,7 +722,13 @@ if (isSeedEntryPoint()) {
     });
 }
 
-export { assertSeedStockIntegrity };
+export {
+  DOCUMENTED_SEED_PASSWORD,
+  assertSeedDataset,
+  assertSeedStockIntegrity,
+  parseSeedDate,
+  resolveSeedPassword
+};
 
 
 

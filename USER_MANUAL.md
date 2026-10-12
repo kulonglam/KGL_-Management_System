@@ -332,7 +332,7 @@ Main actions:
 
 Important note:
 
-- only the reserved director account `orban` can access the aggregate cross-branch reporting view
+- any director account can access the aggregate cross-branch reporting view. The seeded director username is `orban`
 
 ## 9. Profile Management
 

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { authorize, authorizeDirectorOrban, protect } from '../middleware/auth.js';
+import { authorize, authorizeDirector, protect } from '../middleware/auth.js';
 import { getJwtClaimOptions } from '../config/security.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
@@ -69,12 +69,11 @@ test('authorize returns 401 when req.user is missing', () => {
   assert.match(res.body.message, /not authorized/i);
 });
 
-test('authorizeDirectorOrban allows only the orban director account', () => {
-  // Configure req.
+test('authorizeDirector allows any director account', () => {
   const req = {
     user: {
-      username: 'orban',
-      name: 'Mr. Orban',
+      username: 'director1',
+      name: 'Director One',
       role: 'director',
       canViewCrossBranchTotals: false
     }
@@ -82,7 +81,7 @@ test('authorizeDirectorOrban allows only the orban director account', () => {
   const res = createRes();
   let nextCalled = false;
 
-  authorizeDirectorOrban(req, res, () => {
+  authorizeDirector(req, res, () => {
     nextCalled = true;
   });
 
@@ -90,25 +89,25 @@ test('authorizeDirectorOrban allows only the orban director account', () => {
   assert.equal(res.statusCode, 200);
 });
 
-test('authorizeDirectorOrban rejects non-Orban directors even with legacy permission flags', () => {
+test('authorizeDirector rejects managers even with the legacy totals flag', () => {
   const req = {
     user: {
-      username: 'director1',
-      name: 'Director One',
-      role: 'director',
+      username: 'kulong',
+      name: 'Kulong',
+      role: 'manager',
       canViewCrossBranchTotals: true
     }
   };
   const res = createRes();
   let nextCalled = false;
 
-  authorizeDirectorOrban(req, res, () => {
+  authorizeDirector(req, res, () => {
     nextCalled = true;
   });
 
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 403);
-  assert.match(res.body.message, /Only Mr\. Orban/i);
+  assert.match(res.body.message, /Only a director/i);
 });
 
 const signToken = (payload) => jwt.sign(payload, process.env.JWT_SECRET, getJwtClaimOptions());

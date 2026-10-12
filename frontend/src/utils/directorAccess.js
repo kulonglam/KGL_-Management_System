@@ -1,18 +1,12 @@
-// Centralizes frontend checks for the reserved Orban director account.
- 
-const ORBAN_DIRECTOR_USERNAME = 'orban';
+// Routes a signed-in user to the home page for their role.
 
-const normalizeUsername = (value) => String(value || '').trim().toLowerCase();
-
-const isDirectorOrban = (user) =>
-  user?.role === 'director' && normalizeUsername(user?.username) === ORBAN_DIRECTOR_USERNAME;
+const isDirector = (user) => user?.role === 'director';
 
 const getHomeRouteForUser = (user) => {
-  if (isDirectorOrban(user)) return '/dashboard/director';
-  if (user?.role === 'director') return '/dashboard/profile';
+  if (isDirector(user)) return '/dashboard/director';
   if (user?.role === 'manager') return '/dashboard/manager';
   if (user?.role === 'sales_agent') return '/dashboard/sales-agent';
   return '/';
 };
 
-export { isDirectorOrban, getHomeRouteForUser };
+export { isDirector, getHomeRouteForUser };
