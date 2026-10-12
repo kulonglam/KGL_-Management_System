@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertProcurementKeepsStockNonNegative, buildInventorySnapshot } from '../services/inventoryService.js';
+import { assertProcurementKeepsStockNonNegative, buildInventorySnapshot, findUnmatchedStockMovements } from '../services/inventoryService.js';
 
 // Handle sort snapshot.
 const sortSnapshot = (rows) =>
@@ -156,5 +156,25 @@ test('assertProcurementKeepsStockNonNegative rejects a delete that would leave n
         nextTonnageKg: 0
       }),
     /would leave stock/
+  );
+});
+
+test('findUnmatchedStockMovements ignores sales whose produce name has no procurement bucket', () => {
+  const procurements = [
+    { produceName: 'Red Beans', produceType: 'Beans', branch: 'Maganjo', tonnageKg: 5000 },
+    { produceName: 'SoyBeans01', produceType: 'Soybeans', branch: 'Maganjo', tonnageKg: 3200 },
+    { produceName: 'White Maize', produceType: 'Grain Maize', branch: 'Matugga', tonnageKg: 8000 }
+  ];
+  const movements = [
+    { produceName: 'Beans', produceType: 'Beans', branch: 'Maganjo', tonnageKg: 900 },
+    { produceName: 'SoyBeans', produceType: 'Soybeans', branch: 'Maganjo', tonnageKg: 600 },
+    { produceName: 'Maize', produceType: 'Grain Maize', branch: 'Matugga', tonnageKg: 1500 },
+    { produceName: 'White Maize', produceType: 'Grain Maize', branch: 'Matugga', tonnageKg: 100 }
+  ];
+
+  const unmatched = findUnmatchedStockMovements(procurements, movements);
+  assert.deepEqual(
+    unmatched.map((item) => item.produceName),
+    ['Beans', 'SoyBeans', 'Maize']
   );
 });

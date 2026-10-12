@@ -12,6 +12,7 @@ import TrustedBuyer from './models/TrustedBuyer.js';
 import StockNotification from './models/StockNotification.js';
 import StockLock from './models/StockLock.js';
 import { validatePasswordStrength } from './services/authService.js';
+import { findUnmatchedStockMovements } from './services/inventoryService.js';
 
 dotenv.config();
 
@@ -134,7 +135,7 @@ const procurementSeed = [
     recordedByUsername: 'kulong'
   },
   {
-    produceName: 'SoyBeans01',
+    produceName: 'SoyBeans',
     produceType: 'Soybeans',
     sourceType: 'kgl_farm',
     dateReceived: '2026-03-06',
@@ -221,7 +222,7 @@ const procurementSeed = [
 
 const salesSeed = [
   {
-    produceName: 'Beans',
+    produceName: 'Red Beans',
     produceType: 'Beans',
     tonnageKg: 900,
     amountPaidUgx: 31500000,
@@ -243,7 +244,7 @@ const salesSeed = [
     recordedByUsername: 'wuol'
   },
   {
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 1500,
     amountPaidUgx: 42000000,
@@ -270,7 +271,7 @@ const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789012',
     salesAgentUsername: 'chuol',
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 700,
     amountDueUgx: 19600000,
@@ -300,7 +301,7 @@ const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789013',
     salesAgentUsername: 'chuol',
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 700,
     amountDueUgx: 19600000,
@@ -330,7 +331,7 @@ const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789014',
     salesAgentUsername: 'nyar',
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 700,
     amountDueUgx: 19600000,
@@ -360,7 +361,7 @@ const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789015',
     salesAgentUsername: 'chuol',
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 700,
     amountDueUgx: 19600000,
@@ -390,7 +391,7 @@ const creditSalesSeed = [
   {
     trustedBuyerNationalId: 'CM123456789016',
     salesAgentUsername: 'chuol',
-    produceName: 'Maize',
+    produceName: 'White Maize',
     produceType: 'Grain Maize',
     tonnageKg: 700,
     amountDueUgx: 19600000,
@@ -418,6 +419,19 @@ const creditSalesSeed = [
     isPaid: true
   }
 ];
+
+const assertSeedStockIntegrity = () => {
+  const unmatched = findUnmatchedStockMovements(procurementSeed, [
+    ...salesSeed,
+    ...creditSalesSeed
+  ]);
+  if (unmatched.length === 0) return;
+
+  const details = unmatched
+    .map((item) => `${item.produceName} / ${item.produceType} / ${item.branch} / ${item.tonnageKg}kg`)
+    .join('; ');
+  throw new Error(`Seed movements do not match a procurement stock bucket: ${details}`);
+};
 
 const ensureRequiredEnv = () => {
   if (!process.env.MONGODB_URI) {
@@ -592,6 +606,7 @@ const printLoginSummary = () => {
 };
 
 const main = async () => {
+  assertSeedStockIntegrity();
   ensureRequiredEnv();
   await connectDatabase();
 
@@ -607,16 +622,25 @@ const main = async () => {
   console.log('Database seed completed successfully.');
 };
 
-main()
-  .then(async () => {
-    await mongoose.disconnect();
-    process.exit(0);
-  })
-  .catch(async (error) => {
-    console.error(`Seed failed: ${error.message}`);
-    await mongoose.disconnect();
-    process.exit(1);
-  });
+const isSeedEntryPoint = () => {
+  const entry = String(process.argv[1] || '').replace(/\\/g, '/');
+  return entry.endsWith('/seedData.js');
+};
+
+if (isSeedEntryPoint()) {
+  main()
+    .then(async () => {
+      await mongoose.disconnect();
+      process.exit(0);
+    })
+    .catch(async (error) => {
+      console.error(`Seed failed: ${error.message}`);
+      await mongoose.disconnect();
+      process.exit(1);
+    });
+}
+
+export { assertSeedStockIntegrity };
 
 
 

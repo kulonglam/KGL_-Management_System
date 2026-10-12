@@ -206,6 +206,29 @@ const assertProcurementKeepsStockNonNegative = ({
   );
 };
 
+// Return movements that do not reduce any procurement bucket.
+const findUnmatchedStockMovements = (procurements, movements) => {
+  const inventoryMap = buildInventoryMap(procurements, [], []);
+  const unmatched = [];
+
+  for (const movement of movements) {
+    const stockBefore = [...inventoryMap.values()].reduce(
+      (sum, item) => sum + Number(item.totalTonnageKg || 0),
+      0
+    );
+    subtractFromInventoryMap(inventoryMap, movement);
+    const stockAfter = [...inventoryMap.values()].reduce(
+      (sum, item) => sum + Number(item.totalTonnageKg || 0),
+      0
+    );
+    if (stockAfter === stockBefore) {
+      unmatched.push(movement);
+    }
+  }
+
+  return unmatched;
+};
+
 export {
   LOW_STOCK_THRESHOLD_KG,
   assertProcurementKeepsStockNonNegative,
@@ -213,6 +236,7 @@ export {
   calculateInventoryByBranch,
   calculateInventoryByFilter,
   findInventoryBucket,
+  findUnmatchedStockMovements,
   getBucketTonnage,
   getInventoryOverview
 };
