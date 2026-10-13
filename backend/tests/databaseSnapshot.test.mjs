@@ -9,6 +9,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import PriceHistory from '../models/PriceHistory.js';
 import User from '../models/User.js';
 import { backupDatabase, materializeBackup, publishBackup, restoreDatabase } from '../services/databaseSnapshot.js';
+import { allowAppendOnlyNativeWrite } from '../utils/appendOnly.js';
 
 const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
 if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
@@ -88,8 +89,9 @@ test('a snapshot restores users and price history after they are removed', { tim
   await materializeBackup(uploaded, copyDir);
 
   await User.collection.deleteMany({});
+  await allowAppendOnlyNativeWrite(() => PriceHistory.collection.deleteMany({}));
   assert.equal(await User.countDocuments(), 0);
-  assert.equal(await PriceHistory.countDocuments(), 1);
+  assert.equal(await PriceHistory.countDocuments(), 0);
 
   await restoreDatabase(copyDir);
   await rm(copyDir, { recursive: true, force: true });
