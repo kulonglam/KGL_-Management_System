@@ -16,7 +16,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { configureMemoryServerBinary } from '../support/mongoBinary.mjs';
-import { waitForOutput } from './waitForServer.mjs';
+import { devServerEnv, waitForDevServer } from './waitForServer.mjs';
 
 configureMemoryServerBinary();
 
@@ -77,17 +77,16 @@ test('a signed-in user records a cash sale in the browser', { timeout: 180_000 }
 
   const vite = spawn(process.execPath, [viteBin, '--host', 'localhost', '--port', String(uiPort), '--strictPort'], {
     cwd: frontendRoot,
-    env: {
-      ...process.env,
+    env: devServerEnv({
       API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
       VITE_API_URL: '/api/v1'
-    },
+    }),
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
   let browser;
   try {
-    await waitForOutput(vite, /Local:/, 60_000);
+    await waitForDevServer(vite, uiPort, 60_000);
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     page.setDefaultTimeout(20_000);

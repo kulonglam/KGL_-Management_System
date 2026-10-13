@@ -16,7 +16,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { configureMemoryServerBinary } from '../support/mongoBinary.mjs';
-import { waitForOutput } from './waitForServer.mjs';
+import { devServerEnv, waitForDevServer } from './waitForServer.mjs';
 
 configureMemoryServerBinary();
 
@@ -75,17 +75,16 @@ test('a director and a manager use the branch and staff screens', { timeout: 180
   const apiPort = apiServer.address().port;
   const vite = spawn(process.execPath, [viteBin, '--host', 'localhost', '--port', String(uiPort), '--strictPort'], {
     cwd: frontendRoot,
-    env: {
-      ...process.env,
+    env: devServerEnv({
       API_PROXY_TARGET: `http://127.0.0.1:${apiPort}`,
       VITE_API_URL: '/api/v1'
-    },
+    }),
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
   let browser;
   try {
-    await waitForOutput(vite, /Local:/, 60_000);
+    await waitForDevServer(vite, uiPort, 60_000);
     browser = await chromium.launch({ headless: true });
     const origin = `http://localhost:${uiPort}`;
 
