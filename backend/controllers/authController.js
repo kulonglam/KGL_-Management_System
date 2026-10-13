@@ -45,18 +45,12 @@ const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
 
-// A rotated refresh token can be replayed for this long so two tabs do not kick each other out.
-// After the window, reuse is treated as theft and the whole refresh family is revoked.
-const refreshReuseGraceMs = () => {
-  const configured = Number(process.env.AUTH_REFRESH_REUSE_GRACE_MS);
-  if (Number.isFinite(configured) && configured >= 0) return configured;
-  return 10_000;
-};
-
 const refreshVersionFilter = (presented) =>
   presented === 0 ? mongoose.trusted({ $in: [0, null] }) : presented;
 
-// Rotate the refresh cookie on use. A second copy is accepted only briefly, then the session is revoked.
+// Rotate the refresh cookie on use. A spent cookie never mints another access token.
+// The browser serializes refresh across tabs, so the second tab sends the replacement cookie.
+// Presenting an older cookie revokes the whole session.
 const acceptRefreshToken = async (decoded) => {
   const presented = Number(decoded.refreshTokenVersion);
   if (!Number.isInteger(presented) || presented < 0) {
@@ -82,17 +76,6 @@ const acceptRefreshToken = async (decoded) => {
   }
 
   const current = Number(existing.refreshTokenVersion || 0);
-  const rotatedAt = existing.refreshRotatedAt ? new Date(existing.refreshRotatedAt).getTime() : 0;
-  const withinGrace =
-    presented === current - 1 &&
-    presentedJti !== '' &&
-    presentedJti === String(existing.previousRefreshJti || '') &&
-    Number.isFinite(rotatedAt) &&
-    Date.now() - rotatedAt <= refreshReuseGraceMs();
-
-  if (withinGrace) {
-    return { status: 'grace', user: existing };
-  }
 
   if (presented < current) {
     await revokeUserTokens(existing._id);
@@ -500,7 +483,7 @@ const refreshSession = async (req, res) => {
     }
 
     const outcome = await acceptRefreshToken(decoded);
-    if (outcome.status !== 'rotated' && outcome.status !== 'grace') {
+    if (outcome.status !== 'rotated') {
       if (outcome.status === 'reused') {
         clearRefreshCookie(res);
       }

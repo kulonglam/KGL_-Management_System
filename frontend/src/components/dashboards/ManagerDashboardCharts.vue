@@ -8,9 +8,13 @@
         </div>
         <div class="card-body">
           <div v-if="!hasRevenueSplitData" class="chart-empty">No sales recorded yet</div>
-          <div v-else class="chart-panel chart-panel-sm">
-            <Doughnut :data="revenueSplitChartData" :options="chartOptions.doughnutCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            small
+            :chart="doughnutChart"
+            :data="revenueSplitChartData"
+            :options="revenueSplitOptions"
+          />
         </div>
       </div>
     </div>
@@ -22,9 +26,13 @@
         </div>
         <div class="card-body">
           <div v-if="!hasCreditCollectionData" class="chart-empty">No credit sales recorded yet</div>
-          <div v-else class="chart-panel chart-panel-sm">
-            <Doughnut :data="creditCollectionChartData" :options="chartOptions.doughnutCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            small
+            :chart="doughnutChart"
+            :data="creditCollectionChartData"
+            :options="creditCollectionOptions"
+          />
         </div>
       </div>
     </div>
@@ -36,9 +44,12 @@
         </div>
         <div class="card-body">
           <div v-if="!hasSalesTrendData" class="chart-empty">No sales recorded yet</div>
-          <div v-else class="chart-panel">
-            <LineChart :data="salesOverTimeChartData" :options="chartOptions.lineCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="lineChart"
+            :data="salesOverTimeChartData"
+            :options="salesTrendOptions"
+          />
         </div>
       </div>
     </div>
@@ -50,9 +61,12 @@
         </div>
         <div class="card-body">
           <div v-if="agentPerformance.length === 0" class="chart-empty">No sales recorded yet</div>
-          <div v-else class="chart-panel">
-            <Bar :data="agentPerformanceChartData" :options="chartOptions.horizontalBarCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="agentPerformanceChartData"
+            :options="agentPerformanceOptions"
+          />
         </div>
       </div>
     </div>
@@ -64,9 +78,12 @@
         </div>
         <div class="card-body">
           <div v-if="topProducts.length === 0" class="chart-empty">No sales recorded yet</div>
-          <div v-else class="chart-panel">
-            <Bar :data="topProductsChartData" :options="chartOptions.barKg" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="topProductsChartData"
+            :options="topProductsOptions"
+          />
         </div>
       </div>
     </div>
@@ -78,9 +95,12 @@
         </div>
         <div class="card-body">
           <div v-if="stockByProduct.length === 0" class="chart-empty">No inventory available</div>
-          <div v-else class="chart-panel">
-            <Bar :data="stockByProductChartData" :options="chartOptions.horizontalBarKg" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="stockByProductChartData"
+            :options="stockOptions"
+          />
         </div>
       </div>
     </div>
@@ -92,9 +112,12 @@
         </div>
         <div class="card-body">
           <div v-if="dealerPerformance.length === 0" class="chart-empty">No procurement recorded yet</div>
-          <div v-else class="chart-panel">
-            <Bar :data="dealerPerformanceChartData" :options="chartOptions.horizontalBarCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="dealerPerformanceChartData"
+            :options="dealerOptions"
+          />
         </div>
       </div>
     </div>
@@ -102,8 +125,14 @@
 </template>
 
 <script setup>
+import { markRaw } from 'vue';
 import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs';
-import { dashboardChartOptions } from '../../utils/charts/dashboardChartTheme.js';
+import ChartPanel from './ChartPanel.vue';
+import { createDashboardChartOptions } from '../../utils/charts/dashboardChartTheme.js';
+
+const barChart = markRaw(Bar);
+const doughnutChart = markRaw(Doughnut);
+const lineChart = markRaw(LineChart);
 
 defineProps({
   selectedPeriodLabel: { type: String, required: true },
@@ -123,5 +152,11 @@ defineProps({
   dealerPerformanceChartData: { type: Object, required: true }
 });
 
-const chartOptions = dashboardChartOptions;
+const revenueSplitOptions = createDashboardChartOptions('doughnutCurrency');
+const creditCollectionOptions = createDashboardChartOptions('doughnutCurrency');
+const salesTrendOptions = createDashboardChartOptions('lineCurrency');
+const agentPerformanceOptions = createDashboardChartOptions('horizontalBarCurrency');
+const topProductsOptions = createDashboardChartOptions('barKg');
+const stockOptions = createDashboardChartOptions('horizontalBarKg');
+const dealerOptions = createDashboardChartOptions('horizontalBarCurrency');
 </script>

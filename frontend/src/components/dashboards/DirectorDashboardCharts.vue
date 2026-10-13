@@ -8,9 +8,7 @@
         </div>
         <div class="card-body">
           <div v-if="!hasTrendData" class="chart-empty">No sales trend data available</div>
-          <div v-else class="chart-panel">
-            <LineChart :data="trendChartData" :options="chartOptions.lineCurrency" />
-          </div>
+          <ChartPanel v-else :chart="lineChart" :data="trendChartData" :options="trendOptions" />
         </div>
       </div>
     </div>
@@ -22,12 +20,13 @@
         </div>
         <div class="card-body">
           <div v-if="!hasRevenueData" class="chart-empty">No revenue data available</div>
-          <div v-else class="chart-panel chart-panel-sm">
-            <Doughnut
-              :data="revenueCompositionChartData"
-              :options="chartOptions.doughnutCurrency"
-            />
-          </div>
+          <ChartPanel
+            v-else
+            small
+            :chart="doughnutChart"
+            :data="revenueCompositionChartData"
+            :options="revenueOptions"
+          />
         </div>
       </div>
     </div>
@@ -39,9 +38,12 @@
         </div>
         <div class="card-body">
           <div v-if="branchLabels.length === 0" class="chart-empty">No branch sales recorded yet</div>
-          <div v-else class="chart-panel">
-            <Bar :data="branchRevenueChartData" :options="chartOptions.groupedBarCurrency" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="branchRevenueChartData"
+            :options="branchRevenueOptions"
+          />
         </div>
       </div>
     </div>
@@ -53,9 +55,12 @@
         </div>
         <div class="card-body">
           <div v-if="branchLabels.length === 0" class="chart-empty">No branch volume data available</div>
-          <div v-else class="chart-panel">
-            <Bar :data="branchVolumeChartData" :options="chartOptions.horizontalBarKg" />
-          </div>
+          <ChartPanel
+            v-else
+            :chart="barChart"
+            :data="branchVolumeChartData"
+            :options="branchVolumeOptions"
+          />
         </div>
       </div>
     </div>
@@ -102,8 +107,14 @@
 </template>
 
 <script setup>
+import { markRaw } from 'vue';
 import { Bar, Doughnut, Line as LineChart } from 'vue-chartjs';
-import { dashboardChartOptions } from '../../utils/charts/dashboardChartTheme.js';
+import ChartPanel from './ChartPanel.vue';
+import { createDashboardChartOptions } from '../../utils/charts/dashboardChartTheme.js';
+
+const barChart = markRaw(Bar);
+const doughnutChart = markRaw(Doughnut);
+const lineChart = markRaw(LineChart);
 
 defineProps({
   selectedPeriodLabel: { type: String, required: true },
@@ -118,5 +129,8 @@ defineProps({
   formatCurrency: { type: Function, required: true }
 });
 
-const chartOptions = dashboardChartOptions;
+const trendOptions = createDashboardChartOptions('lineCurrency');
+const revenueOptions = createDashboardChartOptions('doughnutCurrency');
+const branchRevenueOptions = createDashboardChartOptions('groupedBarCurrency');
+const branchVolumeOptions = createDashboardChartOptions('horizontalBarKg');
 </script>

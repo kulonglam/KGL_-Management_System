@@ -53,6 +53,31 @@ const api = axios.create({
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let refreshPromise = null;
+const REFRESH_LOCK_NAME = 'kgl-refresh-session';
+
+const runRefresh = async () => {
+  const refreshed = await api.post('/auth/refresh');
+  const payload = refreshed.data || {};
+  if (payload.token) {
+    useAuthStore(pinia).setSession(payload.token, payload);
+  }
+  return refreshed;
+};
+
+// One refresh at a time in this tab, and one across tabs in this browser.
+// The waiting tab then sends the replacement cookie instead of the spent one.
+export const refreshAccessSession = () => {
+  if (!refreshPromise) {
+    const locked =
+      typeof navigator !== 'undefined' && navigator.locks?.request
+        ? navigator.locks.request(REFRESH_LOCK_NAME, runRefresh)
+        : runRefresh();
+    refreshPromise = locked.finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+};
 
 const isAuthRefreshUrl = (url = '') =>
   String(url).includes('/auth/refresh') ||
@@ -122,12 +147,7 @@ api.interceptors.response.use(
       config.__authRetryAttempted = true;
       const authStore = useAuthStore(pinia);
       try {
-        if (!refreshPromise) {
-          refreshPromise = api.post('/auth/refresh').finally(() => {
-            refreshPromise = null;
-          });
-        }
-        const refreshed = await refreshPromise;
+        const refreshed = await refreshAccessSession();
         const payload = refreshed.data || {};
         if (payload.token) {
           authStore.setSession(payload.token, payload);

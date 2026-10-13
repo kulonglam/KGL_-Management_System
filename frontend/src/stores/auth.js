@@ -58,8 +58,8 @@ export const useAuthStore = defineStore('auth', {
     async restoreSession() {
       this.hydrateFromStorage();
       try {
-        const { authAPI } = await import('../services/api');
-        const response = await authAPI.refresh();
+        const { refreshAccessSession } = await import('../services/api');
+        const response = await refreshAccessSession();
         const payload = response.data || {};
         if (payload.token) {
           this.setSession(payload.token, payload);

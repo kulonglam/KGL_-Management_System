@@ -2,6 +2,21 @@
  
 
 // Handle success response.
+const listSchema = (itemSchema) => ({
+  description: 'An array when page and limit are omitted, otherwise items plus pagination.',
+  oneOf: [
+    { type: 'array', items: itemSchema },
+    {
+      type: 'object',
+      required: ['items', 'pagination'],
+      properties: {
+        items: { type: 'array', items: itemSchema },
+        pagination: { $ref: '#/components/schemas/PaginationMeta' }
+      }
+    }
+  ]
+});
+
 const successResponse = (dataSchema, description = 'Successful response') => ({
   description,
   content: {
@@ -67,6 +82,48 @@ const swaggerSpec = {
         in: 'path',
         required: true,
         schema: { type: 'string', example: '65f44c553f02d6f0bbad3f8f' }
+      },
+      PageQuery: {
+        name: 'page',
+        in: 'query',
+        schema: { type: 'integer', minimum: 1 },
+        description: 'With limit, wraps the result as { items, pagination }. Omit both for a capped array.'
+      },
+      LimitQuery: {
+        name: 'limit',
+        in: 'query',
+        schema: { type: 'integer', minimum: 1, maximum: 200 }
+      },
+      SearchQuery: {
+        name: 'search',
+        in: 'query',
+        schema: { type: 'string', maxLength: 80 }
+      },
+      SortQuery: {
+        name: 'sort',
+        in: 'query',
+        schema: { type: 'string', example: 'name_asc' }
+      },
+      PeriodQuery: {
+        name: 'period',
+        in: 'query',
+        schema: { type: 'string', example: 'weekly' }
+      },
+      SpecificDateQuery: {
+        name: 'specificDate',
+        in: 'query',
+        schema: { type: 'string', format: 'date' }
+      },
+      BranchQuery: {
+        name: 'branch',
+        in: 'query',
+        schema: { type: 'string', example: 'all' }
+      },
+      UnreadQuery: {
+        name: 'unread',
+        in: 'query',
+        schema: { type: 'string', enum: ['true', 'false'], default: 'true' },
+        description: 'Defaults to unread notifications. Pass false to include read ones.'
       }
     },
     schemas: {
@@ -409,6 +466,256 @@ const swaggerSpec = {
           setting: { type: 'object' },
           updatedProcurements: { type: 'number' }
         }
+      },
+      PaginationMeta: {
+        type: 'object',
+        required: ['page', 'limit', 'total', 'totalPages'],
+        properties: {
+          page: { type: 'integer', example: 1 },
+          limit: { type: 'integer', example: 20 },
+          total: { type: 'integer', example: 42 },
+          totalPages: { type: 'integer', example: 3 }
+        }
+      },
+      RememberedUsername: {
+        type: 'object',
+        properties: {
+          username: { type: 'string', example: 'kulong' }
+        }
+      },
+      PasswordResetRequest: {
+        type: 'object',
+        required: ['username', 'recoveryCode', 'newPassword'],
+        properties: {
+          username: { type: 'string', example: 'kulong' },
+          recoveryCode: { type: 'string', example: 'AB12-CD34' },
+          newPassword: {
+            type: 'string',
+            format: 'password',
+            minLength: 10,
+            description: 'At least 10 characters with uppercase, lowercase, a digit, and a symbol.'
+          }
+        }
+      },
+      MfaLoginRequest: {
+        type: 'object',
+        required: ['mfaToken', 'code'],
+        properties: {
+          mfaToken: { type: 'string' },
+          code: { type: 'string', pattern: '^\\d{6}$', example: '123456' },
+          rememberMe: { type: 'boolean' }
+        }
+      },
+      MfaEnableRequest: {
+        type: 'object',
+        required: ['code'],
+        properties: {
+          code: { type: 'string', pattern: '^\\d{6}$', example: '123456' },
+          mfaToken: { type: 'string' }
+        }
+      },
+      MfaDisableRequest: {
+        type: 'object',
+        required: ['password'],
+        properties: {
+          password: { type: 'string', format: 'password' },
+          code: { type: 'string', pattern: '^\\d{6}$', example: '123456' }
+        }
+      },
+      MfaSetupResult: {
+        type: 'object',
+        properties: {
+          secret: { type: 'string' },
+          otpauthUri: { type: 'string' }
+        }
+      },
+      RecoveryCodesResult: {
+        type: 'object',
+        properties: {
+          username: { type: 'string' },
+          recoveryCodes: { type: 'array', items: { type: 'string' } },
+          message: { type: 'string' }
+        }
+      },
+      SaleUpdateRequest: {
+        type: 'object',
+        properties: {
+          produceName: { type: 'string' },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
+          },
+          tonnageKg: { type: 'number', minimum: 1 },
+          buyerName: { type: 'string' },
+          salesAgentName: { type: 'string' },
+          date: { type: 'string', format: 'date' },
+          time: { type: 'string', example: '14:30' }
+        }
+      },
+      CreditSaleUpdateRequest: {
+        type: 'object',
+        properties: {
+          dueDate: { type: 'string', format: 'date' },
+          dateOfDispatch: { type: 'string', format: 'date' }
+        }
+      },
+      StockNotification: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          branch: { type: 'string', example: 'Maganjo' },
+          produceName: { type: 'string' },
+          produceType: {
+            type: 'string',
+            enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
+          },
+          category: { type: 'string', enum: ['out_of_stock', 'low_stock'] },
+          message: { type: 'string' },
+          isRead: { type: 'boolean' },
+          readAt: { type: 'string', format: 'date-time', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      Branch: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          name: { type: 'string', example: 'Bweyogerere' },
+          isActive: { type: 'boolean' },
+          isDefault: { type: 'boolean' }
+        }
+      },
+      BranchList: {
+        type: 'object',
+        properties: {
+          items: { type: 'array', items: { $ref: '#/components/schemas/Branch' } },
+          names: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      BranchCreateRequest: {
+        type: 'object',
+        required: ['name', 'managerName', 'managerUsername', 'managerPassword'],
+        properties: {
+          name: { type: 'string', minLength: 2, example: 'Bweyogerere' },
+          managerName: { type: 'string', minLength: 2 },
+          managerUsername: { type: 'string', minLength: 2 },
+          managerPassword: {
+            type: 'string',
+            format: 'password',
+            minLength: 10,
+            description: 'At least 10 characters with uppercase, lowercase, a digit, and a symbol.'
+          }
+        }
+      },
+      BranchUpdateRequest: {
+        type: 'object',
+        required: ['isActive'],
+        properties: {
+          isActive: { type: 'boolean' }
+        }
+      },
+      BranchCreateResult: {
+        type: 'object',
+        properties: {
+          branch: { $ref: '#/components/schemas/Branch' },
+          manager: { $ref: '#/components/schemas/UserPublic' }
+        }
+      },
+      AuditLogEntry: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          actorId: { type: 'string', nullable: true },
+          actorName: { type: 'string' },
+          actorRole: { type: 'string' },
+          action: { type: 'string', enum: ['create', 'update', 'delete', 'login', 'repay', 'auth'] },
+          entityType: { type: 'string' },
+          entityId: { type: 'string' },
+          branch: { type: 'string' },
+          metadata: { type: 'object', additionalProperties: true },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      ManagerDashboard: {
+        type: 'object',
+        properties: {
+          reportRange: {
+            type: 'object',
+            properties: {
+              from: { type: 'string', format: 'date-time' },
+              to: { type: 'string', format: 'date-time' }
+            }
+          },
+          stats: {
+            type: 'object',
+            properties: {
+              cashSales: { type: 'number' },
+              cashCount: { type: 'integer' },
+              creditSales: { type: 'number' },
+              creditCount: { type: 'integer' },
+              procurementTotal: { type: 'number' },
+              procurementCount: { type: 'integer' }
+            }
+          },
+          topProducts: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { name: { type: 'string' }, totalKg: { type: 'number' } }
+            }
+          },
+          salesOverTime: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { label: { type: 'string' }, amount: { type: 'number' } }
+            }
+          },
+          creditCollection: {
+            type: 'object',
+            properties: { collected: { type: 'number' }, outstanding: { type: 'number' } }
+          },
+          agentPerformance: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { name: { type: 'string' }, amount: { type: 'number' } }
+            }
+          },
+          dealerPerformance: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { name: { type: 'string' }, amount: { type: 'number' } }
+            }
+          }
+        }
+      },
+      AgentDashboard: {
+        type: 'object',
+        properties: {
+          cashSales: { type: 'number' },
+          cashCount: { type: 'integer' },
+          creditSales: { type: 'number' },
+          creditCount: { type: 'integer' },
+          totalKg: { type: 'number' },
+          overdueCount: { type: 'integer' }
+        }
+      },
+      HealthStatus: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', example: 'ok' },
+          service: { type: 'string', example: 'karibu-groceries-backend' },
+          timestamp: { type: 'string', format: 'date-time' }
+        }
+      },
+      ReadinessStatus: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['ready', 'not_ready'] },
+          databaseReadyState: { type: 'integer', description: 'Mongoose readyState. 1 means connected.' }
+        }
       }
     },
     responses: {
@@ -530,12 +837,16 @@ const swaggerSpec = {
       get: {
         tags: ['Users'],
         summary: 'Get users (manager only)',
+        description: 'Managers see staff in their branch. Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/SortQuery' }
+        ],
         responses: {
-          200: successResponse({
-            type: 'array',
-            items: { $ref: '#/components/schemas/UserPublic' }
-          }),
+          200: successResponse(listSchema({ $ref: '#/components/schemas/UserPublic' })),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -579,12 +890,16 @@ const swaggerSpec = {
       get: {
         tags: ['Procurement'],
         summary: 'Get procurement records',
+        description: 'Branch-scoped. Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/SortQuery' }
+        ],
         responses: {
-          200: successResponse({
-            type: 'array',
-            items: { $ref: '#/components/schemas/Procurement' }
-          }),
+          200: successResponse(listSchema({ $ref: '#/components/schemas/Procurement' })),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -660,12 +975,16 @@ const swaggerSpec = {
       get: {
         tags: ['Sales'],
         summary: 'Get sales',
+        description: 'Branch-scoped for managers and sales agents. Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/SortQuery' }
+        ],
         responses: {
-          200: successResponse({
-            type: 'array',
-            items: { $ref: '#/components/schemas/Sale' }
-          }),
+          200: successResponse(listSchema({ $ref: '#/components/schemas/Sale' })),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -692,7 +1011,13 @@ const swaggerSpec = {
       get: {
         tags: ['Sales'],
         summary: 'Get sales aggregation (director only)',
+        description: 'Cross-branch totals for the selected period.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PeriodQuery' },
+          { $ref: '#/components/parameters/BranchQuery' },
+          { $ref: '#/components/parameters/SpecificDateQuery' }
+        ],
         responses: {
           200: successResponse({ $ref: '#/components/schemas/SalesAggregation' }),
           401: { $ref: '#/components/responses/Unauthorized' },
@@ -701,6 +1026,24 @@ const swaggerSpec = {
       }
     },
     '/sales/{id}': {
+      put: {
+        tags: ['Sales'],
+        summary: 'Update a cash sale',
+        description: 'Manager correction of produce, buyer, weight, or sale time. Stock notifications are recalculated.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/SaleUpdateRequest' } } }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/Sale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
       delete: {
         tags: ['Sales'],
         summary: 'Delete sale',
@@ -718,12 +1061,16 @@ const swaggerSpec = {
       get: {
         tags: ['Credit Sales'],
         summary: 'Get credit sales',
+        description: 'Branch-scoped for managers and sales agents. Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/SortQuery' }
+        ],
         responses: {
-          200: successResponse({
-            type: 'array',
-            items: { $ref: '#/components/schemas/CreditSale' }
-          }),
+          200: successResponse(listSchema({ $ref: '#/components/schemas/CreditSale' })),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -791,6 +1138,26 @@ const swaggerSpec = {
       }
     },
     '/credit-sales/{id}': {
+      put: {
+        tags: ['Credit Sales'],
+        summary: 'Update a credit sale',
+        description: 'Manager correction of the due date or dispatch date.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CreditSaleUpdateRequest' } }
+          }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
       delete: {
         tags: ['Credit Sales'],
         summary: 'Delete credit sale',
@@ -820,12 +1187,16 @@ const swaggerSpec = {
       get: {
         tags: ['Trusted Buyers'],
         summary: 'Get trusted buyers',
+        description: 'Branch-scoped. Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/SortQuery' }
+        ],
         responses: {
-          200: successResponse({
-            type: 'array',
-            items: { $ref: '#/components/schemas/TrustedBuyer' }
-          }),
+          200: successResponse(listSchema({ $ref: '#/components/schemas/TrustedBuyer' })),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -915,6 +1286,18 @@ const swaggerSpec = {
       }
     },
     '/prices/{id}': {
+      get: {
+        tags: ['Prices'],
+        summary: 'Get one price rule',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PriceSetting' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
       put: {
         tags: ['Prices'],
         summary: 'Update price',
@@ -967,10 +1350,22 @@ const swaggerSpec = {
         }
       }
     },
+    '/auth/remembered': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Read the remembered username cookie',
+        description: 'Returns the username stored by Remember me. No bearer token. An invalid cookie is cleared.',
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/RememberedUsername' })
+        }
+      }
+    },
     '/auth/refresh': {
       post: {
         tags: ['Auth'],
         summary: 'Rotate the refresh cookie and issue a new access token',
+        description:
+          'Reads the httpOnly kgl_refresh cookie. A spent cookie does not return a session; it revokes that login. The browser serializes this call across tabs so a second tab sends the replacement cookie.',
         responses: {
           200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
           401: { $ref: '#/components/responses/Unauthorized' }
@@ -981,6 +1376,10 @@ const swaggerSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Reset a password with a one-time recovery code',
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/PasswordResetRequest' } } }
+        },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/MessageObject' }),
           400: { $ref: '#/components/responses/BadRequest' },
@@ -992,6 +1391,10 @@ const swaggerSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Finish login with an authenticator code',
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/MfaLoginRequest' } } }
+        },
         responses: {
           200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
           401: { $ref: '#/components/responses/Unauthorized' }
@@ -1002,10 +1405,12 @@ const swaggerSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Issue recovery codes for the signed-in user',
+        description: 'Replaces any previous codes. The plaintext codes are returned once.',
         security: [{ bearerAuth: [] }],
         responses: {
-          200: successResponse({ type: 'object' }),
-          401: { $ref: '#/components/responses/Unauthorized' }
+          200: successResponse({ $ref: '#/components/schemas/RecoveryCodesResult' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          500: { $ref: '#/components/responses/InternalServerError' }
         }
       }
     },
@@ -1013,12 +1418,14 @@ const swaggerSpec = {
       post: {
         tags: ['Users'],
         summary: 'Issue recovery codes for a managed user',
+        description: 'Manager-only. Replaces that user\'s codes and writes an audit entry.',
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         responses: {
-          200: successResponse({ type: 'object' }),
+          200: successResponse({ $ref: '#/components/schemas/RecoveryCodesResult' }),
           401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' }
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
         }
       }
     },
@@ -1026,32 +1433,68 @@ const swaggerSpec = {
       post: {
         tags: ['Auth'],
         summary: 'Start authenticator enrollment',
+        description: 'Stores a pending TOTP secret and returns the otpauth URI for the authenticator app.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'object' }), 401: { $ref: '#/components/responses/Unauthorized' } }
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/MfaSetupResult' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
       }
     },
     '/auth/mfa/enable': {
       post: {
         tags: ['Auth'],
         summary: 'Confirm authenticator enrollment',
+        description: 'Verifies the 6-digit code, turns MFA on, and rotates the session.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'object' }), 400: { $ref: '#/components/responses/BadRequest' } }
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/MfaEnableRequest' } } }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
       }
     },
     '/auth/mfa/disable': {
       post: {
         tags: ['Auth'],
         summary: 'Turn off authenticator MFA',
+        description: 'Requires the account password and, when MFA is already on, a current authenticator code. Production accounts cannot disable MFA.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ $ref: '#/components/schemas/MessageObject' }), 400: { $ref: '#/components/responses/BadRequest' } }
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/MfaDisableRequest' } } }
+        },
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: { mfaEnabled: { type: 'boolean', example: false } }
+          }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
       }
     },
     '/notifications': {
       get: {
         tags: ['Notifications'],
         summary: 'List stock notifications for the signed-in branch',
+        description: 'Managers and sales agents. Unread only unless unread=false. Without page and limit, at most 50 rows are returned.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'array', items: { type: 'object' } }) }
+        parameters: [
+          { $ref: '#/components/parameters/UnreadQuery' },
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse(listSchema({ $ref: '#/components/schemas/StockNotification' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
       }
     },
     '/notifications/read-all': {
@@ -1059,7 +1502,14 @@ const swaggerSpec = {
         tags: ['Notifications'],
         summary: 'Mark every stock notification read',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ $ref: '#/components/schemas/MessageObject' }) }
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: { modifiedCount: { type: 'integer', example: 3 } }
+          }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
       }
     },
     '/notifications/{id}/read': {
@@ -1068,23 +1518,40 @@ const swaggerSpec = {
         summary: 'Mark one stock notification read',
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
-        responses: { 200: successResponse({ type: 'object' }) }
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/StockNotification' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
       }
     },
     '/branches': {
       get: {
         tags: ['Branches'],
         summary: 'List branches',
+        description: 'Any signed-in user. Includes which names are the built-in defaults.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'object' }) }
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/BranchList' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
       },
       post: {
         tags: ['Branches'],
         summary: 'Create a branch and its manager',
+        description: 'Director only. Creates the branch and the first manager account together.',
         security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/BranchCreateRequest' } } }
+        },
         responses: {
-          201: successResponse({ type: 'object' }),
-          403: { $ref: '#/components/responses/Forbidden' }
+          201: successResponse({ $ref: '#/components/schemas/BranchCreateResult' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          409: { $ref: '#/components/responses/Conflict' }
         }
       }
     },
@@ -1092,33 +1559,92 @@ const swaggerSpec = {
       put: {
         tags: ['Branches'],
         summary: 'Activate or deactivate a branch',
+        description: 'Director only. The built-in branches cannot be deactivated.',
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
-        responses: { 200: successResponse({ type: 'object' }), 403: { $ref: '#/components/responses/Forbidden' } }
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/BranchUpdateRequest' } } }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/Branch' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
       }
     },
     '/audit-logs': {
       get: {
         tags: ['Audit'],
-        summary: 'List audit logs. Directors see every branch; managers see their own.',
+        summary: 'List audit logs',
+        description: 'Directors see every branch. Managers see their own branch. Without page and limit, the newest 100 rows are returned.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'array', items: { type: 'object' } }) }
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse(listSchema({ $ref: '#/components/schemas/AuditLogEntry' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
       }
     },
     '/sales/dashboard': {
       get: {
         tags: ['Sales'],
         summary: 'Manager dashboard totals',
+        description: 'Branch totals, trend, credit collection, and ranked products, agents, and dealers.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'object' }) }
+        parameters: [
+          { $ref: '#/components/parameters/PeriodQuery' },
+          { $ref: '#/components/parameters/SpecificDateQuery' }
+        ],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/ManagerDashboard' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
       }
     },
     '/sales/agent-dashboard': {
       get: {
         tags: ['Sales'],
         summary: 'Sales agent dashboard totals for today',
+        description: 'Cash and credit totals, weight, and overdue credit count for the signed-in agent.',
         security: [{ bearerAuth: [] }],
-        responses: { 200: successResponse({ type: 'object' }) }
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/AgentDashboard' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/healthz': {
+      get: {
+        tags: ['System'],
+        summary: 'Liveness probe',
+        description: 'Served from the process root, not under /api/v1. Does not check the database.',
+        servers: [{ url: 'http://localhost:5000', description: 'Process root' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/HealthStatus' })
+        }
+      }
+    },
+    '/readyz': {
+      get: {
+        tags: ['System'],
+        summary: 'Readiness probe',
+        description: 'Served from the process root. Returns 503 until MongoDB is connected.',
+        servers: [{ url: 'http://localhost:5000', description: 'Process root' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/ReadinessStatus' }),
+          503: successResponse({ $ref: '#/components/schemas/ReadinessStatus' }, 'Database is not connected')
+        }
       }
     }
   }

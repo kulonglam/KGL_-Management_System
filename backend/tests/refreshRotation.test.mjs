@@ -49,7 +49,7 @@ after(async () => {
   }
 });
 
-test('a used refresh cookie is replaced, and a later replay revokes the session', { timeout: 60_000 }, async () => {
+test('a used refresh cookie is replaced, and replaying it revokes the session immediately', { timeout: 60_000 }, async () => {
   const app = createApp();
   const password = 'Karibu@2026!';
   await User.create({
@@ -76,25 +76,22 @@ test('a used refresh cookie is replaced, and a later replay revokes the session'
   assert.equal(jwt.decode(rotatedRefresh).refreshTokenVersion, 1);
   assert.notEqual(rotatedRefresh, originalRefresh);
 
-  const graceRefresh = await request(app)
+  const secondRefresh = await request(app)
     .post('/api/v1/auth/refresh')
-    .set('Cookie', cookieFor(originalRefresh));
-  assert.equal(graceRefresh.status, 200, JSON.stringify(graceRefresh.body));
-  const duringGrace = await User.findOne({ username: 'amina-refresh' });
-  assert.equal(duringGrace.refreshTokenVersion, 1);
-
-  duringGrace.refreshRotatedAt = new Date(Date.now() - 60_000);
-  await duringGrace.save();
+    .set('Cookie', cookieFor(rotatedRefresh));
+  assert.equal(secondRefresh.status, 200, JSON.stringify(secondRefresh.body));
+  const latestRefresh = refreshTokenFrom(secondRefresh);
+  assert.equal(jwt.decode(latestRefresh).refreshTokenVersion, 2);
 
   const replay = await request(app)
     .post('/api/v1/auth/refresh')
     .set('Cookie', cookieFor(originalRefresh));
   assert.equal(replay.status, 401);
 
-  const rotatedReplay = await request(app)
+  const afterReplay = await request(app)
     .post('/api/v1/auth/refresh')
-    .set('Cookie', cookieFor(rotatedRefresh));
-  assert.equal(rotatedReplay.status, 401);
+    .set('Cookie', cookieFor(latestRefresh));
+  assert.equal(afterReplay.status, 401);
 });
 
 test('changing the password cuts off the previous refresh cookie', { timeout: 60_000 }, async () => {

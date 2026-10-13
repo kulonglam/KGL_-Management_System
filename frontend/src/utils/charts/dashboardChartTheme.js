@@ -124,6 +124,16 @@ const baseTooltip = (formatter) => ({
   }
 });
 
+const cloneChartValue = (value) => {
+  if (typeof value === 'function' || value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneChartValue);
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [key, cloneChartValue(entry)])
+  );
+};
+
+export const createDashboardChartOptions = (name) => cloneChartValue(dashboardChartOptions[name]);
+
 export const dashboardChartOptions = {
   doughnutCurrency: {
     responsive: true,

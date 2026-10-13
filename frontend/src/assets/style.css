@@ -687,11 +687,19 @@ button:focus-visible,
 
 .chart-panel {
   position: relative;
+  width: 100%;
+  min-width: 0;
   height: 300px;
 }
 
 .chart-panel-sm {
   height: 270px;
+}
+
+.chart-panel canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .chart-empty {

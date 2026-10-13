@@ -1,7 +1,8 @@
 /** Dashboard chart component tests with chart stubs and accessibility assertions. */
 import { mount } from '@vue/test-utils';
-import { defineComponent } from 'vue';
+import { defineComponent, markRaw, nextTick } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
+import ChartPanel from '../../src/components/dashboards/ChartPanel.vue';
 import DirectorDashboardCharts from '../../src/components/dashboards/DirectorDashboardCharts.vue';
 import ManagerDashboardCharts from '../../src/components/dashboards/ManagerDashboardCharts.vue';
 import { expectNoA11yViolations, runA11yAudit } from './a11y-utils.mjs';
@@ -24,6 +25,53 @@ const emptyDataset = {
 };
 
 describe('Dashboard chart components', () => {
+  it('redraws the chart at the panel size when the panel changes', async () => {
+    const resize = vi.fn();
+    const ChartStub = defineComponent({
+      name: 'SizedChart',
+      template: '<canvas class="sized-chart"></canvas>',
+      setup() {
+        return { chart: { resize } };
+      }
+    });
+
+    let observerCallback = () => {};
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback) {
+          observerCallback = callback;
+        }
+        observe() {}
+        disconnect() {}
+      }
+    );
+
+    const wrapper = mount(ChartPanel, {
+      props: {
+        chart: markRaw(ChartStub),
+        data: { labels: ['Mon'], datasets: [{ data: [4] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      }
+    });
+
+    const panel = wrapper.get('.chart-panel').element;
+    let width = 0;
+    let height = 0;
+    Object.defineProperty(panel, 'clientWidth', { configurable: true, get: () => width });
+    Object.defineProperty(panel, 'clientHeight', { configurable: true, get: () => height });
+
+    await nextTick();
+    await nextTick();
+
+    width = 640;
+    height = 300;
+    observerCallback();
+
+    expect(resize).toHaveBeenCalledWith(640, 300);
+    vi.unstubAllGlobals();
+  });
+
   it('shows empty-state messages for manager charts when data is missing', () => {
     const wrapper = mount(ManagerDashboardCharts, {
       props: {
