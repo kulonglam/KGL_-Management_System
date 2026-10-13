@@ -65,3 +65,34 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+  browser-sale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+
+      - name: Record a cash sale in the browser
+        working-directory: backend
+        run: node --test tests/browser/cashSale.browser.mjs
