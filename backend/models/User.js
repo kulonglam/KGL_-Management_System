@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema(
     recoveryCodeHashes: { type: [String], default: [] },
     mfaEnabled: { type: Boolean, default: false },
     mfaSecret: { type: String, default: '' },
-    mfaPendingSecret: { type: String, default: '' }
+    mfaPendingSecret: { type: String, default: '' },
+    mustChangePassword: { type: Boolean, default: false }
   },
   {
     timestamps: true

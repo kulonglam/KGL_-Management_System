@@ -1,9 +1,10 @@
 // Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
 import { getInventoryOverview } from '../services/inventoryService.js';
+import { forwardControllerError } from '../utils/httpError.js';
 
 // GET /api/inventory: return inventory overview (stock buckets, alerts, and summary statistics).
-const getInventory = async (req, res) => {
+const getInventory = async (req, res, next) => {
   try {
     const filter = {};
 
@@ -15,7 +16,7 @@ const getInventory = async (req, res) => {
     const overview = await getInventoryOverview(filter);
     res.json(overview);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

@@ -8,6 +8,7 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+import { deniesBranchAccess } from '../utils/branchAccess.js';
 
 const normalizeStoredPriceSetting = (setting) => ({
   ...setting,
@@ -94,8 +95,6 @@ const resolveSellingPrice = async ({ branch, produceName, produceType }) => {
 };
 
 // Return true when requester is allowed to access records for the specified branch.
-const canManagerAccessBranch = (user, branch) => {
-  return !(user.role === 'manager' && user.branch !== branch);
-};
+const canManagerAccessBranch = (user, branch) => !deniesBranchAccess(user, branch);
 
 export { resolveSellingPrice, resolveSellingPriceDetails, canManagerAccessBranch };

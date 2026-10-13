@@ -14,6 +14,8 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+import { deniesBranchAccess } from '../utils/branchAccess.js';
+import { roundUgx } from '../utils/money.js';
 
 // Construct a service-domain error object with an explicit HTTP status code.
 const createServiceError = (statusCode, message) => {
@@ -81,8 +83,8 @@ const parseRepaymentInput = ({ amountUgx, paidAt }) => {
   const amount = Number(amountUgx);
   const paidAtDate = paidAt ? new Date(paidAt) : new Date();
 
-  if (!amount || amount <= 0) {
-    return { error: 'Payment amount must be greater than 0' };
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: 'Payment amount must be a whole number of UGX greater than 0' };
   }
   if (Number.isNaN(paidAtDate.getTime())) {
     return { error: 'Invalid payment date' };
@@ -174,7 +176,7 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
         throw createServiceError(400, `Insufficient stock. Available: ${item.totalTonnageKg} kg`);
       }
 
-      const amountDueUgx = item.sellingPrice * tonnage;
+      const amountDueUgx = roundUgx(item.sellingPrice * tonnage);
       const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
         const creditSale = await CreditSale.create({
@@ -219,7 +221,7 @@ const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid 
     throw createServiceError(404, 'Credit sale not found');
   }
 
-  if (actorUser.role === 'manager' && creditSale.branch !== actorUser.branch) {
+  if (deniesBranchAccess(actorUser, creditSale.branch)) {
     throw createServiceError(403, 'Access denied to this branch data');
   }
 
@@ -306,7 +308,7 @@ const repayCreditSaleRecord = async ({ actorUser, creditSaleId, payload }) => {
     throw createServiceError(404, 'Credit sale not found');
   }
 
-  if (actorUser.role === 'manager' && creditSale.branch !== actorUser.branch) {
+  if (deniesBranchAccess(actorUser, creditSale.branch)) {
     throw createServiceError(403, 'Access denied to this branch data');
   }
 

@@ -8,9 +8,16 @@ import mongoose from 'mongoose';
 import StockLock from '../models/StockLock.js';
 
 // Default lock tuning values for acquire timeout and retry behavior.
-const DEFAULT_LOCK_TTL_MS = 8000;
+const FALLBACK_LOCK_TTL_MS = 8000;
 const DEFAULT_LOCK_WAIT_MS = 5000;
 const DEFAULT_RETRY_INTERVAL_MS = 75;
+
+const resolveLockTtlMs = (override) => {
+  if (Number.isFinite(override) && override >= 1000) return override;
+  const configured = Number(process.env.STOCK_LOCK_TTL_MS);
+  if (Number.isFinite(configured) && configured >= 1000) return configured;
+  return FALLBACK_LOCK_TTL_MS;
+};
 
 // Promise-based sleep helper used between lock acquisition retries.
 const delay = (ms) =>
@@ -36,7 +43,7 @@ const buildStockLockKey = ({ branch, produceName, produceType }) => {
 const acquireStockLock = async (
   key,
   {
-    ttlMs = DEFAULT_LOCK_TTL_MS,
+    ttlMs = resolveLockTtlMs(),
     waitMs = DEFAULT_LOCK_WAIT_MS,
     retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS
   } = {}
@@ -92,15 +99,56 @@ const releaseStockLock = async ({ key, ownerId }) => {
   await StockLock.deleteOne({ key, ownerId });
 };
 
-// Execute callback while lock is held, guaranteeing release in finally.
-const withStockLock = async (input, task, options) => {
-  const key = buildStockLockKey(input);
-  const lock = await acquireStockLock(key, options);
+const renewStockLock = async ({ key, ownerId }, ttlMs) => {
+  const expiresAt = new Date(Date.now() + ttlMs);
+  await StockLock.updateOne({ key, ownerId }, { $set: { expiresAt } });
+};
+
+const startLockRenewal = (locks, ttlMs) => {
+  const intervalMs = Math.max(1000, Math.floor(ttlMs / 3));
+  const timer = setInterval(() => {
+    Promise.all(locks.map((lock) => renewStockLock(lock, ttlMs))).catch(() => {});
+  }, intervalMs);
+  if (typeof timer.unref === 'function') timer.unref();
+  return () => clearInterval(timer);
+};
+
+// Hold one or more bucket locks for the duration of task, renewing them so a slow write cannot expire.
+const withStockLocks = async (inputs, task, options = {}) => {
+  const ttlMs = resolveLockTtlMs(options.ttlMs);
+  const lockOptions = { ...options, ttlMs };
+  const pending = [];
+  const seen = new Set();
+
+  for (const input of inputs) {
+    const key = buildStockLockKey(input);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    pending.push(key);
+  }
+
+  pending.sort((left, right) => left.localeCompare(right));
+  const locks = [];
+
   try {
-    return await task();
+    for (const key of pending) {
+      locks.push(await acquireStockLock(key, lockOptions));
+    }
+
+    const stopRenewal = startLockRenewal(locks, ttlMs);
+    try {
+      return await task();
+    } finally {
+      stopRenewal();
+    }
   } finally {
-    await releaseStockLock(lock);
+    for (const lock of [...locks].reverse()) {
+      await releaseStockLock(lock);
+    }
   }
 };
 
-export { withStockLock };
+// Execute callback while one bucket lock is held, guaranteeing release in finally.
+const withStockLock = async (input, task, options) => withStockLocks([input], task, options);
+
+export { withStockLock, withStockLocks };

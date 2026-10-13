@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { startOfUtcDay } from './dateFormat.js';
 
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -14,16 +15,12 @@ const buildSearchFilter = (search, fields = []) => {
 
   return {
     $or: fields.map((field) => ({
-      [field]: trustedQuery({ $regex: escapeRegex(query), $options: 'i' })
+      [field]: trustedQuery({ $regex: `^${escapeRegex(query)}`, $options: 'i' })
     }))
   };
 };
 
-const startOfToday = () => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
+const startOfToday = () => startOfUtcDay(new Date());
 
 const resolveSort = (sortKey, sortMap = {}, fallback = { createdAt: -1 }) => {
   if (sortKey && sortMap[sortKey]) {

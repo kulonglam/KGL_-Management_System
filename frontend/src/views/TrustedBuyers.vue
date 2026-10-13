@@ -133,7 +133,7 @@
     </div>
 
     <div v-if="showForm" class="modal-mask" @click.self="toggleForm">
-      <div class="modal-card buyer-editor-modal" role="dialog" aria-modal="true" aria-labelledby="trusted-buyer-title">
+      <div class="modal-card buyer-editor-modal" role="dialog" aria-modal="true" aria-labelledby="trusted-buyer-title" v-focus-trap="toggleForm">
         <div class="modal-header">
           <h5 id="trusted-buyer-title" class="mb-0">{{ editingId ? 'Update Buyer' : 'Add Trusted Buyer' }}</h5>
           <button

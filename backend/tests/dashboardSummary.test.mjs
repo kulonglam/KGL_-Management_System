@@ -1,10 +1,10 @@
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { configureMemoryServerBinary } from './support/mongoBinary.mjs';
 import createApp from '../app.js';
 import { getJwtClaimOptions } from '../config/security.js';
 import CreditSale from '../models/CreditSale.js';
@@ -13,11 +13,7 @@ import Sale from '../models/Sale.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import User from '../models/User.js';
 
-const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
-if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
-  process.env.MONGOMS_SYSTEM_BINARY = installedMongod;
-  process.env.MONGOMS_SYSTEM_BINARY_VERSION_CHECK = 'false';
-}
+configureMemoryServerBinary();
 
 let memoryServer;
 

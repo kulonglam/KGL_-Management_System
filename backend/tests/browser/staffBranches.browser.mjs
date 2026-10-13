@@ -9,19 +9,16 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import net from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { configureMemoryServerBinary } from '../support/mongoBinary.mjs';
+import { waitForOutput } from './waitForServer.mjs';
 
-const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
-if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
-  process.env.MONGOMS_SYSTEM_BINARY = installedMongod;
-  process.env.MONGOMS_SYSTEM_BINARY_VERSION_CHECK = 'false';
-}
+configureMemoryServerBinary();
 
 const frontendRoot = fileURLToPath(new URL('../../../frontend/', import.meta.url));
 const viteBin = fileURLToPath(new URL('../../../frontend/node_modules/vite/bin/vite.js', import.meta.url));
@@ -34,33 +31,6 @@ const freePort = () =>
     server.listen(0, '127.0.0.1', () => {
       const { port } = server.address();
       server.close(() => resolve(port));
-    });
-  });
-
-const waitForOutput = (child, pattern, timeoutMs) =>
-  new Promise((resolve, reject) => {
-    let buffer = '';
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error(`Timed out waiting for the dev server.\n${buffer}`));
-    }, timeoutMs);
-    const onData = (chunk) => {
-      buffer += String(chunk);
-      if (!settled && pattern.test(buffer)) {
-        settled = true;
-        clearTimeout(timer);
-        resolve(buffer);
-      }
-    };
-    child.stdout?.on('data', onData);
-    child.stderr?.on('data', onData);
-    child.once('exit', (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(new Error(`Dev server exited with ${code}.\n${buffer}`));
     });
   });
 

@@ -1,21 +1,17 @@
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { configureMemoryServerBinary } from './support/mongoBinary.mjs';
 import PriceHistory from '../models/PriceHistory.js';
 import User from '../models/User.js';
 import { backupDatabase, materializeBackup, publishBackup, restoreDatabase } from '../services/databaseSnapshot.js';
 import { allowAppendOnlyNativeWrite } from '../utils/appendOnly.js';
 
-const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
-if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
-  process.env.MONGOMS_SYSTEM_BINARY = installedMongod;
-  process.env.MONGOMS_SYSTEM_BINARY_VERSION_CHECK = 'false';
-}
+configureMemoryServerBinary();
 
 let memoryServer;
 let backupDir;

@@ -14,7 +14,8 @@ import {
   calculateInventoryByFilter,
   getBucketTonnage
 } from '../services/inventoryService.js';
-import { withStockLock } from '../services/stockLockService.js';
+import { withStockLock, withStockLocks } from '../services/stockLockService.js';
+import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import {
   normalizeProduceName,
@@ -38,7 +39,7 @@ const normalizeProcurementPayload = (record) => {
 };
 
 // GET /api/procurement: return branch procurement history with optional pagination support.
-const getAllProcurement = async (req, res) => {
+const getAllProcurement = async (req, res, next) => {
   try {
     const filter = {};
 
@@ -96,12 +97,12 @@ const getAllProcurement = async (req, res) => {
       })
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/procurement: create a procurement record using managed price resolution and canonicalized fields.
-const createProcurement = async (req, res) => {
+const createProcurement = async (req, res, next) => {
   try {
     const {
       produceName: rawProduceName,
@@ -167,12 +168,12 @@ const createProcurement = async (req, res) => {
 
     res.status(201).json(procurement);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/procurement/:id: return one procurement record after branch access validation.
-const getProcurementById = async (req, res) => {
+const getProcurementById = async (req, res, next) => {
   try {
     const procurement = await Procurement.findById(req.params.id).populate('recordedBy', 'name');
 
@@ -187,12 +188,12 @@ const getProcurementById = async (req, res) => {
 
     res.json(normalizeProcurementPayload(procurement.toObject()));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/procurement/:id: update allowed procurement fields and keep canonical legacy compatibility.
-const updateProcurement = async (req, res) => {
+const updateProcurement = async (req, res, next) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
 
@@ -259,12 +260,19 @@ const updateProcurement = async (req, res) => {
     const nextTonnageKg =
       fieldsToApply.tonnageKg !== undefined ? Number(fieldsToApply.tonnageKg) : Number(procurement.tonnageKg);
 
-    const updatedProcurement = await withStockLock(
-      {
-        branch: procurement.branch,
-        produceName: nextProduceName,
-        produceType: nextProduceType
-      },
+    const updatedProcurement = await withStockLocks(
+      [
+        {
+          branch: procurement.branch,
+          produceName: currentProduceName,
+          produceType: currentProduceType
+        },
+        {
+          branch: procurement.branch,
+          produceName: nextProduceName,
+          produceType: nextProduceType
+        }
+      ],
       async () => {
         const snapshot = await calculateInventoryByFilter({ branch: procurement.branch });
         assertProcurementKeepsStockNonNegative({
@@ -328,12 +336,12 @@ const updateProcurement = async (req, res) => {
 
     res.json(normalizeProcurementPayload(updatedProcurement.toObject()));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // DELETE /api/procurement/:id: remove one procurement record after branch ownership checks.
-const deleteProcurement = async (req, res) => {
+const deleteProcurement = async (req, res, next) => {
   try {
     const procurement = await Procurement.findById(req.params.id);
 
@@ -393,7 +401,7 @@ const deleteProcurement = async (req, res) => {
 
     res.json({ message: 'Procurement record deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

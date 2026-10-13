@@ -8,18 +8,20 @@ import {
   syncProcurementPrices
 } from '../services/priceService.js';
 import { getPriceHistoryEntries, recordPriceHistory } from '../services/priceHistoryService.js';
+import { forwardControllerError } from '../utils/httpError.js';
+import { runInTransaction, withSession } from '../utils/transaction.js';
 // GET /api/prices: return manager price settings plus inferred produce rows for the branch.
-const getPrices = async (req, res) => {
+const getPrices = async (req, res, next) => {
   try {
     const prices = await getBranchPriceRows(req.user.branch);
     res.json(prices);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/prices/:id: return one managed price setting for the manager's branch.
-const getPriceById = async (req, res) => {
+const getPriceById = async (req, res, next) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
     if (!setting) {
@@ -30,12 +32,12 @@ const getPriceById = async (req, res) => {
     }
     res.json(setting);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/prices/:id/history: return immutable audit history for one managed price setting.
-const getPriceHistory = async (req, res) => {
+const getPriceHistory = async (req, res, next) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
     if (!setting) {
@@ -52,12 +54,12 @@ const getPriceHistory = async (req, res) => {
 
     res.json(history);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/prices: create a branch price rule and synchronize affected procurement selling prices.
-const createPrice = async (req, res) => {
+const createPrice = async (req, res, next) => {
   try {
     const { produceName, produceType, priceUgx } = req.body;
     const validation = parseAndValidatePriceInput(produceName, produceType, priceUgx);
@@ -76,38 +78,46 @@ const createPrice = async (req, res) => {
       return res.status(409).json({ message: 'Price already exists for this produce setting' });
     }
 
-    const setting = await PriceSetting.create({
-      branch: req.user.branch,
-      produceName: validation.produceName,
-      produceType: validation.produceType,
-      priceUgx: validation.price
+    const { setting, updatedProcurements } = await runInTransaction(async (session) => {
+      const priceDocument = {
+        branch: req.user.branch,
+        produceName: validation.produceName,
+        produceType: validation.produceType,
+        priceUgx: validation.price
+      };
+      const created = session
+        ? (await PriceSetting.create([priceDocument], { session }))[0]
+        : await PriceSetting.create(priceDocument);
+      await recordPriceHistory({
+        branch: req.user.branch,
+        priceSettingId: created._id,
+        action: 'create',
+        previousState: null,
+        nextState: created,
+        changedBy: req.user._id,
+        session
+      });
+      const updatedCount = await syncProcurementPrices(
+        req.user.branch,
+        validation.produceName,
+        validation.produceType,
+        validation.price,
+        session
+      );
+      return { setting: created, updatedProcurements: updatedCount };
     });
-    await recordPriceHistory({
-      branch: req.user.branch,
-      priceSettingId: setting._id,
-      action: 'create',
-      previousState: null,
-      nextState: setting,
-      changedBy: req.user._id
-    });
-    const updatedProcurements = await syncProcurementPrices(
-      req.user.branch,
-      validation.produceName,
-      validation.produceType,
-      validation.price
-    );
 
     res.status(201).json({
       setting,
       updatedProcurements
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/prices/:id: update one branch price rule and resync procurement selling prices.
-const updatePrice = async (req, res) => {
+const updatePrice = async (req, res, next) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
     if (!setting) {
@@ -146,37 +156,41 @@ const updatePrice = async (req, res) => {
       produceType: setting.produceType,
       priceUgx: setting.priceUgx
     };
-    setting.produceName = validation.produceName;
-    setting.produceType = validation.produceType;
-    setting.priceUgx = validation.price;
-    const saved = await setting.save();
-    await recordPriceHistory({
-      branch: req.user.branch,
-      priceSettingId: setting._id,
-      action: 'update',
-      previousState,
-      nextState: saved,
-      changedBy: req.user._id
+    const { saved, updatedProcurements } = await runInTransaction(async (session) => {
+      setting.produceName = validation.produceName;
+      setting.produceType = validation.produceType;
+      setting.priceUgx = validation.price;
+      const savedSetting = await setting.save(withSession(session));
+      await recordPriceHistory({
+        branch: req.user.branch,
+        priceSettingId: setting._id,
+        action: 'update',
+        previousState,
+        nextState: savedSetting,
+        changedBy: req.user._id,
+        session
+      });
+      const updatedCount = await syncProcurementPrices(
+        req.user.branch,
+        validation.produceName,
+        validation.produceType,
+        validation.price,
+        session
+      );
+      return { saved: savedSetting, updatedProcurements: updatedCount };
     });
-
-    const updatedProcurements = await syncProcurementPrices(
-      req.user.branch,
-      validation.produceName,
-      validation.produceType,
-      validation.price
-    );
 
     res.json({
       setting: saved,
       updatedProcurements
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // DELETE /api/prices/:id: remove one branch price rule after access checks.
-const deletePrice = async (req, res) => {
+const deletePrice = async (req, res, next) => {
   try {
     const setting = await PriceSetting.findById(req.params.id);
     if (!setting) {
@@ -191,18 +205,21 @@ const deletePrice = async (req, res) => {
       produceType: setting.produceType,
       priceUgx: setting.priceUgx
     };
-    await setting.deleteOne();
-    await recordPriceHistory({
-      branch: req.user.branch,
-      priceSettingId: setting._id,
-      action: 'delete',
-      previousState,
-      nextState: null,
-      changedBy: req.user._id
+    await runInTransaction(async (session) => {
+      await setting.deleteOne(withSession(session));
+      await recordPriceHistory({
+        branch: req.user.branch,
+        priceSettingId: setting._id,
+        action: 'delete',
+        previousState,
+        nextState: null,
+        changedBy: req.user._id,
+        session
+      });
     });
     res.json({ message: 'Price setting deleted' });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

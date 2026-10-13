@@ -4,6 +4,7 @@
       <h2 class="page-title">Branches</h2>
       <p class="page-subtitle">Add a branch with its first manager, or deactivate extra branches.</p>
     </div>
+    <div v-if="loading" class="alert alert-info">Loading branches...</div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
     <div class="card mb-4">
@@ -70,12 +71,14 @@
 
 <script>
 import { branchAPI } from '../services/api';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 export default {
   name: 'Branches',
   data() {
     return {
       branches: [],
+      loading: false,
       saving: false,
       error: '',
       success: '',
@@ -104,10 +107,24 @@ export default {
       }
     },
     async loadBranches() {
-      const response = await branchAPI.list();
-      this.branches = response.data?.items || [];
+      this.loading = true;
+      this.error = '';
+      try {
+        const response = await branchAPI.list();
+        this.branches = response.data?.items || [];
+      } catch (error) {
+        this.branches = [];
+        this.error = error.response?.data?.message || 'Unable to load branches.';
+      } finally {
+        this.loading = false;
+      }
     },
     async handleCreate() {
+      const passwordError = validatePasswordStrength(this.form.managerPassword);
+      if (passwordError) {
+        this.error = passwordError;
+        return;
+      }
       this.saving = true;
       this.error = '';
       this.success = '';

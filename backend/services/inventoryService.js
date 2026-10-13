@@ -6,6 +6,7 @@
 import Procurement from '../models/Procurement.js';
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
+import { roundUgx } from '../utils/money.js';
 import {
   normalizeProduceName,
   normalizeProduceNameKey,
@@ -108,15 +109,50 @@ const buildInventorySnapshot = (procurements, sales, creditSales) => {
   return Array.from(buildInventoryMap(procurements, sales, creditSales).values());
 };
 
-// Query movement collections by filter and return computed inventory snapshot.
+const toGroupedMovement = (row) => ({
+  produceName: row?._id?.produceName || '',
+  produceType: row?._id?.produceType || '',
+  branch: row?._id?.branch,
+  tonnageKg: Number(row?.tonnageKg || 0),
+  sellingPrice: row?.sellingPrice
+});
+
+const groupPipeline = (filter, { includePrice = false } = {}) => {
+  const pipeline = [];
+  if (filter && Object.keys(filter).length > 0) {
+    pipeline.push({ $match: filter });
+  }
+  if (includePrice) {
+    pipeline.push({ $sort: { createdAt: 1, _id: 1 } });
+  }
+  const group = {
+    _id: {
+      produceName: { $ifNull: ['$produceName', { $ifNull: ['$name', ''] }] },
+      produceType: { $ifNull: ['$produceType', { $ifNull: ['$type', ''] }] },
+      branch: '$branch'
+    },
+    tonnageKg: { $sum: '$tonnageKg' }
+  };
+  if (includePrice) {
+    group.sellingPrice = { $last: '$sellingPrice' };
+  }
+  pipeline.push({ $group: group });
+  return pipeline;
+};
+
+// Aggregate each movement collection down to stock buckets instead of loading every document.
 const calculateInventoryByFilter = async (filter = {}) => {
   const [procurements, sales, creditSales] = await Promise.all([
-    Procurement.find(filter),
-    Sale.find(filter),
-    CreditSale.find(filter)
+    Procurement.aggregate(groupPipeline(filter, { includePrice: true })),
+    Sale.aggregate(groupPipeline(filter)),
+    CreditSale.aggregate(groupPipeline(filter))
   ]);
 
-  return buildInventorySnapshot(procurements, sales, creditSales);
+  return buildInventorySnapshot(
+    procurements.map(toGroupedMovement),
+    sales.map(toGroupedMovement),
+    creditSales.map(toGroupedMovement)
+  );
 };
 
 // Return positive-stock inventory rows for one branch (used for sell/create operations).
@@ -133,7 +169,7 @@ const getInventoryOverview = async (filter = {}) => {
   const lowStockItems = inventory.filter((item) => item.totalTonnageKg < LOW_STOCK_THRESHOLD_KG);
 
   const totalValue = inventory.reduce(
-    (sum, item) => sum + item.totalTonnageKg * item.sellingPrice,
+    (sum, item) => sum + roundUgx(Number(item.totalTonnageKg || 0) * Number(item.sellingPrice || 0)),
     0
   );
   const totalWeight = inventory.reduce((sum, item) => sum + item.totalTonnageKg, 0);

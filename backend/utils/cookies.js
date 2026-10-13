@@ -97,7 +97,15 @@ const readRefreshCookie = (req) => parseCookieValue(req.headers?.cookie, REFRESH
 
 const isSafeRememberedUsername = (value) => {
   const username = String(value || '');
-  return username.length >= 2 && username.length <= 64 && !/[\u0000-\u001f\u007f;]/.test(username);
+  if (username.length < 2 || username.length > 64) return false;
+
+  for (let index = 0; index < username.length; index += 1) {
+    const code = username.charCodeAt(index);
+    // Reject control characters, DEL, and ';' so the value cannot break a cookie header.
+    if (code < 32 || code === 127 || code === 59) return false;
+  }
+
+  return true;
 };
 
 const rememberedUsernameCookie = (username, maxAgeMs) => {

@@ -6,6 +6,7 @@ import router from './router';
 import { pinia } from './stores';
 import { useAuthStore } from './stores/auth';
 import { installCustomValidationMessages } from './utils/customValidationMessages.js';
+import { focusTrap } from './directives/focusTrap.js';
 
 // Load vendor styles used by shared UI components.
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -16,6 +17,7 @@ import './assets/style.css';
 
 // Create app instance and register shared plugins before mount.
 const app = createApp(App);
+app.directive('focus-trap', focusTrap);
 app.use(pinia);
 installCustomValidationMessages();
 

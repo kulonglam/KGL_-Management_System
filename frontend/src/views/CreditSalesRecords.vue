@@ -182,6 +182,7 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="credit-sale-repay-title"
+        v-focus-trap="cancelRepay"
       >
         <div class="modal-header">
           <h5 id="credit-sale-repay-title" class="mb-0">Record Repayment</h5>
@@ -273,6 +274,7 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="credit-sale-edit-title"
+        v-focus-trap="cancelEdit"
       >
         <div class="modal-header">
           <h5 id="credit-sale-edit-title" class="mb-0">Edit Credit Sale</h5>

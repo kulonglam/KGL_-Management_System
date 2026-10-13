@@ -11,6 +11,7 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+import { assertWholeUgx } from '../utils/money.js';
 
 // Canonical produce types supported by branch price settings.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
@@ -92,8 +93,9 @@ const parseAndValidatePriceInput = (produceName, produceType, priceUgx) => {
   }
 
   const price = Number(priceUgx);
-  if (!price || Number.isNaN(price) || price < 10000) {
-    return { error: 'Price must be at least 10000 UGX' };
+  const wholeUgxError = assertWholeUgx(price, 'Price');
+  if (wholeUgxError || !price || price < 10000) {
+    return { error: wholeUgxError || 'Price must be at least 10000 UGX' };
   }
 
   return {
@@ -139,7 +141,7 @@ const getBranchPriceRows = async (branch) => {
 };
 
 // Propagate managed price updates to matching procurement records in the same branch.
-const syncProcurementPrices = async (branch, produceName, produceType, priceUgx) => {
+const syncProcurementPrices = async (branch, produceName, produceType, priceUgx, session = null) => {
   const normalizedName = normalizeOptionalProduceName(produceName);
   const normalizedType = normalizeProduceType(produceType);
 
@@ -150,7 +152,8 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx)
         produceName: normalizedName,
         produceType: normalizedType
       },
-      { $set: { sellingPrice: priceUgx } }
+      { $set: { sellingPrice: priceUgx } },
+      session ? { session } : undefined
     );
 
     return result.modifiedCount || 0;
@@ -170,7 +173,11 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx)
     filter.produceName = mongoose.trusted({ $nin: produceNamesWithSpecificPrices });
   }
 
-  const result = await Procurement.updateMany(filter, { $set: { sellingPrice: priceUgx } });
+  const result = await Procurement.updateMany(
+    filter,
+    { $set: { sellingPrice: priceUgx } },
+    session ? { session } : undefined
+  );
 
   return result.modifiedCount || 0;
 };

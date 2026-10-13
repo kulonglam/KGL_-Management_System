@@ -5,6 +5,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="price-history-title"
+      v-focus-trap="() => $emit('close')"
     >
       <div class="modal-header">
         <h5 id="price-history-title" class="mb-0">Price History</h5>

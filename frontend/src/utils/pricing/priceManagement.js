@@ -1,4 +1,5 @@
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import { normalizeProduceName } from '../produceName.js';
 import {
   alphaNumericMessage,
   minLengthMessage,
@@ -63,7 +64,7 @@ export const createHistoryDialog = () => ({
   entries: []
 });
 
-export const normalizeProduceName = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+export { normalizeProduceName };
 
 export const formatPriceCurrency = (value) =>
   Number(value || 0).toLocaleString('en-UG', {

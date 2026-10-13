@@ -18,6 +18,8 @@
         <h5 class="mb-0">Sale Details</h5>
       </div>
       <div class="card-body">
+        <div v-if="inventoryLoading" class="alert alert-info">Loading inventory...</div>
+        <div v-else-if="inventoryError" class="alert alert-danger">{{ inventoryError }}</div>
         <form @submit.prevent="openReviewModal">
           <SalesDetailsSection
             v-model:form="form"
@@ -152,6 +154,8 @@ import { salesValidationSchema } from '../utils/formSchemas.js';
 const user = ref({});
 // Branch inventory used for produce selection and stock checks.
 const inventory = ref([]);
+const inventoryLoading = ref(false);
+const inventoryError = ref('');
 // Cash-sale form state.
 const form = ref(createInitialForm());
 // Controls visibility of pre-submit review modal.
@@ -191,11 +195,19 @@ function createInitialForm() {
 
 // Load inventory options for produce dropdown and stock validations.
 const loadInventory = async () => {
+  inventoryLoading.value = true;
+  inventoryError.value = '';
   try {
     const response = await inventoryAPI.get();
-    inventory.value = response.data.inventory;
+    inventory.value = Array.isArray(response.data?.inventory) ? response.data.inventory : [];
+    if (!Array.isArray(response.data?.inventory)) {
+      inventoryError.value = 'Inventory could not be loaded.';
+    }
   } catch (fetchError) {
-    console.error('Error loading inventory:', fetchError);
+    inventory.value = [];
+    inventoryError.value = fetchError.response?.data?.message || 'Unable to load inventory.';
+  } finally {
+    inventoryLoading.value = false;
   }
 };
 

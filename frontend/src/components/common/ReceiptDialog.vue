@@ -1,6 +1,6 @@
 <template>
   <div v-if="sale" class="modal-mask" @click.self="$emit('close')">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="receipt-title" v-focus-trap="() => $emit('close')">
       <div class="modal-header">
         <h5 id="receipt-title" class="mb-0">Sale receipt</h5>
         <button type="button" class="btn-close" aria-label="Close receipt" @click="$emit('close')"></button>

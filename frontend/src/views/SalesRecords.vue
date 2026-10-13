@@ -140,7 +140,7 @@
     </div>
 
     <div v-if="editModalOpen" class="modal-mask" @click.self="closeEditModal">
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-edit-title">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-edit-title" v-focus-trap="closeEditModal">
         <div class="modal-header">
           <h5 id="sale-edit-title" class="mb-0">Edit Cash Sale</h5>
           <button type="button" class="btn-close" aria-label="Close edit sale" @click="closeEditModal"></button>
@@ -291,6 +291,8 @@ import { asListPayload } from '../utils/listPayload.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayDateTime } from '../utils/dateFormat.js';
+import { salesValidationSchema } from '../utils/formSchemas.js';
+import { useFormValidation } from '../composables/useFormValidation';
 
 const authStore = useAuthStore(pinia);
 const user = ref({});
@@ -309,6 +311,8 @@ const sortBy = ref('newest');
 const editModalOpen = ref(false);
 const editLoading = ref(false);
 const editError = ref('');
+const { validateForm } = useFormValidation(salesValidationSchema);
+const originalSaleStock = ref({ produceName: '', produceType: '', tonnageKg: 0 });
 const editForm = ref({
   id: '',
   produceName: '',
@@ -473,6 +477,11 @@ const toDateInput = (value) => {
 
 const openEditModal = (item) => {
   editError.value = '';
+  originalSaleStock.value = {
+    produceName: item.produceName || '',
+    produceType: item.produceType || '',
+    tonnageKg: Number(item.tonnageKg || 0)
+  };
   editForm.value = {
     id: item._id,
     produceName: item.produceName || '',
@@ -495,6 +504,30 @@ const closeEditModal = () => {
 
 const submitEdit = async () => {
   if (!editForm.value.id) return;
+  const validation = validateForm(editForm.value);
+  if (!validation.valid) {
+    editError.value = Object.values(validation.errors).find(Boolean) || 'Please fix the sale details.';
+    return;
+  }
+
+  const requestedTonnage = Number(editForm.value.tonnageKg || 0);
+  const matchingInventory = inventory.value.find(
+    (item) =>
+      item.produceName === editForm.value.produceName && item.produceType === editForm.value.produceType
+  );
+  if (!matchingInventory) {
+    editError.value = 'Product not available in inventory';
+    return;
+  }
+  const sameBucket =
+    originalSaleStock.value.produceName === editForm.value.produceName &&
+    originalSaleStock.value.produceType === editForm.value.produceType;
+  const available = Number(matchingInventory.totalTonnageKg || 0) + (sameBucket ? originalSaleStock.value.tonnageKg : 0);
+  if (requestedTonnage > available) {
+    editError.value = `Insufficient stock. Available: ${Math.max(available, 0)} kg`;
+    return;
+  }
+
   editLoading.value = true;
   editError.value = '';
   try {

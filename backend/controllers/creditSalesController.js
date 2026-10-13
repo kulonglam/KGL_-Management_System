@@ -10,6 +10,9 @@ import {
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, startOfToday, resolveSort, trustedQuery, buildDateRangeFilter } from '../utils/listQuery.js';
+import { deniesBranchAccess } from '../utils/branchAccess.js';
+import { forwardControllerError } from '../utils/httpError.js';
+import { roundUgx } from '../utils/money.js';
 
 const recordCreditSaleAudit = (actor, action, creditSale, extra) =>
   recordAudit({
@@ -22,7 +25,7 @@ const recordCreditSaleAudit = (actor, action, creditSale, extra) =>
   });
 
 // GET /api/credit-sales: list branch-scoped credit sales with optional pagination.
-const getAllCreditSales = async (req, res) => {
+const getAllCreditSales = async (req, res, next) => {
   try {
     const filter = {};
 
@@ -121,16 +124,16 @@ const getAllCreditSales = async (req, res) => {
         paidCount,
         overdueCount,
         outstandingCount,
-        outstandingBalance: Number(balanceRows[0]?.total || 0)
+        outstandingBalance: roundUgx(balanceRows[0]?.total || 0)
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/credit-sales: create a credit sale using service-layer stock, buyer, and balance rules.
-const createCreditSale = async (req, res) => {
+const createCreditSale = async (req, res, next) => {
   try {
     const creditSale = await createCreditSaleRecord({
       actorUser: req.user,
@@ -140,13 +143,12 @@ const createCreditSale = async (req, res) => {
 
     res.status(201).json(creditSale);
   } catch (error) {
-    const statusCode = error.statusCode || 400;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/credit-sales/:id/payment: toggle paid/unpaid state with service-level consistency checks.
-const updatePaymentStatus = async (req, res) => {
+const updatePaymentStatus = async (req, res, next) => {
   try {
     const isPaid = req.body.isPaid === true || req.body.isPaid === 'true';
     const updated = await applyCreditPaymentStatusUpdate({
@@ -158,13 +160,12 @@ const updatePaymentStatus = async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    const statusCode = error.statusCode || 400;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/credit-sales/:id/repay: register a repayment installment against one credit sale.
-const repayCreditSale = async (req, res) => {
+const repayCreditSale = async (req, res, next) => {
   try {
     const updated = await repayCreditSaleRecord({
       actorUser: req.user,
@@ -178,20 +179,19 @@ const repayCreditSale = async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    const statusCode = error.statusCode || 400;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/credit-sales/:id: update manager-allowed correction fields (due/dispatch dates).
-const updateCreditSale = async (req, res) => {
+const updateCreditSale = async (req, res, next) => {
   try {
     const creditSale = await CreditSale.findById(req.params.id);
     if (!creditSale) {
       return res.status(404).json({ message: 'Credit sale not found' });
     }
 
-    if (req.user.role === 'manager' && creditSale.branch !== req.user.branch) {
+    if (deniesBranchAccess(req.user, creditSale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
@@ -212,18 +212,18 @@ const updateCreditSale = async (req, res) => {
     await recordCreditSaleAudit(req.user, 'update', creditSale);
     return res.json(creditSale);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 // DELETE /api/credit-sales/:id: remove one credit sale when branch access and payment-state rules allow.
-const deleteCreditSale = async (req, res) => {
+const deleteCreditSale = async (req, res, next) => {
   try {
     const creditSale = await CreditSale.findById(req.params.id);
     if (!creditSale) {
       return res.status(404).json({ message: 'Credit sale not found' });
     }
     // Check if user has access to this branch
-    if (req.user.role === 'manager' && creditSale.branch !== req.user.branch) {
+    if (deniesBranchAccess(req.user, creditSale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
@@ -237,7 +237,7 @@ const deleteCreditSale = async (req, res) => {
     await recordCreditSaleAudit(req.user, 'delete', creditSale);
     res.json({ message: 'Credit sale deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

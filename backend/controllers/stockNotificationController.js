@@ -2,9 +2,10 @@
  
 import StockNotification from '../models/StockNotification.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { forwardControllerError } from '../utils/httpError.js';
 
 // GET /api/notifications: list manager stock notifications with unread filter and optional pagination.
-const getStockNotifications = async (req, res) => {
+const getStockNotifications = async (req, res, next) => {
   try {
     // Configure filter.
     const filter = {
@@ -39,12 +40,12 @@ const getStockNotifications = async (req, res) => {
       })
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/notifications/:id/read: mark one notification as read for the current manager branch.
-const markStockNotificationRead = async (req, res) => {
+const markStockNotificationRead = async (req, res, next) => {
   try {
     const notification = await StockNotification.findById(req.params.id);
 
@@ -64,11 +65,11 @@ const markStockNotificationRead = async (req, res) => {
 
     return res.json(notification);
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
-const markAllStockNotificationsRead = async (req, res) => {
+const markAllStockNotificationsRead = async (req, res, next) => {
   try {
     const result = await StockNotification.updateMany(
       { branch: req.user.branch, isRead: false },
@@ -76,7 +77,7 @@ const markAllStockNotificationsRead = async (req, res) => {
     );
     return res.json({ modifiedCount: result.modifiedCount || 0 });
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

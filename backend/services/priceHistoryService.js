@@ -26,12 +26,13 @@ const recordPriceHistory = async ({
   action,
   previousState,
   nextState,
-  changedBy
+  changedBy,
+  session = null
 }) => {
   const previous = normalizeHistorySnapshot(previousState);
   const next = normalizeHistorySnapshot(nextState);
 
-  await PriceHistory.create({
+  const history = {
     branch,
     priceSettingId,
     action,
@@ -42,7 +43,14 @@ const recordPriceHistory = async ({
     nextProduceType: next.produceType,
     nextPriceUgx: next.priceUgx,
     changedBy
-  });
+  };
+
+  if (session) {
+    await PriceHistory.create([history], { session });
+    return;
+  }
+
+  await PriceHistory.create(history);
 };
 
 // Read history for one managed price row with actor details attached.

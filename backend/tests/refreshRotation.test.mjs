@@ -1,17 +1,13 @@
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { configureMemoryServerBinary } from './support/mongoBinary.mjs';
 
-const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
-if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
-  process.env.MONGOMS_SYSTEM_BINARY = installedMongod;
-  process.env.MONGOMS_SYSTEM_BINARY_VERSION_CHECK = 'false';
-}
+configureMemoryServerBinary();
 
 import createApp from '../app.js';
 import User from '../models/User.js';

@@ -95,7 +95,7 @@
                 v-model="form.password"
                 type="password"
                 class="form-control"
-                minlength="6"
+                minlength="10"
                 placeholder="Leave blank to keep current password"
               />
             </div>
@@ -106,7 +106,7 @@
                 v-model="form.confirmPassword"
                 type="password"
                 class="form-control"
-                minlength="6"
+                minlength="10"
                 placeholder="Repeat new password"
               />
             </div>
@@ -174,6 +174,7 @@ import { authAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { getHomeRouteForUser } from '../utils/directorAccess.js';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 // Cap uploaded profile image size to 1 MB.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
@@ -315,8 +316,9 @@ export default {
       this.success = '';
 
       if (this.form.password || this.form.confirmPassword) {
-        if (this.form.password.length < 6) {
-          this.error = 'Password must be at least 6 characters.';
+        const passwordError = validatePasswordStrength(this.form.password);
+        if (passwordError) {
+          this.error = passwordError;
           return;
         }
         if (this.form.password !== this.form.confirmPassword) {

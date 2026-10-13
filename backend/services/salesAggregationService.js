@@ -10,7 +10,8 @@ import {
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
-import { formatDisplayDate } from '../utils/dateFormat.js';
+import { addUtcDays, formatDisplayDate, startOfUtcDay } from '../utils/dateFormat.js';
+import { roundUgx } from '../utils/money.js';
 import { getRegisteredBranches } from '../config/branches.js';
 // Allowed period filters for trend calculations.
 const PERIODS = new Set(['weekly', 'monthly', 'yearly']);
@@ -66,19 +67,11 @@ const normalizeBranch = (value) => {
   return matched || null;
 };
 
-// Convert date to start-of-day timestamp for bucket boundaries.
-const atStartOfDay = (dateValue) => {
-  const date = new Date(dateValue);
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
+// Convert date to UTC start-of-day so report buckets match specificDate (also UTC midnight).
+const atStartOfDay = (dateValue) => startOfUtcDay(dateValue);
 
-// Return a new date shifted by the requested number of calendar days.
-const addDays = (dateValue, days) => {
-  const date = new Date(dateValue);
-  date.setDate(date.getDate() + days);
-  return date;
-};
+// Return a new date shifted by the requested number of UTC calendar days.
+const addDays = (dateValue, days) => addUtcDays(dateValue, days);
 
 // Parse specific-date query input and return canonical UTC midnight date or error.
 const parseSpecificDate = (value) => {
@@ -119,8 +112,8 @@ const buildTrendBuckets = (period, specificDate = null) => {
 
   if (period === 'yearly') {
     for (let i = 11; i >= 0; i -= 1) {
-      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 1));
       buckets.push({
         start,
         end,
@@ -218,7 +211,7 @@ const applyBucketRows = (trendBuckets, rows) => {
     if (row._id === 'other' || row._id == null) return;
     const key = new Date(row._id).getTime();
     const bucket = trendBuckets.find((item) => item.start.getTime() === key);
-    if (bucket) bucket.total += Number(row.amount || 0);
+    if (bucket) bucket.total = roundUgx(bucket.total + Number(row.amount || 0));
   });
 };
 
@@ -248,20 +241,20 @@ const buildSalesAggregationPayload = ({
 
   salesByBranch.forEach((row) => {
     if (!branchTotals[row._id]) return;
-    branchTotals[row._id].cash += Number(row.amount || 0);
+    branchTotals[row._id].cash = roundUgx(branchTotals[row._id].cash + Number(row.amount || 0));
     branchTotals[row._id].totalKg += Number(row.totalKg || 0);
   });
 
   creditByBranch.forEach((row) => {
     if (!branchTotals[row._id]) return;
-    branchTotals[row._id].credit += Number(row.amount || 0);
+    branchTotals[row._id].credit = roundUgx(branchTotals[row._id].credit + Number(row.amount || 0));
     branchTotals[row._id].totalKg += Number(row.totalKg || 0);
   });
 
   procurementByBranch.forEach((row) => {
     const totals = procurementTotals[row._id];
     if (!totals) return;
-    totals.totalCost += Number(row.amount || 0);
+    totals.totalCost = roundUgx(totals.totalCost + Number(row.amount || 0));
     totals.totalKg += Number(row.totalKg || 0);
     totals.count += Number(row.count || 0);
   });

@@ -61,5 +61,6 @@ creditSaleSchema.index({ branch: 1, createdAt: -1 });
 creditSaleSchema.index({ branch: 1, dateOfDispatch: -1 });
 creditSaleSchema.index({ branch: 1, dueDate: 1, isPaid: 1 });
 creditSaleSchema.index({ trustedBuyer: 1, createdAt: -1 });
+creditSaleSchema.index({ balanceUgx: 1, dueDate: 1, isPaid: 1 });
 
 export default mongoose.model('CreditSale', creditSaleSchema);

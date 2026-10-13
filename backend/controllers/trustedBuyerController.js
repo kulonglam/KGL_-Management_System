@@ -8,9 +8,10 @@ import {
 } from '../services/trustedBuyerService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import { forwardControllerError } from '../utils/httpError.js';
 
 // GET /api/trusted-buyers: list trusted buyers visible to requester scope with optional pagination.
-const getTrustedBuyers = async (req, res) => {
+const getTrustedBuyers = async (req, res, next) => {
   try {
     const filter = {};
     if (req.user.role !== 'director') {
@@ -51,12 +52,12 @@ const getTrustedBuyers = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/trusted-buyers: create one trusted buyer after branch-unique NIN duplication checks.
-const createTrustedBuyer = async (req, res) => {
+const createTrustedBuyer = async (req, res, next) => {
   try {
     const { name, nationalId, location, contact } = req.body;
     const sanitizedName = normalizeText(name);
@@ -84,12 +85,12 @@ const createTrustedBuyer = async (req, res) => {
 
     res.status(201).json(buyer);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/trusted-buyers/:id: update one trusted buyer with branch and duplicate-NIN safeguards.
-const updateTrustedBuyer = async (req, res) => {
+const updateTrustedBuyer = async (req, res, next) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
     if (!buyer) {
@@ -117,12 +118,12 @@ const updateTrustedBuyer = async (req, res) => {
     const updated = await buyer.save();
     res.json(updated);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // DELETE /api/trusted-buyers/:id: delete one trusted buyer after branch ownership validation.
-const deleteTrustedBuyer = async (req, res) => {
+const deleteTrustedBuyer = async (req, res, next) => {
   try {
     const buyer = await TrustedBuyer.findById(req.params.id);
     if (!buyer) {
@@ -134,7 +135,7 @@ const deleteTrustedBuyer = async (req, res) => {
     await buyer.deleteOne();
     res.json({ message: 'Trusted buyer deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer };

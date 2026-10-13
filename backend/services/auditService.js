@@ -105,9 +105,9 @@ const enrichAuditItems = async (items) => {
   });
 };
 
-const recordAudit = async ({ actor, action, entityType, entityId, branch, metadata = {} }) => {
+const recordAudit = async ({ actor, action, entityType, entityId, branch, metadata = {}, session = null }) => {
   try {
-    await AuditLog.create({
+    const entry = {
       actorId: actor?._id || null,
       actorName: actor?.name || '',
       actorRole: actor?.role || '',
@@ -116,7 +116,12 @@ const recordAudit = async ({ actor, action, entityType, entityId, branch, metada
       entityId: entityId ? String(entityId) : '',
       branch: branch || actor?.branch || '',
       metadata
-    });
+    };
+    if (session) {
+      await AuditLog.create([entry], { session });
+    } else {
+      await AuditLog.create(entry);
+    }
   } catch (error) {
     logger.warn('audit.write.failed', { message: error.message, entityType, action });
   }

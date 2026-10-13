@@ -53,5 +53,6 @@ stockNotificationSchema.index({
   produceType: 1,
   isRead: 1
 });
+stockNotificationSchema.index({ branch: 1, isRead: 1, createdAt: -1 });
 
 export default mongoose.model('StockNotification', stockNotificationSchema);

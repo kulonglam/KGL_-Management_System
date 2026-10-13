@@ -5,6 +5,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="price-edit-title"
+      v-focus-trap="() => $emit('close')"
     >
       <div class="modal-header">
         <h5 id="price-edit-title" class="mb-0">

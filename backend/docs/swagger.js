@@ -48,7 +48,10 @@ const swaggerSpec = {
     { name: 'Credit Sales' },
     { name: 'Inventory' },
     { name: 'Trusted Buyers' },
-    { name: 'Prices' }
+    { name: 'Prices' },
+    { name: 'Notifications' },
+    { name: 'Branches' },
+    { name: 'Audit' }
   ],
   components: {
     securitySchemes: {
@@ -962,6 +965,160 @@ const swaggerSpec = {
           403: { $ref: '#/components/responses/Forbidden' },
           404: { $ref: '#/components/responses/NotFound' }
         }
+      }
+    },
+    '/auth/refresh': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Rotate the refresh cookie and issue a new access token',
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/auth/password-reset': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Reset a password with a one-time recovery code',
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/MessageObject' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/auth/login/mfa': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Finish login with an authenticator code',
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/auth/recovery-codes': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Issue recovery codes for the signed-in user',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/auth/users/{id}/recovery-codes': {
+      post: {
+        tags: ['Users'],
+        summary: 'Issue recovery codes for a managed user',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/auth/mfa/setup': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Start authenticator enrollment',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'object' }), 401: { $ref: '#/components/responses/Unauthorized' } }
+      }
+    },
+    '/auth/mfa/enable': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Confirm authenticator enrollment',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'object' }), 400: { $ref: '#/components/responses/BadRequest' } }
+      }
+    },
+    '/auth/mfa/disable': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Turn off authenticator MFA',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ $ref: '#/components/schemas/MessageObject' }), 400: { $ref: '#/components/responses/BadRequest' } }
+      }
+    },
+    '/notifications': {
+      get: {
+        tags: ['Notifications'],
+        summary: 'List stock notifications for the signed-in branch',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'array', items: { type: 'object' } }) }
+      }
+    },
+    '/notifications/read-all': {
+      put: {
+        tags: ['Notifications'],
+        summary: 'Mark every stock notification read',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ $ref: '#/components/schemas/MessageObject' }) }
+      }
+    },
+    '/notifications/{id}/read': {
+      put: {
+        tags: ['Notifications'],
+        summary: 'Mark one stock notification read',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ type: 'object' }) }
+      }
+    },
+    '/branches': {
+      get: {
+        tags: ['Branches'],
+        summary: 'List branches',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'object' }) }
+      },
+      post: {
+        tags: ['Branches'],
+        summary: 'Create a branch and its manager',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          201: successResponse({ type: 'object' }),
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/branches/{id}': {
+      put: {
+        tags: ['Branches'],
+        summary: 'Activate or deactivate a branch',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ type: 'object' }), 403: { $ref: '#/components/responses/Forbidden' } }
+      }
+    },
+    '/audit-logs': {
+      get: {
+        tags: ['Audit'],
+        summary: 'List audit logs. Directors see every branch; managers see their own.',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'array', items: { type: 'object' } }) }
+      }
+    },
+    '/sales/dashboard': {
+      get: {
+        tags: ['Sales'],
+        summary: 'Manager dashboard totals',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'object' }) }
+      }
+    },
+    '/sales/agent-dashboard': {
+      get: {
+        tags: ['Sales'],
+        summary: 'Sales agent dashboard totals for today',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ type: 'object' }) }
       }
     }
   }

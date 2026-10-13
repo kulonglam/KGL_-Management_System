@@ -30,6 +30,7 @@
             @type-change="handleTypeChange"
           />
 
+          <div v-if="priceLoadError" class="alert alert-danger">{{ priceLoadError }}</div>
           <FormAlerts :error="error" :success="success" />
 
           <div class="form-action-bar">
@@ -89,6 +90,7 @@ const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, r
   useFormFeedback();
 const {
   priceLocked,
+  priceLoadError,
   loadPrices,
   applyPriceSetting,
   clearPriceLock,

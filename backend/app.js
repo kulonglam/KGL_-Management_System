@@ -60,16 +60,16 @@ const createApp = () => {
   app.use(rejectParameterPollution);
   app.use(requestContext);
   app.use(securityHeaders);
-  app.use(apiLimiter);
   app.use(accessLogger);
   app.use(responseFormatter);
+  // Probes sit above the limiter and still pass through the response formatter.
+  app.use('/', opsRoutes);
+  app.use(apiLimiter);
 
   // Swagger
   if (enableSwagger) {
     app.use('/api-docs', docsAuth, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   }
-  app.use('/', opsRoutes);
-
   const mountVersionedApi = (router) => {
     router.get('/', (_req, res) => {
       res.json({

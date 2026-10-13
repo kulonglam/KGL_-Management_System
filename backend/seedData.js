@@ -13,6 +13,9 @@ import CreditSale from './models/CreditSale.js';
 import TrustedBuyer from './models/TrustedBuyer.js';
 import StockNotification from './models/StockNotification.js';
 import StockLock from './models/StockLock.js';
+import AuditLog from './models/AuditLog.js';
+import PriceHistory from './models/PriceHistory.js';
+import { allowAppendOnlyNativeWrite } from './utils/appendOnly.js';
 import { isProduction } from './config/security.js';
 import { DOCUMENTED_SEED_PASSWORD } from './config/seedPolicy.js';
 import { validatePasswordStrength } from './services/authService.js';
@@ -552,14 +555,23 @@ const clearCollections = async () => {
     PriceSetting.deleteMany({}),
     User.deleteMany({})
   ]);
-  console.log('Existing data cleared');
+  // Dev reseeds would otherwise keep audit rows that point at users and procurements just deleted.
+  // Append-only hooks stay closed to normal traffic; this uses the restore escape hatch.
+  await allowAppendOnlyNativeWrite(async () => {
+    await AuditLog.collection.deleteMany({});
+    await PriceHistory.collection.deleteMany({});
+  });
+  console.log('Existing data cleared, including append-only audit and price history for this reseed');
 };
 
 const seedUsers = async () => {
-  const hashedPassword = await bcrypt.hash(resolveSeedPassword(), 10);
+  const password = resolveSeedPassword();
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const mustChangePassword = password === DOCUMENTED_SEED_PASSWORD;
   const records = userSeed.map((user) => ({
     ...user,
-    password: hashedPassword
+    password: hashedPassword,
+    mustChangePassword
   }));
   const users = await User.insertMany(records);
   console.log(`Users seeded: ${users.length}`);

@@ -25,6 +25,7 @@
               class="form-control"
               minlength="10"
               required
+              autocomplete="new-password"
             />
           </div>
           <div v-if="error" class="alert alert-danger">{{ error }}</div>
@@ -43,6 +44,7 @@
 
 <script>
 import { authAPI } from '../services/api';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 export default {
   name: 'PasswordReset',
@@ -60,6 +62,11 @@ export default {
   },
   methods: {
     async handleReset() {
+      const passwordError = validatePasswordStrength(this.form.newPassword);
+      if (passwordError) {
+        this.error = passwordError;
+        return;
+      }
       this.loading = true;
       this.error = '';
       this.success = '';

@@ -18,6 +18,9 @@
         <h5 class="mb-0">Credit Sale Details</h5>
       </div>
       <div class="card-body">
+        <div v-if="inventoryLoading" class="alert alert-info">Loading inventory...</div>
+        <div v-else-if="inventoryError" class="alert alert-danger">{{ inventoryError }}</div>
+        <div v-if="buyersError" class="alert alert-danger">{{ buyersError }}</div>
         <form @submit.prevent="openReviewModal">
           <CreditBuyerSection
             v-model:form="form"
@@ -185,8 +188,11 @@ import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 const user = ref({});
 // Branch-approved trusted buyers used to populate buyer details.
 const trustedBuyers = ref([]);
+const buyersError = ref('');
 // Current inventory list used for produce selection and stock checks.
 const inventory = ref([]);
+const inventoryLoading = ref(false);
+const inventoryError = ref('');
 // Credit-sale form state.
 const form = ref(createInitialForm());
 // Controls visibility of review modal prior to final save.
@@ -232,24 +238,40 @@ function createInitialForm() {
 
 // Load inventory used for produce dropdown and amount calculations.
 const loadInventory = async () => {
+  inventoryLoading.value = true;
+  inventoryError.value = '';
   try {
     const response = await inventoryAPI.get();
-    inventory.value = response.data.inventory;
+    inventory.value = Array.isArray(response.data?.inventory) ? response.data.inventory : [];
+    if (!Array.isArray(response.data?.inventory)) {
+      inventoryError.value = 'Inventory could not be loaded.';
+    }
   } catch (fetchError) {
-    console.error('Error loading inventory:', fetchError);
+    inventory.value = [];
+    inventoryError.value = fetchError.response?.data?.message || 'Unable to load inventory.';
+  } finally {
+    inventoryLoading.value = false;
   }
 };
 
 // Load trusted-buyer records for buyer selection.
 const loadTrustedBuyers = async () => {
+  buyersError.value = '';
   try {
     const response = await trustedBuyersAPI.getAll();
-    trustedBuyers.value = response.data.map((item) => ({
+    const rows = Array.isArray(response.data) ? response.data : response.data?.items;
+    if (!Array.isArray(rows)) {
+      trustedBuyers.value = [];
+      buyersError.value = 'Trusted buyers could not be loaded.';
+      return;
+    }
+    trustedBuyers.value = rows.map((item) => ({
       ...item,
       contact: normalizeLocalPhone(item.contact) || item.contact
     }));
   } catch (fetchError) {
-    console.error('Error loading trusted buyers:', fetchError);
+    trustedBuyers.value = [];
+    buyersError.value = fetchError.response?.data?.message || 'Unable to load trusted buyers.';
   }
 };
 

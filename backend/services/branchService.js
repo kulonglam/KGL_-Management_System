@@ -9,6 +9,7 @@ import {
 } from '../config/branches.js';
 import { hashPassword, validatePasswordStrength, findUserByUsername } from './authService.js';
 import { recordAudit } from './auditService.js';
+import { runInTransaction, withSession } from '../utils/transaction.js';
 
 const refreshBranchCache = async () => {
   const rows = await Branch.find({ isActive: true }).sort({ name: 1 }).lean();
@@ -57,41 +58,52 @@ const createBranchWithManager = async ({ actorUser, name, managerName, managerUs
     throw error;
   }
 
-  const branch = await Branch.create({ name: branchName, isActive: true });
-  await refreshBranchCache();
+  const passwordHash = await hashPassword(managerPassword);
+  const created = await runInTransaction(async (session) => {
+    const [branch] = await Branch.create([{ name: branchName, isActive: true }], withSession(session));
+    try {
+      const [manager] = await User.create(
+        [
+          {
+            name: managerName,
+            username: managerUsername,
+            password: passwordHash,
+            role: 'manager',
+            branch: branchName
+          }
+        ],
+        withSession(session)
+      );
 
-  try {
-    const manager = await User.create({
-      name: managerName,
-      username: managerUsername,
-      password: await hashPassword(managerPassword),
-      role: 'manager',
-      branch: branchName
-    });
+      await recordAudit({
+        actor: actorUser,
+        action: 'create',
+        entityType: 'branch',
+        entityId: branch._id,
+        branch: branchName,
+        metadata: { managerUsername },
+        session
+      });
 
-    await recordAudit({
-      actor: actorUser,
-      action: 'create',
-      entityType: 'branch',
-      entityId: branch._id,
-      branch: branchName,
-      metadata: { managerUsername }
-    });
-
-    return {
-      branch,
-      manager: {
-        _id: manager._id,
-        name: manager.name,
-        username: manager.username,
-        branch: manager.branch
+      return {
+        branch,
+        manager: {
+          _id: manager._id,
+          name: manager.name,
+          username: manager.username,
+          branch: manager.branch
+        }
+      };
+    } catch (error) {
+      if (!session) {
+        await Branch.deleteOne({ _id: branch._id });
       }
-    };
-  } catch (error) {
-    await Branch.deleteOne({ _id: branch._id });
-    await refreshBranchCache();
-    throw error;
-  }
+      throw error;
+    }
+  });
+
+  await refreshBranchCache();
+  return created;
 };
 
 const updateBranchStatus = async ({ actorUser, branchId, isActive }) => {
@@ -109,18 +121,22 @@ const updateBranchStatus = async ({ actorUser, branchId, isActive }) => {
     throw error;
   }
 
-  branch.isActive = nextActive;
-  await branch.save();
-  await refreshBranchCache();
-  await recordAudit({
-    actor: actorUser,
-    action: 'update',
-    entityType: 'branch',
-    entityId: branch._id,
-    branch: branch.name,
-    metadata: { isActive: nextActive }
+  const saved = await runInTransaction(async (session) => {
+    branch.isActive = nextActive;
+    const updated = await branch.save(withSession(session));
+    await recordAudit({
+      actor: actorUser,
+      action: 'update',
+      entityType: 'branch',
+      entityId: branch._id,
+      branch: branch.name,
+      metadata: { isActive: nextActive },
+      session
+    });
+    return updated;
   });
-  return branch;
+  await refreshBranchCache();
+  return saved;
 };
 
 export {

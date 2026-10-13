@@ -1,7 +1,8 @@
 import { listBranches, createBranchWithManager, updateBranchStatus } from '../services/branchService.js';
 import { DEFAULT_REGISTERED_BRANCHES, getRegisteredBranches } from '../config/branches.js';
+import { forwardControllerError } from '../utils/httpError.js';
 
-const listPublicBranches = async (_req, res) => {
+const listPublicBranches = async (_req, res, next) => {
   try {
     const branches = await listBranches();
     res.json({
@@ -12,11 +13,11 @@ const listPublicBranches = async (_req, res) => {
       names: getRegisteredBranches()
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
-const createBranch = async (req, res) => {
+const createBranch = async (req, res, next) => {
   try {
     const created = await createBranchWithManager({
       actorUser: req.user,
@@ -27,11 +28,11 @@ const createBranch = async (req, res) => {
     });
     res.status(201).json(created);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
-const updateBranch = async (req, res) => {
+const updateBranch = async (req, res, next) => {
   try {
     if (req.body.isActive === undefined) {
       return res.status(400).json({ message: 'isActive is required' });
@@ -43,7 +44,7 @@ const updateBranch = async (req, res) => {
     });
     res.json(branch);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

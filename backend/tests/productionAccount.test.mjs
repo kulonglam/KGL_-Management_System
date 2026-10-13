@@ -47,7 +47,8 @@ test('production login requires a unique password and MFA before a session', asy
 
   try {
     const demoHash = await bcrypt.hash('Karibu@2026!', 4);
-    User.findOne = async () => account({ password: demoHash, mfaEnabled: true });
+    User.findOne = async () =>
+      account({ password: demoHash, mfaEnabled: true, mustChangePassword: true });
     const demoResponse = createRes();
     await login({ body: { username: 'orban', password: 'Karibu@2026!' } }, demoResponse);
     assert.equal(demoResponse.statusCode, 200);

@@ -11,6 +11,7 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="procurement-edit-title"
+        v-focus-trap="cancelEdit"
       >
         <div class="modal-header">
           <h5 id="procurement-edit-title" class="mb-0">Update Procurement</h5>
@@ -28,10 +29,12 @@
               v-model:form="form"
               :user="user"
               :price-locked="priceLocked"
+              :errors="fieldErrors"
               price-lock-hint="Selling price comes from Price Management."
               @type-change="handleTypeChange"
             />
 
+            <div v-if="priceLoadError" class="alert alert-danger">{{ priceLoadError }}</div>
             <FormAlerts :error="error" :success="success" />
 
             <div class="form-action-bar">
@@ -102,6 +105,8 @@ import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { asListPayload } from '../utils/listPayload.js';
+import { procurementValidationSchema } from '../utils/formSchemas.js';
+import { useFormValidation } from '../composables/useFormValidation';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Authenticated user metadata used for branch-aware display.
@@ -132,7 +137,9 @@ const authStore = useAuthStore(pinia);
 
 const { loading, error, success, beginSubmit, endSubmit, setError, setSuccess, resetFeedback } =
   useFormFeedback();
-const { priceLocked, loadPrices, applyPriceSetting, clearPriceLock } = useProcurementPricing();
+const { priceLocked, priceLoadError, loadPrices, applyPriceSetting, clearPriceLock } =
+  useProcurementPricing();
+const { errors: fieldErrors, validateForm } = useFormValidation(procurementValidationSchema);
 
 // Re-apply manager-controlled price when edited produce type changes.
 const handleTypeChange = () => {
@@ -207,6 +214,11 @@ const cancelEdit = () => {
 // Persist procurement edits to backend and refresh table.
 const handleUpdate = async () => {
   if (!editingId.value) return;
+  const validation = validateForm(form.value);
+  if (!validation.valid) {
+    setError('Please fix highlighted fields and try again.');
+    return;
+  }
   beginSubmit();
   try {
     await procurementAPI.update(editingId.value, form.value);

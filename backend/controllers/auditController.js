@@ -1,11 +1,13 @@
 import AuditLog from '../models/AuditLog.js';
 import { enrichAuditItems } from '../services/auditService.js';
+import { isDirectorAccount } from '../services/authService.js';
+import { forwardControllerError } from '../utils/httpError.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-const listAuditLogs = async (req, res) => {
+const listAuditLogs = async (req, res, next) => {
   try {
     const filter = {};
-    if (req.user.role !== 'director') {
+    if (!isDirectorAccount(req.user)) {
       filter.branch = req.user.branch;
     }
 
@@ -28,7 +30,7 @@ const listAuditLogs = async (req, res) => {
       pagination: buildPaginationMeta({ page: pagination.page, limit: pagination.limit, total })
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 

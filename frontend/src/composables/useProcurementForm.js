@@ -3,37 +3,7 @@
 
 import { ref } from 'vue';
 import { priceAPI } from '../services/api';
-
-const normalizeWhitespace = (value) => String(value || '').replace(/\s+/g, ' ').trim();
-const PRODUCE_NAME_ALIASES = {
-  'red bean': 'Red Beans',
-  'red beans': 'Red Beans',
-  'brown bean': 'Brown Beans',
-  'brown beans': 'Brown Beans',
-  'ground nut': 'Groundnuts',
-  'ground nuts': 'Groundnuts',
-  groundnut: 'Groundnuts',
-  groundnuts: 'Groundnuts',
-  'cow pea': 'Cow Peas',
-  'cow peas': 'Cow Peas',
-  'white maize': 'White Maize',
-  'yellow maize': 'Yellow Maize'
-};
-const toTitleCase = (value) =>
-  normalizeWhitespace(value)
-    .toLowerCase()
-    .replace(/\b([a-z])([a-z]*)/g, (_match, first, rest) => first.toUpperCase() + rest);
-const normalizeProduceName = (value) => {
-  const normalized = normalizeWhitespace(value);
-  if (!normalized) return '';
-
-  return PRODUCE_NAME_ALIASES[normalized.toLowerCase()] || toTitleCase(normalized);
-};
-const normalizeProduceNameKey = (value) =>
-  normalizeProduceName(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-    .trim();
+import { normalizeProduceName, normalizeProduceNameKey, normalizeWhitespace } from '../utils/produceName.js';
 const buildPriceKey = (produceName, produceType) =>
   `${normalizeWhitespace(produceType)}::${normalizeProduceNameKey(produceName) || '__type_default__'}`;
 
@@ -56,9 +26,11 @@ const useProcurementPricing = () => {
   const priceSettings = ref({});
   const priceTargetsByType = ref({});
   const priceLocked = ref(true);
+  const priceLoadError = ref('');
 
   // Fetch managed prices and map them by produce identity for quick lookup.
   const loadPrices = async () => {
+    priceLoadError.value = '';
     try {
       const response = await priceAPI.getAll();
       const map = {};
@@ -94,7 +66,7 @@ const useProcurementPricing = () => {
         ])
       );
     } catch (fetchError) {
-      console.error('Failed to load prices:', fetchError);
+      priceLoadError.value = fetchError.response?.data?.message || 'Unable to load selling prices.';
     }
   };
 
@@ -127,6 +99,7 @@ const useProcurementPricing = () => {
     priceSettings,
     hasTypeDefaultPrice,
     priceLocked,
+    priceLoadError,
     loadPrices,
     applyPriceSetting,
     clearPriceLock

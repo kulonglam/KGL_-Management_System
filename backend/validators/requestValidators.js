@@ -431,7 +431,10 @@ const creditPaymentStatusValidation = [
 // Configure credit repayment validation.
 const creditRepaymentValidation = [
   ...mongoIdParamValidation,
-  body('amountUgx').isFloat({ gt: 0 }).withMessage('amountUgx must be greater than 0'),
+  body('amountUgx')
+    .isInt({ gt: 0 })
+    .withMessage('amountUgx must be a whole number of UGX greater than 0')
+    .toInt(),
   body('paidAt').optional().isISO8601().withMessage('paidAt must be a valid date')
 ];
 

@@ -138,7 +138,7 @@
     </div>
 
     <div v-if="showForm" class="modal-mask" @click.self="toggleForm">
-      <div class="modal-card user-editor-modal" role="dialog" aria-modal="true" aria-labelledby="user-form-title">
+      <div class="modal-card user-editor-modal" role="dialog" aria-modal="true" aria-labelledby="user-form-title" v-focus-trap="toggleForm">
         <div class="modal-header">
           <h5 id="user-form-title" class="mb-0">{{ editingId ? 'Update User' : 'Create New User' }}</h5>
           <button type="button" class="btn-close" aria-label="Close user form" :disabled="loading" @click="toggleForm"></button>
@@ -234,11 +234,11 @@
       @confirm="confirmDeleteUser"
     />
 
-    <div v-if="recoveryCodes.length" class="modal-mask" @click.self="recoveryCodes = []">
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recovery-codes-title">
+    <div v-if="recoveryCodes.length" class="modal-mask" @click.self="dismissRecoveryCodes">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="recovery-codes-title" v-focus-trap="dismissRecoveryCodes">
         <div class="modal-header">
           <h5 id="recovery-codes-title" class="mb-0">Recovery codes for {{ recoveryUsername }}</h5>
-          <button type="button" class="btn-close" aria-label="Close" @click="recoveryCodes = []"></button>
+          <button type="button" class="btn-close" aria-label="Close" @click="dismissRecoveryCodes"></button>
         </div>
         <div class="modal-body">
           <p class="text-muted">Share these codes once. They will not be shown again.</p>
@@ -262,6 +262,7 @@ import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { debounce } from '../utils/debounce.js';
 import { asListPayload } from '../utils/listPayload.js';
+import { validatePasswordStrength } from '../utils/passwordPolicy.js';
 
 export default {
   name: 'Users',
@@ -427,9 +428,20 @@ export default {
       this.pageSize = Number(size || 20);
     },
     async handleSubmit() {
-      this.loading = true;
       this.error = '';
       this.success = '';
+      if (this.form.password || !this.editingId) {
+        const passwordError = this.form.password ? validatePasswordStrength(this.form.password) : '';
+        if (!this.editingId && !this.form.password) {
+          this.error = 'Password is required';
+          return;
+        }
+        if (passwordError) {
+          this.error = passwordError;
+          return;
+        }
+      }
+      this.loading = true;
 
       try {
         if (this.editingId) {
@@ -522,6 +534,9 @@ export default {
         password: '',
         role: ''
       };
+    },
+    dismissRecoveryCodes() {
+      this.recoveryCodes = [];
     },
     toggleForm() {
       if (this.loading) return;

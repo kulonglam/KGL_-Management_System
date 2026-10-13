@@ -25,7 +25,8 @@ import {
   createRecoveryCodes
 } from '../services/authService.js';
 import { isProduction } from '../config/security.js';
-import { DOCUMENTED_SEED_PASSWORD, rejectDocumentedPassword } from '../config/seedPolicy.js';
+import { rejectDocumentedPassword } from '../config/seedPolicy.js';
+import { forwardControllerError } from '../utils/httpError.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
@@ -44,6 +45,8 @@ const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
 
+// A rotated refresh token can be replayed for this long so two tabs do not kick each other out.
+// After the window, reuse is treated as theft and the whole refresh family is revoked.
 const refreshReuseGraceMs = () => {
   const configured = Number(process.env.AUTH_REFRESH_REUSE_GRACE_MS);
   if (Number.isFinite(configured) && configured >= 0) return configured;
@@ -143,8 +146,7 @@ const productionLoginGate = async (user) => {
     return null;
   }
 
-  const usesDemoPassword = await bcrypt.compare(DOCUMENTED_SEED_PASSWORD, user.password);
-  if (usesDemoPassword) {
+  if (user.mustChangePassword) {
     return {
       passwordChangeRequired: true,
       setupToken: generateSetupToken(user._id, Number(user.tokenVersion || 0), 'password'),
@@ -249,7 +251,7 @@ const logout = async (req, res) => {
 };
 
 // GET /api/auth/me: return the current authenticated user's profile (without password hash).
-const getMe = async (req, res) => {
+const getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
     if (!user) {
@@ -257,12 +259,12 @@ const getMe = async (req, res) => {
     }
     return res.json(toUserPayload(user));
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/auth/me: update own profile fields and rotate token version when password changes.
-const updateMe = async (req, res) => {
+const updateMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
 
@@ -316,6 +318,7 @@ const updateMe = async (req, res) => {
         return res.status(400).json({ message: documentedPasswordError });
       }
       user.password = await hashPassword(password);
+      user.mustChangePassword = false;
       user.tokenVersion = Number(user.tokenVersion || 0) + 1;
       cutOffRefreshSessions(user);
       passwordUpdated = true;
@@ -344,12 +347,12 @@ const updateMe = async (req, res) => {
 
     return res.json(toUserPayload(updatedUser, passwordUpdated));
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/auth/register: manager creates a new branch user via centralized auth service checks.
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const user = await registerUser({
       actorUser: req.user,
@@ -358,13 +361,12 @@ const register = async (req, res) => {
 
     res.status(201).json(toUserPayload(user, true));
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/auth/users: list users visible to the requester with optional pagination metadata.
-const getUsers = async (req, res) => {
+const getUsers = async (req, res, next) => {
   try {
     const filter = {};
     if (req.user.role === 'manager') {
@@ -416,11 +418,11 @@ const getUsers = async (req, res) => {
       summary
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 // PUT /api/auth/users/:id: manager updates one user through shared service validation rules.
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   try {
     const updatedUser = await updateUserRecord({
       actorUser: req.user,
@@ -430,13 +432,12 @@ const updateUser = async (req, res) => {
 
     res.json(toUserPayload(updatedUser));
   } catch (error) {
-    const statusCode = error.statusCode || 400;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // DELETE /api/auth/users/:id: delete one user after self-delete and staffing-minimum safeguards.
-const deleteUser = async (req, res) => {
+const deleteUser = async (req, res, next) => {
   try {
     if (req.user._id.toString() === req.params.id) {
       return res.status(400).json({ message: 'You cannot delete your own account' });
@@ -457,7 +458,7 @@ const deleteUser = async (req, res) => {
     await user.deleteOne();
     res.json({ message: 'User deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
@@ -551,6 +552,7 @@ const resetPasswordWithRecoveryCode = async (req, res) => {
     hashes.splice(matchedIndex, 1);
     user.recoveryCodeHashes = hashes;
     user.password = await hashPassword(newPassword);
+    user.mustChangePassword = false;
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     cutOffRefreshSessions(user);
     await user.save();

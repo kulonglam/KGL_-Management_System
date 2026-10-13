@@ -2,7 +2,10 @@
 import Sale from '../models/Sale.js';
 import { calculateInventoryByBranch, calculateInventoryByFilter, getBucketTonnage } from '../services/inventoryService.js';
 import { syncStockLevelNotifications } from '../services/stockNotificationService.js';
-import { withStockLock } from '../services/stockLockService.js';
+import { withStockLock, withStockLocks } from '../services/stockLockService.js';
+import { deniesBranchAccess } from '../utils/branchAccess.js';
+import { forwardControllerError } from '../utils/httpError.js';
+import { roundUgx } from '../utils/money.js';
 import {
   resolveProduceTypeForSale,
   loadDirectorAggregation
@@ -31,7 +34,7 @@ const recordSaleAudit = (actor, action, sale) =>
   });
 
 // GET /api/sales: list sales visible to requester branch scope with optional pagination metadata.
-const getAllSales = async (req, res) => {
+const getAllSales = async (req, res, next) => {
   try {
     const filter = {};
 
@@ -92,12 +95,12 @@ const getAllSales = async (req, res) => {
       })
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // POST /api/sales: record a cash sale after stock/type resolution, locking, and out-of-stock notification checks.
-const createSale = async (req, res) => {
+const createSale = async (req, res, next) => {
   try {
     const {
       produceName: rawProduceName,
@@ -146,7 +149,7 @@ const createSale = async (req, res) => {
           });
         }
 
-        const amountPaidUgx = item.sellingPrice * tonnage;
+        const amountPaidUgx = roundUgx(item.sellingPrice * tonnage);
         const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
         const createdSale = await Sale.create({
@@ -176,13 +179,12 @@ const createSale = async (req, res) => {
     await recordSaleAudit(req.user, 'create', sale);
     res.status(201).json(sale);
   } catch (error) {
-    const statusCode = error.statusCode || 400;
-    res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/sales/aggregation: build director-facing totals/trends across selected branches and time window.
-const getSalesAggregation = async (req, res) => {
+const getSalesAggregation = async (req, res, next) => {
   try {
     const payload = await loadDirectorAggregation({
       period: req.query.period,
@@ -194,12 +196,12 @@ const getSalesAggregation = async (req, res) => {
     }
     res.json(payload);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/sales/dashboard: branch totals for the manager dashboard, grouped in the database.
-const getManagerDashboard = async (req, res) => {
+const getManagerDashboard = async (req, res, next) => {
   try {
     if (!req.user.branch) {
       return res.status(400).json({ message: 'Manager branch is missing.' });
@@ -214,12 +216,12 @@ const getManagerDashboard = async (req, res) => {
     }
     res.json(summary);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // GET /api/sales/agent-dashboard: today's personal totals for the signed-in sales agent.
-const getAgentDashboard = async (req, res) => {
+const getAgentDashboard = async (req, res, next) => {
   try {
     if (!req.user.branch) {
       return res.status(400).json({ message: 'Sales agent branch is missing.' });
@@ -230,12 +232,12 @@ const getAgentDashboard = async (req, res) => {
     });
     res.json(summary);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // DELETE /api/sales/:id: delete one sale after branch access validation.
-const deleteSale = async (req, res) => {
+const deleteSale = async (req, res, next) => {
   try {
     const sale = await Sale.findById(req.params.id);
 
@@ -244,7 +246,7 @@ const deleteSale = async (req, res) => {
     }
 
     // Check if user has access to this branch
-    if (req.user.role === 'manager' && sale.branch !== req.user.branch) {
+    if (deniesBranchAccess(req.user, sale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
@@ -268,19 +270,19 @@ const deleteSale = async (req, res) => {
     await recordSaleAudit(req.user, 'delete', sale);
     res.json({ message: 'Sale deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
 // PUT /api/sales/:id: correct sale fields with stock-aware recalculation when produce/tonnage changes.
-const updateSale = async (req, res) => {
+const updateSale = async (req, res, next) => {
   try {
     const sale = await Sale.findById(req.params.id);
     if (!sale) {
       return res.status(404).json({ message: 'Sale not found' });
     }
 
-    if (req.user.role === 'manager' && sale.branch !== req.user.branch) {
+    if (deniesBranchAccess(req.user, sale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
@@ -341,12 +343,21 @@ const updateSale = async (req, res) => {
       return res.status(400).json({ message: 'Invalid tonnage value' });
     }
 
-    const updatedSale = await withStockLock(
-      {
-        branch: sale.branch,
-        produceName: requestedProduceName,
-        produceType: requestedProduceType
-      },
+    const previousProduceName = sale.produceName;
+    const previousProduceType = sale.produceType;
+    const updatedSale = await withStockLocks(
+      [
+        {
+          branch: sale.branch,
+          produceName: previousProduceName,
+          produceType: previousProduceType
+        },
+        {
+          branch: sale.branch,
+          produceName: requestedProduceName,
+          produceType: requestedProduceType
+        }
+      ],
       async () => {
         const lockedInventory = await calculateInventoryByFilter({ branch: sale.branch });
         const resolvedType = resolveProduceTypeForSale(
@@ -398,7 +409,7 @@ const updateSale = async (req, res) => {
         sale.produceName = targetItem.produceName;
         sale.produceType = targetItem.produceType;
         sale.tonnageKg = requestedTonnage;
-        sale.amountPaidUgx = unitPrice * requestedTonnage;
+        sale.amountPaidUgx = roundUgx(unitPrice * requestedTonnage);
         applyNonStockFields();
 
         await sale.save();
@@ -411,6 +422,21 @@ const updateSale = async (req, res) => {
           remainingStock
         });
 
+        if (!sameStockBucket) {
+          const afterSnapshot = await calculateInventoryByFilter({ branch: sale.branch });
+          await syncStockLevelNotifications({
+            branch: sale.branch,
+            produceName: previousProduceName,
+            produceType: previousProduceType,
+            remainingStock: getBucketTonnage(
+              afterSnapshot,
+              previousProduceName,
+              previousProduceType,
+              sale.branch
+            )
+          });
+        }
+
         return sale;
       }
     );
@@ -418,8 +444,7 @@ const updateSale = async (req, res) => {
     await recordSaleAudit(req.user, 'update', updatedSale);
     return res.json(updatedSale);
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    return res.status(statusCode).json({ message: error.message });
+    return forwardControllerError(error, res, next);
   }
 };
 
