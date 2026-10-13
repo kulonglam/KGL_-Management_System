@@ -37,6 +37,8 @@ const waitForDevServer = (child, port, timeoutMs) =>
   new Promise((resolve, reject) => {
     let raw = '';
     let settled = false;
+    let timer;
+    let poll;
     const stop = (error, value) => {
       if (settled) return;
       settled = true;
@@ -45,7 +47,7 @@ const waitForDevServer = (child, port, timeoutMs) =>
       if (error) reject(error);
       else resolve(value);
     };
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       stop(new Error(`Timed out waiting for the dev server.\n${stripAnsi(raw)}`));
     }, timeoutMs);
     const onData = (chunk) => {
@@ -56,7 +58,7 @@ const waitForDevServer = (child, port, timeoutMs) =>
     child.once('exit', (code) => {
       stop(new Error(`Dev server exited with ${code}.\n${stripAnsi(raw)}`));
     });
-    const poll = setInterval(() => {
+    poll = setInterval(() => {
       canConnect(port).then((open) => {
         if (open) stop(null, stripAnsi(raw));
       });
