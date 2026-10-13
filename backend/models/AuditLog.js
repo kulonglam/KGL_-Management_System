@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { protectAppendOnly } from '../utils/appendOnly.js';
+import { guardAppendOnlyCollection, protectAppendOnly } from '../utils/appendOnly.js';
 
 const auditLogSchema = new mongoose.Schema(
   {
@@ -19,4 +19,7 @@ auditLogSchema.index({ entityType: 1, createdAt: -1 });
 auditLogSchema.index({ branch: 1, createdAt: -1 });
 protectAppendOnly(auditLogSchema);
 
-export default mongoose.model('AuditLog', auditLogSchema);
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+guardAppendOnlyCollection(AuditLog);
+
+export default AuditLog;

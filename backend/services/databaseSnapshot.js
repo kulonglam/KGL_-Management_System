@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import mongoose from 'mongoose';
 import { isProduction } from '../config/security.js';
+import { allowAppendOnlyNativeWrite } from '../utils/appendOnly.js';
 import '../models/AuditLog.js';
 import '../models/Branch.js';
 import '../models/CreditSale.js';
@@ -124,17 +125,19 @@ const restoreDatabase = async (directory) => {
     throw new Error('Backup manifest is missing collections');
   }
 
-  for (const entry of manifest.collections) {
-    if (!SNAPSHOT_MODELS.includes(entry.model)) {
-      throw new Error(`Backup manifest names an unknown collection: ${entry.model}`);
+  await allowAppendOnlyNativeWrite(async () => {
+    for (const entry of manifest.collections) {
+      if (!SNAPSHOT_MODELS.includes(entry.model)) {
+        throw new Error(`Backup manifest names an unknown collection: ${entry.model}`);
+      }
+      const docs = EJSON.parse(await readFile(path.join(directory, entry.file), 'utf8'));
+      const collection = mongoose.model(entry.model).collection;
+      await collection.deleteMany({});
+      if (Array.isArray(docs) && docs.length > 0) {
+        await collection.insertMany(docs);
+      }
     }
-    const docs = EJSON.parse(await readFile(path.join(directory, entry.file), 'utf8'));
-    const collection = mongoose.model(entry.model).collection;
-    await collection.deleteMany({});
-    if (Array.isArray(docs) && docs.length > 0) {
-      await collection.insertMany(docs);
-    }
-  }
+  });
 
   return manifest;
 };

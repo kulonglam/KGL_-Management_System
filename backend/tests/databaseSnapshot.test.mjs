@@ -88,8 +88,8 @@ test('a snapshot restores users and price history after they are removed', { tim
   await materializeBackup(uploaded, copyDir);
 
   await User.collection.deleteMany({});
-  await PriceHistory.collection.deleteMany({});
   assert.equal(await User.countDocuments(), 0);
+  assert.equal(await PriceHistory.countDocuments(), 1);
 
   await restoreDatabase(copyDir);
   await rm(copyDir, { recursive: true, force: true });

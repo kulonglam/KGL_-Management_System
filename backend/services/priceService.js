@@ -158,7 +158,7 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx)
 
   const produceNamesWithSpecificPrices = await PriceSetting.distinct('produceName', {
     branch,
-    produceName: { $exists: true, $ne: null },
+    produceName: mongoose.trusted({ $exists: true, $ne: null }),
     produceType: normalizedType
   });
   const filter = {
@@ -167,7 +167,7 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx)
   };
 
   if (produceNamesWithSpecificPrices.length > 0) {
-    filter.produceName = { $nin: produceNamesWithSpecificPrices };
+    filter.produceName = mongoose.trusted({ $nin: produceNamesWithSpecificPrices });
   }
 
   const result = await Procurement.updateMany(filter, { $set: { sellingPrice: priceUgx } });

@@ -1,6 +1,7 @@
 //  Initializes MongoDB connectivity with mongoose safety options and startup failure handling.
  
 import mongoose from 'mongoose';
+import { allowAppendOnlyNativeWrite } from '../utils/appendOnly.js';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
 import PriceSetting from '../models/PriceSetting.js';
@@ -28,13 +29,17 @@ const normalizeGroundnutProduceTypes = async () => {
     CreditSale.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
     PriceSetting.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
     StockNotification.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
-    PriceHistory.collection.updateMany(
-      { previousProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
-      { $set: { previousProduceType: 'Groundnuts' } }
+    allowAppendOnlyNativeWrite(() =>
+      PriceHistory.collection.updateMany(
+        { previousProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
+        { $set: { previousProduceType: 'Groundnuts' } }
+      )
     ),
-    PriceHistory.collection.updateMany(
-      { nextProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
-      { $set: { nextProduceType: 'Groundnuts' } }
+    allowAppendOnlyNativeWrite(() =>
+      PriceHistory.collection.updateMany(
+        { nextProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
+        { $set: { nextProduceType: 'Groundnuts' } }
+      )
     )
   ]);
 
