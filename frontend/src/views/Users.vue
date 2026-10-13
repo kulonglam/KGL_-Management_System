@@ -33,7 +33,12 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Staffs</h5>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label class="form-check mb-0 small">
+            <input v-model="showRemoved" class="form-check-input" type="checkbox" />
+            Show removed
+          </label>
+          <RecordExportActions title="Staff records" filename="staff_records" :columns="exportColumns" :rows="users" />
           <button class="btn btn-primary btn-sm" @click="toggleForm">
             {{ showForm ? 'Close' : 'New User' }}
           </button>
@@ -106,14 +111,17 @@
                 <td data-label="Branch">{{ item.branch || '-' }}</td>
                 <td data-label="Actions" class="text-end">
                   <div class="record-row-actions justify-content-end">
-                    <button class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
+                    <button v-if="!showRemoved" class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
                       Edit
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="issueRecoveryCodes(item)">
+                    <button v-if="!showRemoved" class="btn btn-sm btn-outline-secondary" @click="issueRecoveryCodes(item)">
                       Recovery codes
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
-                      Delete
+                    <button v-if="showRemoved" class="btn btn-sm btn-outline-success" @click="restoreUser(item)">
+                      Restore
+                    </button>
+                    <button v-else class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
+                      Remove
                     </button>
                   </div>
                 </td>
@@ -223,9 +231,9 @@
 
     <ConfirmDialog
       :show="deleteDialog.show"
-      title="Delete User"
-      :message="`Delete user ${deleteDialog.userName}? This action cannot be undone.`"
-      confirm-text="Delete"
+      title="Remove User"
+      :message="`Remove user ${deleteDialog.userName}? You can restore this account later.`"
+      confirm-text="Remove"
       :busy="deleteDialog.processing"
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteUser"
@@ -253,6 +261,7 @@
 
 import { authAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
@@ -266,6 +275,7 @@ export default {
   components: {
     ConfirmDialog,
     InsightStrip,
+    RecordExportActions,
     TablePagination
   },
   data() {
@@ -280,6 +290,7 @@ export default {
       searchQuery: '',
       roleFilter: 'all',
       sortBy: 'name_asc',
+      showRemoved: false,
       currentPage: 1,
       pageSize: 20,
       pageSizeOptions: [10, 20, 50, 100],
@@ -313,6 +324,14 @@ export default {
       return Number(
         this.listSummary.salesAgentCount ?? this.users.filter((item) => item.role === 'sales_agent').length
       );
+    },
+    exportColumns() {
+      return [
+        { label: 'Name', value: (row) => row.name },
+        { label: 'Username', value: (row) => row.username },
+        { label: 'Role', value: (row) => this.formatRole(row.role) },
+        { label: 'Branch', value: (row) => row.branch }
+      ];
     },
     overviewItems() {
       const visibleMeta =
@@ -363,6 +382,9 @@ export default {
     },
     sortBy() {
       this.scheduleUserReload();
+    },
+    showRemoved() {
+      this.scheduleUserReload();
     }
   },
   created() {
@@ -388,7 +410,8 @@ export default {
           limit: this.pageSize,
           search: this.searchQuery,
           role: this.roleFilter,
-          sort: this.sortBy
+          sort: this.sortBy,
+          deleted: this.showRemoved ? 'true' : undefined
         });
         const payload = asListPayload(response.data);
         this.users = payload.items;
@@ -494,6 +517,15 @@ export default {
     closeDeleteDialog() {
       if (this.deleteDialog.processing) return;
       this.deleteDialog.show = false;
+    },
+    async restoreUser(item) {
+      this.loadError = '';
+      try {
+        await authAPI.restoreUser(item._id);
+        await this.loadUsers();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to restore the user.';
+      }
     },
     async confirmDeleteUser() {
       if (!this.deleteDialog.userId) return;

@@ -6,7 +6,8 @@ import {
   normalizeNationalId,
   findDuplicateTrustedBuyer
 } from '../services/trustedBuyerService.js';
-import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
+import { removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 import { forwardControllerError } from '../utils/httpError.js';
 
@@ -19,6 +20,7 @@ const getTrustedBuyers = async (req, res, next) => {
     }
 
     Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'nationalId', 'location', 'contact']));
+    Object.assign(filter, removedRecordFilter(req.query.deleted));
 
     const pagination = parsePagination(req.query);
     const sort = resolveSort(req.query.sort, {
@@ -27,10 +29,7 @@ const getTrustedBuyers = async (req, res, next) => {
       recent: { createdAt: -1 }
     }, { createdAt: -1 });
     const buyersQuery = TrustedBuyer.find(filter).sort(sort).lean();
-
-    if (pagination.enabled) {
-      buyersQuery.skip(pagination.skip).limit(pagination.limit);
-    }
+    applyListLimit(buyersQuery, pagination);
 
     const buyers = await buyersQuery;
     if (!pagination.enabled) {
@@ -132,10 +131,28 @@ const deleteTrustedBuyer = async (req, res, next) => {
     if (buyer.branch !== req.user.branch) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
-    await buyer.deleteOne();
-    res.json({ message: 'Trusted buyer deleted' });
+    buyer.deletedAt = new Date();
+    await buyer.save();
+    res.json({ message: 'Trusted buyer removed. You can restore this buyer from removed records.' });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
 };
-export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer };
+const restoreTrustedBuyer = async (req, res, next) => {
+  try {
+    const buyer = await TrustedBuyer.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    if (!buyer) {
+      return res.status(404).json({ message: 'Removed trusted buyer not found' });
+    }
+    if (buyer.branch !== req.user.branch && req.user.role !== 'director') {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    buyer.deletedAt = null;
+    const restored = await buyer.save();
+    res.json(restored);
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+export { getTrustedBuyers, createTrustedBuyer, updateTrustedBuyer, deleteTrustedBuyer, restoreTrustedBuyer };

@@ -22,10 +22,17 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">All Sales</h5>
-        <button class="btn btn-outline-primary btn-sm" :disabled="loading" @click="loadSalesRecords">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label class="form-check mb-0 small">
+            <input v-model="showRemoved" class="form-check-input" type="checkbox" />
+            Show removed
+          </label>
+          <RecordExportActions title="Sales records" filename="sales_records" :columns="exportColumns" :rows="salesRecords" />
+          <button class="btn btn-outline-primary btn-sm" :disabled="loading" @click="loadSalesRecords">
           <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
           Refresh
         </button>
+        </div>
       </div>
       <div class="card-body">
         <div class="data-toolbar">
@@ -107,6 +114,7 @@
                 <td v-if="canManageRecords" data-label="Actions" class="text-end">
                   <div class="record-row-actions justify-content-end">
                     <button
+                      v-if="!showRemoved"
                       type="button"
                       class="btn btn-sm btn-outline-primary"
                       @click="openEditModal(item)"
@@ -114,11 +122,20 @@
                       Edit
                     </button>
                     <button
+                      v-if="showRemoved"
+                      type="button"
+                      class="btn btn-sm btn-outline-success"
+                      @click="restoreSale(item)"
+                    >
+                      Restore
+                    </button>
+                    <button
+                      v-else
                       type="button"
                       class="btn btn-sm btn-outline-danger"
                       @click="openDeleteDialog(item)"
                     >
-                      Delete
+                      Remove
                     </button>
                   </div>
                 </td>
@@ -271,8 +288,8 @@
     <ConfirmDialog
       :show="deleteDialog.show"
       title="Delete Cash Sale"
-      :message="`Delete cash sale record for ${deleteDialog.saleLabel}? This cannot be undone.`"
-      confirm-text="Delete"
+      :message="`Remove cash sale record for ${deleteDialog.saleLabel}? You can restore it later.`"
+      confirm-text="Remove"
       :busy="deleteDialog.processing"
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteSale"
@@ -283,6 +300,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { inventoryAPI, salesAPI } from '../services/api';
@@ -309,6 +327,17 @@ const pageSizeOptions = [10, 20, 50, 100];
 const searchQuery = ref('');
 const selectedProduceType = ref('all');
 const sortBy = ref('newest');
+const showRemoved = ref(false);
+const exportColumns = [
+  { label: 'Produce', value: (row) => row.produceName },
+  { label: 'Type', value: (row) => row.produceType },
+  { label: 'Tonnage (kg)', value: (row) => row.tonnageKg },
+  { label: 'Amount paid (UGX)', value: (row) => row.amountPaidUgx },
+  { label: 'Buyer', value: (row) => row.buyerName },
+  { label: 'Sales agent', value: (row) => row.salesAgentName },
+  { label: 'Date', value: (row) => row.date },
+  { label: 'Time', value: (row) => row.time }
+];
 const editModalOpen = ref(false);
 const editLoading = ref(false);
 const editError = ref('');
@@ -383,7 +412,8 @@ const loadSalesRecords = async () => {
       limit: pageSize.value,
       search: searchQuery.value,
       produceType: selectedProduceType.value,
-      sort: sortBy.value
+      sort: sortBy.value,
+      deleted: showRemoved.value ? 'true' : undefined
     });
     const payload = asListPayload(response.data);
     salesRecords.value = payload.items;
@@ -557,6 +587,16 @@ const closeDeleteDialog = () => {
   deleteDialog.value.show = false;
 };
 
+const restoreSale = async (item) => {
+  loadError.value = '';
+  try {
+    await salesAPI.restore(item._id);
+    await loadSalesRecords();
+  } catch (restoreError) {
+    loadError.value = restoreError.response?.data?.message || 'Failed to restore the sale.';
+  }
+};
+
 const confirmDeleteSale = async () => {
   if (!deleteDialog.value.saleId) return;
   deleteDialog.value.processing = true;
@@ -615,7 +655,7 @@ const debouncedReloadSales = debounce(() => {
   loadSalesRecords();
 }, 300);
 
-watch([searchQuery, selectedProduceType, sortBy], () => {
+watch([searchQuery, selectedProduceType, sortBy, showRemoved], () => {
   debouncedReloadSales();
 });
 

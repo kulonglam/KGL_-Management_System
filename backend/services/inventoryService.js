@@ -3,9 +3,7 @@
  * totals, low-stock/out-of-stock views, and produce-level stock lookups.
   */
 
-import Procurement from '../models/Procurement.js';
-import Sale from '../models/Sale.js';
-import CreditSale from '../models/CreditSale.js';
+import { listStockBalances } from './stockBalanceService.js';
 import { roundUgx } from '../utils/money.js';
 import {
   normalizeProduceName,
@@ -109,50 +107,16 @@ const buildInventorySnapshot = (procurements, sales, creditSales) => {
   return Array.from(buildInventoryMap(procurements, sales, creditSales).values());
 };
 
-const toGroupedMovement = (row) => ({
-  produceName: row?._id?.produceName || '',
-  produceType: row?._id?.produceType || '',
-  branch: row?._id?.branch,
-  tonnageKg: Number(row?.tonnageKg || 0),
-  sellingPrice: row?.sellingPrice
-});
-
-const groupPipeline = (filter, { includePrice = false } = {}) => {
-  const pipeline = [];
-  if (filter && Object.keys(filter).length > 0) {
-    pipeline.push({ $match: filter });
-  }
-  if (includePrice) {
-    pipeline.push({ $sort: { createdAt: 1, _id: 1 } });
-  }
-  const group = {
-    _id: {
-      produceName: { $ifNull: ['$produceName', { $ifNull: ['$name', ''] }] },
-      produceType: { $ifNull: ['$produceType', { $ifNull: ['$type', ''] }] },
-      branch: '$branch'
-    },
-    tonnageKg: { $sum: '$tonnageKg' }
-  };
-  if (includePrice) {
-    group.sellingPrice = { $last: '$sellingPrice' };
-  }
-  pipeline.push({ $group: group });
-  return pipeline;
-};
-
-// Aggregate each movement collection down to stock buckets instead of loading every document.
+// Read the stored balance for a branch or produce bucket. Writers keep that row current.
 const calculateInventoryByFilter = async (filter = {}) => {
-  const [procurements, sales, creditSales] = await Promise.all([
-    Procurement.aggregate(groupPipeline(filter, { includePrice: true })),
-    Sale.aggregate(groupPipeline(filter)),
-    CreditSale.aggregate(groupPipeline(filter))
-  ]);
-
-  return buildInventorySnapshot(
-    procurements.map(toGroupedMovement),
-    sales.map(toGroupedMovement),
-    creditSales.map(toGroupedMovement)
-  );
+  const rows = await listStockBalances(filter);
+  return rows.map((row) => ({
+    produceName: row.produceName,
+    produceType: row.produceType,
+    branch: row.branch,
+    totalTonnageKg: Number(row.onHandKg || 0),
+    sellingPrice: Number(row.sellingPrice || 0)
+  }));
 };
 
 // Return positive-stock inventory rows for one branch (used for sell/create operations).

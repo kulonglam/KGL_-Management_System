@@ -1,7 +1,6 @@
 //  Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
  
 import { formatDisplayTimestamp } from '../dateFormat.js';
-import { downloadReportFile } from '../downloadFile.js';
 import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   buildReportBrandingHtml,
@@ -256,5 +255,3 @@ export const buildDirectorReportHtml = (state) => {
     </html>
   `;
 };
-
-export { downloadReportFile };

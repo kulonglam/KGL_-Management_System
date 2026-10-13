@@ -1,12 +1,12 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { salesAPI, branchAPI } from '../services/api';
 import { formatCompactCurrency, formatCompactNumber, toNumber } from '../utils/numberFormat';
+import { downloadReportFile } from '../utils/downloadFile.js';
 import {
   buildDirectorCsvContent,
   buildDirectorExcelContent,
   buildDirectorFileName,
-  buildDirectorReportHtml,
-  downloadReportFile
+  buildDirectorReportHtml
 } from '../utils/reports/directorReportExport.js';
 import { formatDisplayRange } from '../utils/dateFormat.js';
 import { buildBranchFilterOptions } from '../utils/directorAccess.js';

@@ -11,6 +11,7 @@ import {
   getUsers,
   updateUser,
   deleteUser,
+  restoreUser,
   refreshSession,
   resetPasswordWithRecoveryCode,
   issueRecoveryCodes,
@@ -106,6 +107,16 @@ router.delete(
   mongoIdParamValidation,
   validateRequest,
   deleteUser
+);
+
+router.post(
+  '/users/:id/restore',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  restoreUser
 );
 
 router.post(

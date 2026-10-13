@@ -183,6 +183,7 @@ export const authAPI = {
   listUsers: (params = {}) => api.get('/auth/users', { params }),
   updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
   deleteUser: (id) => api.delete(`/auth/users/${id}`),
+  restoreUser: (id) => api.post(`/auth/users/${id}/restore`),
   issueUserRecoveryCodes: (id) => api.post(`/auth/users/${id}/recovery-codes`)
 };
 
@@ -200,7 +201,8 @@ export const salesAPI = {
   getAggregation: (params = {}) => api.get('/sales/aggregation', { params }),
   getDashboard: (params = {}) => api.get('/sales/dashboard', { params }),
   getAgentDashboard: () => api.get('/sales/agent-dashboard'),
-  delete: (id) => api.delete(`/sales/${id}`)
+  delete: (id) => api.delete(`/sales/${id}`),
+  restore: (id) => api.post(`/sales/${id}/restore`)
 };
 
 export const creditSalesAPI = {
@@ -225,7 +227,8 @@ export const trustedBuyersAPI = {
   getAll: (params = {}) => api.get('/trusted-buyers', { params }),
   create: (data) => api.post('/trusted-buyers', data),
   update: (id, data) => api.put(`/trusted-buyers/${id}`, data),
-  delete: (id) => api.delete(`/trusted-buyers/${id}`)
+  delete: (id) => api.delete(`/trusted-buyers/${id}`),
+  restore: (id) => api.post(`/trusted-buyers/${id}/restore`)
 };
 
 export const priceAPI = {

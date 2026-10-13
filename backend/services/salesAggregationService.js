@@ -309,7 +309,7 @@ const loadDirectorAggregation = async ({ period, branch, specificDate }) => {
 
   const [salesByBranch, creditByBranch, procurementByBranch, salesTrend, creditTrend] =
     await Promise.all([
-      aggregateByBranch(Sale, { ...branchMatch, ...dateMatch('date', rangeStart, rangeEnd) }, 'amountPaidUgx'),
+      aggregateByBranch(Sale, { ...branchMatch, deletedAt: null, ...dateMatch('date', rangeStart, rangeEnd) }, 'amountPaidUgx'),
       aggregateByBranch(
         CreditSale,
         { ...branchMatch, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
@@ -322,7 +322,7 @@ const loadDirectorAggregation = async ({ period, branch, specificDate }) => {
       ),
       aggregateByBucket(
         Sale,
-        { ...branchMatch, ...dateMatch('date', rangeStart, rangeEnd) },
+        { ...branchMatch, deletedAt: null, ...dateMatch('date', rangeStart, rangeEnd) },
         'date',
         'amountPaidUgx',
         boundaries

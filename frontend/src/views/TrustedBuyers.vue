@@ -33,7 +33,12 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Trusted Buyers List</h5>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <label class="form-check mb-0 small">
+            <input v-model="showRemoved" class="form-check-input" type="checkbox" />
+            Show removed
+          </label>
+          <RecordExportActions title="Trusted buyers" filename="trusted_buyers" :columns="exportColumns" :rows="buyers" />
           <button class="btn btn-primary btn-sm" @click="toggleForm">
             {{ showForm ? 'Close' : 'Add Buyer' }}
           </button>
@@ -104,11 +109,14 @@
                 <td data-label="Branch">{{ item.branch }}</td>
                 <td data-label="Actions" class="text-end">
                   <div class="record-row-actions justify-content-end">
-                    <button class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
+                    <button v-if="!showRemoved" class="btn btn-sm btn-outline-primary" @click="startEdit(item)">
                       Edit
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
-                      Delete
+                    <button v-if="showRemoved" class="btn btn-sm btn-outline-success" @click="restoreBuyer(item)">
+                      Restore
+                    </button>
+                    <button v-else class="btn btn-sm btn-outline-danger" @click="openDeleteDialog(item)">
+                      Remove
                     </button>
                   </div>
                 </td>
@@ -253,9 +261,9 @@
 
     <ConfirmDialog
       :show="deleteDialog.show"
-      title="Delete Trusted Buyer"
-      :message="`Delete trusted buyer ${deleteDialog.buyerName}? This action cannot be undone.`"
-      confirm-text="Delete"
+      title="Remove Trusted Buyer"
+      :message="`Remove trusted buyer ${deleteDialog.buyerName}? You can restore this buyer later.`"
+      confirm-text="Remove"
       :busy="deleteDialog.processing"
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteBuyer"
@@ -267,6 +275,7 @@
 // Trusted-buyer administration page used to manage approved credit-sale customers.
  import { trustedBuyersAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { trustedBuyerValidationSchema } from '../utils/formSchemas.js';
@@ -282,6 +291,7 @@ export default {
   components: {
     ConfirmDialog,
     InsightStrip,
+    RecordExportActions,
     TablePagination
   },
   data() {
@@ -295,6 +305,7 @@ export default {
       loadError: '',
       searchQuery: '',
       sortBy: 'name_asc',
+      showRemoved: false,
       currentPage: 1,
       pageSize: 20,
       pageSizeOptions: [10, 20, 50, 100],
@@ -323,6 +334,15 @@ export default {
       return Number(
         this.listSummary.uniqueLocations ?? new Set(this.buyers.map((item) => item.location).filter(Boolean)).size
       );
+    },
+    exportColumns() {
+      return [
+        { label: 'Name', value: (row) => row.name },
+        { label: 'National ID', value: (row) => row.nationalId },
+        { label: 'Location', value: (row) => row.location },
+        { label: 'Contact', value: (row) => row.contact },
+        { label: 'Branch', value: (row) => row.branch }
+      ];
     },
     overviewItems() {
       const visibleMeta = this.searchQuery ? 'Matching the current filters' : 'No filters applied';
@@ -372,6 +392,9 @@ export default {
     },
     sortBy() {
       this.scheduleBuyerReload();
+    },
+    showRemoved() {
+      this.scheduleBuyerReload();
     }
   },
   created() {
@@ -396,7 +419,8 @@ export default {
           page: this.currentPage,
           limit: this.pageSize,
           search: this.searchQuery,
-          sort: this.sortBy
+          sort: this.sortBy,
+          deleted: this.showRemoved ? 'true' : undefined
         });
         const payload = asListPayload(response.data);
         this.buyers = payload.items.map((item) => ({
@@ -493,6 +517,15 @@ export default {
     closeDeleteDialog() {
       if (this.deleteDialog.processing) return;
       this.deleteDialog.show = false;
+    },
+    async restoreBuyer(item) {
+      this.loadError = '';
+      try {
+        await trustedBuyersAPI.restore(item._id);
+        await this.loadBuyers();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to restore the buyer.';
+      }
     },
     async confirmDeleteBuyer() {
       if (!this.deleteDialog.buyerId) return;

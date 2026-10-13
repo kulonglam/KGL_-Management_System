@@ -5,6 +5,10 @@
       <p class="page-subtitle">Recent create, update, and delete actions in your scope.</p>
     </div>
     <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0">Audit entries</h5>
+        <RecordExportActions title="Audit log" filename="audit_log" :columns="exportColumns" :rows="items" />
+      </div>
       <div class="card-body">
         <div v-if="loadError" class="alert alert-danger" role="alert">{{ loadError }}</div>
         <div v-if="loading" class="text-muted">Loading audit entries...</div>
@@ -54,6 +58,7 @@
 
 <script>
 import TablePagination from '../components/common/TablePagination.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import { auditAPI } from '../services/api';
 import { formatAuditDetails } from '../utils/auditDetails.js';
 import { asListPayload } from '../utils/listPayload.js';
@@ -61,7 +66,7 @@ import { formatDisplayTimestamp } from '../utils/dateFormat.js';
 
 export default {
   name: 'AuditLogs',
-  components: { TablePagination },
+  components: { RecordExportActions, TablePagination },
   data() {
     return {
       items: [],
@@ -88,6 +93,18 @@ export default {
   },
   created() {
     this.loadLogs();
+  },
+  computed: {
+    exportColumns() {
+      return [
+        { label: 'When', value: (row) => this.formatTime(row.createdAt) },
+        { label: 'Actor', value: (row) => `${row.actorName} (${row.actorRole})` },
+        { label: 'Action', value: (row) => row.action },
+        { label: 'Entity', value: (row) => `${row.entityType} ${row.entityId}` },
+        { label: 'Details', value: (row) => this.formatMetadata(row.metadata) || row.detailsNote || '' },
+        { label: 'Branch', value: (row) => row.branch }
+      ];
+    }
   },
   methods: {
     async loadLogs() {

@@ -61,7 +61,7 @@ const buildManagerDashboardSummary = async ({ branch, period, specificDate }) =>
 
   const { trendBuckets, rangeStart, rangeEnd } = context;
   const boundaries = bucketBoundaries(trendBuckets);
-  const salesMatch = { branch, date: { $gte: rangeStart, $lt: rangeEnd } };
+  const salesMatch = { branch, deletedAt: null, date: { $gte: rangeStart, $lt: rangeEnd } };
   const creditMatch = { branch, dateOfDispatch: { $gte: rangeStart, $lt: rangeEnd } };
   const procurementMatch = { branch, dateReceived: { $gte: rangeStart, $lt: rangeEnd } };
 
@@ -150,7 +150,7 @@ const buildAgentDashboardSummary = async ({ userId, branch }) => {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
   const mine = { branch, recordedBy: userId };
-  const todaySales = { ...mine, date: { $gte: start, $lt: end } };
+  const todaySales = { ...mine, deletedAt: null, date: { $gte: start, $lt: end } };
   const todayCredit = { ...mine, dateOfDispatch: { $gte: start, $lt: end } };
 
   const [salesRows, creditRows, overdueCount] = await Promise.all([

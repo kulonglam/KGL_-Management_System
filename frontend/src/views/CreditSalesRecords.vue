@@ -26,6 +26,8 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Credit Sales Records</h5>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <RecordExportActions title="Credit sales records" filename="credit_sales" :columns="exportColumns" :rows="creditSales" />
         <button
           class="btn btn-outline-primary btn-sm"
           @click="loadCreditSales"
@@ -34,6 +36,7 @@
           <span v-if="loadingList" class="spinner-border spinner-border-sm me-2"></span>
           Refresh
         </button>
+        </div>
       </div>
       <div class="card-body">
         <div class="data-toolbar">
@@ -420,6 +423,7 @@
 
 import { creditSalesAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
@@ -436,6 +440,7 @@ export default {
   components: {
     ConfirmDialog,
     InsightStrip,
+    RecordExportActions,
     TablePagination
   },
   data() {
@@ -502,6 +507,19 @@ export default {
     // Repayment/edit actions are restricted to managers.
     canRepay() {
       return this.user.role === 'manager';
+    },
+    exportColumns() {
+      return [
+        { label: 'Buyer', value: (row) => row.buyerName },
+        { label: 'NIN', value: (row) => row.nationalId },
+        { label: 'Location', value: (row) => row.location },
+        { label: 'Contact', value: (row) => row.contact },
+        { label: 'Amount due (UGX)', value: (row) => this.getBalance(row) },
+        { label: 'Produce', value: (row) => row.produceName },
+        { label: 'Sales agent', value: (row) => row.salesAgentName },
+        { label: 'Due date', value: (row) => row.dueDate },
+        { label: 'Dispatch date', value: (row) => row.dispatchDate }
+      ];
     },
     selectedCreditSale() {
       return this.creditSales.find((c) => c._id === this.repayId);

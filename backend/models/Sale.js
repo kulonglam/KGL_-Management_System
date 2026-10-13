@@ -2,6 +2,8 @@
 
 import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
+import { trackStockMovement } from '../services/stockBalanceService.js';
+import { excludeRemovedRecords } from '../utils/softDelete.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 // Define sale schema.
@@ -27,7 +29,8 @@ const saleSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     time: { type: String, required: true },
     branch: createBranchSchemaField(),
-    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    deletedAt: { type: Date, default: null }
   },
   {
     timestamps: true
@@ -37,5 +40,8 @@ const saleSchema = new mongoose.Schema(
 saleSchema.index({ branch: 1, createdAt: -1 });
 saleSchema.index({ branch: 1, date: -1 });
 saleSchema.index({ branch: 1, produceName: 1, produceType: 1 });
+saleSchema.index({ deletedAt: 1, branch: 1, createdAt: -1 });
+excludeRemovedRecords(saleSchema);
+trackStockMovement(saleSchema, -1);
 
 export default mongoose.model('Sale', saleSchema);

@@ -2,7 +2,8 @@
   <div class="card procurement-card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
       <h5 class="mb-0">All Procurement</h5>
-      <div class="d-flex gap-2">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <RecordExportActions title="Procurement records" filename="procurement_records" :columns="exportColumns" :rows="procurements" />
         <router-link to="/dashboard/procurement" class="btn btn-primary btn-sm">
           Record Procurement
         </router-link>
@@ -160,8 +161,21 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import InsightStrip from '../common/InsightStrip.vue';
+import RecordExportActions from '../common/RecordExportActions.vue';
 import TablePagination from '../common/TablePagination.vue';
 import { formatDisplayDateTime } from '../../utils/dateFormat.js';
+
+const exportColumns = [
+  { label: 'Produce', value: (row) => row.produceName },
+  { label: 'Type', value: (row) => row.produceType },
+  { label: 'Cost (UGX)', value: (row) => row.costUgx },
+  { label: 'Tonnage (kg)', value: (row) => row.tonnageKg },
+  { label: 'Branch', value: (row) => row.branch },
+  { label: 'Dealer', value: (row) => row.dealerName },
+  { label: 'Date', value: (row) => row.dateReceived },
+  { label: 'Time', value: (row) => row.timeReceived },
+  { label: 'Price (UGX)', value: (row) => row.sellingPrice }
+];
 
 const props = defineProps({
   procurements: {

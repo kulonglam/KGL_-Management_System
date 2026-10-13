@@ -6,7 +6,8 @@ import {
   getTrustedBuyers,
   createTrustedBuyer,
   updateTrustedBuyer,
-  deleteTrustedBuyer
+  deleteTrustedBuyer,
+  restoreTrustedBuyer
 } from '../controllers/trustedBuyerController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
@@ -48,7 +49,17 @@ router.put(
   validateRequest,
   updateTrustedBuyer
 );
-// DELETE /api/trusted-buyers/:id: delete one trusted buyer profile.
+router.post(
+  '/:id/restore',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  restoreTrustedBuyer
+);
+
+// DELETE /api/trusted-buyers/:id: remove one trusted buyer so the record can be restored.
 router.delete(
   '/:id',
   protect,

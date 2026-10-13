@@ -27,7 +27,8 @@ import {
 import { isProduction } from '../config/security.js';
 import { rejectDocumentedPassword } from '../config/seedPolicy.js';
 import { forwardControllerError } from '../utils/httpError.js';
-import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
+import { removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
 import {
@@ -367,6 +368,7 @@ const getUsers = async (req, res, next) => {
     }
 
     Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'username', 'role', 'branch']));
+    Object.assign(filter, removedRecordFilter(req.query.deleted));
 
     const pagination = parsePagination(req.query);
     const sort = resolveSort(req.query.sort, {
@@ -375,10 +377,7 @@ const getUsers = async (req, res, next) => {
       recent: { createdAt: -1 }
     }, { createdAt: -1 });
     const usersQuery = User.find(filter).select('-password').sort(sort).lean();
-
-    if (pagination.enabled) {
-      usersQuery.skip(pagination.skip).limit(pagination.limit);
-    }
+    applyListLimit(usersQuery, pagination);
 
     const users = (await usersQuery).map((user) => toUserPayload(user));
     const branchScope = req.user.role === 'manager' ? { branch: req.user.branch } : {};
@@ -438,8 +437,12 @@ const deleteUser = async (req, res, next) => {
     if (minimumError) {
       return res.status(400).json({ message: minimumError });
     }
-    await user.deleteOne();
-    res.json({ message: 'User deleted' });
+    user.deletedAt = new Date();
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    user.refreshTokenVersion = Number(user.refreshTokenVersion || 0) + 1;
+    user.previousRefreshJti = '';
+    await user.save();
+    res.json({ message: 'User removed. You can restore this account from removed records.' });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -675,6 +678,24 @@ const verifyMfaLogin = async (req, res) => {
   }
 };
 
+const restoreUser = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    if (!user) {
+      return res.status(404).json({ message: 'Removed user not found' });
+    }
+    const accessError = getManagerUserAccessError(req.user, user);
+    if (accessError) {
+      return res.status(403).json({ message: accessError });
+    }
+    user.deletedAt = null;
+    await user.save();
+    res.json(toUserPayload(user));
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
 export {
   login,
   logout,
@@ -685,6 +706,7 @@ export {
   getUsers,
   updateUser,
   deleteUser,
+  restoreUser,
   refreshSession,
   resetPasswordWithRecoveryCode,
   issueRecoveryCodes,

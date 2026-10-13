@@ -1,12 +1,12 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
 import { formatCompactCurrency, toNumber } from '../utils/numberFormat';
+import { downloadReportFile } from '../utils/downloadFile.js';
 import {
   buildManagerCsvContent,
   buildManagerExcelContent,
   buildManagerFileName,
-  buildManagerReportHtml,
-  downloadReportFile
+  buildManagerReportHtml
 } from '../utils/reports/managerReportExport.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';

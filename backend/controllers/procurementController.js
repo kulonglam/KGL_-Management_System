@@ -7,7 +7,7 @@ import {
   resolveSellingPriceDetails,
   canManagerAccessBranch
 } from '../services/procurementService.js';
-import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import {
   assertProcurementKeepsStockNonNegative,
@@ -76,10 +76,7 @@ const getAllProcurement = async (req, res, next) => {
       .populate('recordedBy', 'name')
       .sort(sort)
       .lean();
-
-    if (pagination.enabled) {
-      procurementsQuery.skip(pagination.skip).limit(pagination.limit);
-    }
+    applyListLimit(procurementsQuery, pagination);
 
     const procurements = (await procurementsQuery).map(normalizeProcurementPayload);
     if (!pagination.enabled) {

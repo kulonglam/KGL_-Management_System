@@ -2,6 +2,7 @@
 
 import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
+import { excludeRemovedRecords } from '../utils/softDelete.js';
 
 // Define user schema.
 const userSchema = new mongoose.Schema(
@@ -28,7 +29,8 @@ const userSchema = new mongoose.Schema(
     mfaEnabled: { type: Boolean, default: false },
     mfaSecret: { type: String, default: '' },
     mfaPendingSecret: { type: String, default: '' },
-    mustChangePassword: { type: Boolean, default: false }
+    mustChangePassword: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null }
   },
   {
     timestamps: true
@@ -37,5 +39,7 @@ const userSchema = new mongoose.Schema(
 
 userSchema.index({ branch: 1, role: 1 });
 userSchema.index({ username: 1, lockUntil: 1 });
+userSchema.index({ deletedAt: 1, branch: 1 });
+excludeRemovedRecords(userSchema);
 
 export default mongoose.model('User', userSchema);

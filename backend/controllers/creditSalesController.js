@@ -8,7 +8,7 @@ import {
   repayCreditSaleRecord
 } from '../services/creditSalesService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
-import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
 import { buildSearchFilter, startOfToday, resolveSort, trustedQuery, buildDateRangeFilter } from '../utils/listQuery.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { forwardControllerError } from '../utils/httpError.js';
@@ -83,10 +83,7 @@ const getAllCreditSales = async (req, res, next) => {
       .populate('recordedBy', 'name')
       .sort(sort)
       .lean();
-
-    if (pagination.enabled) {
-      creditSalesQuery.skip(pagination.skip).limit(pagination.limit);
-    }
+    applyListLimit(creditSalesQuery, pagination);
 
     const creditSales = await creditSalesQuery;
     if (!pagination.enabled) {

@@ -7,6 +7,7 @@ import {
   normalizeProduceType,
   normalizeSourceType
 } from '../utils/produceNormalization.js';
+import { trackStockMovement } from '../services/stockBalanceService.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define procurement schema.
@@ -69,5 +70,6 @@ const procurementSchema = new mongoose.Schema(
 procurementSchema.index({ branch: 1, createdAt: -1 });
 procurementSchema.index({ branch: 1, dateReceived: -1 });
 procurementSchema.index({ branch: 1, produceType: 1, sourceType: 1 });
+trackStockMovement(procurementSchema, 1);
 
 export default mongoose.model('Procurement', procurementSchema);

@@ -3,6 +3,7 @@
 import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
+import { trackStockMovement } from '../services/stockBalanceService.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define credit sale schema.
@@ -62,5 +63,6 @@ creditSaleSchema.index({ branch: 1, dateOfDispatch: -1 });
 creditSaleSchema.index({ branch: 1, dueDate: 1, isPaid: 1 });
 creditSaleSchema.index({ trustedBuyer: 1, createdAt: -1 });
 creditSaleSchema.index({ balanceUgx: 1, dueDate: 1, isPaid: 1 });
+trackStockMovement(creditSaleSchema, -1);
 
 export default mongoose.model('CreditSale', creditSaleSchema);

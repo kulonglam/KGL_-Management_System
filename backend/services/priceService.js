@@ -6,6 +6,7 @@
 import mongoose from 'mongoose';
 import PriceSetting from '../models/PriceSetting.js';
 import Procurement from '../models/Procurement.js';
+import { syncBalancePrices } from './stockBalanceService.js';
 import {
   normalizeProduceName,
   normalizeProduceNameKey,
@@ -156,6 +157,11 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx,
       session ? { session } : undefined
     );
 
+    await syncBalancePrices(
+      { branch, produceName: normalizedName, produceType: normalizedType },
+      priceUgx,
+      session
+    );
     return result.modifiedCount || 0;
   }
 
@@ -178,6 +184,7 @@ const syncProcurementPrices = async (branch, produceName, produceType, priceUgx,
     { $set: { sellingPrice: priceUgx } },
     session ? { session } : undefined
   );
+  await syncBalancePrices(filter, priceUgx, session);
 
   return result.modifiedCount || 0;
 };

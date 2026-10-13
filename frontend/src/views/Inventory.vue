@@ -48,8 +48,9 @@
 
     <!-- Inventory Table -->
     <div class="card">
-      <div class="card-header">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0">Inventory Details</h5>
+        <RecordExportActions title="Inventory" filename="inventory" :columns="exportColumns" :rows="paginatedInventory" />
       </div>
       <div class="card-body">
         <div class="data-toolbar">
@@ -206,6 +207,7 @@
 
 import { inventoryAPI } from '../services/api';
 import TablePagination from '../components/common/TablePagination.vue';
+import RecordExportActions from '../components/common/RecordExportActions.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatCompactCurrency, formatCompactNumber, formatUgx } from '../utils/numberFormat';
@@ -213,6 +215,7 @@ import { formatCompactCurrency, formatCompactNumber, formatUgx } from '../utils/
 export default {
   name: 'Inventory',
   components: {
+    RecordExportActions,
     TablePagination
   },
   data() {
@@ -284,6 +287,15 @@ export default {
     },
     totalInventoryPages() {
       return Math.max(1, Math.ceil(this.filteredInventory.length / this.pageSize));
+    },
+    exportColumns() {
+      return [
+        { label: 'Produce', value: (row) => row.produceName },
+        { label: 'Type', value: (row) => row.produceType },
+        { label: 'Branch', value: (row) => row.branch },
+        { label: 'On hand (kg)', value: (row) => row.totalTonnageKg },
+        { label: 'Selling price (UGX)', value: (row) => row.sellingPrice }
+      ];
     },
     paginatedInventory() {
       const start = (this.currentPage - 1) * this.pageSize;

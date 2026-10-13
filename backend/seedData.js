@@ -13,6 +13,8 @@ import CreditSale from './models/CreditSale.js';
 import TrustedBuyer from './models/TrustedBuyer.js';
 import StockNotification from './models/StockNotification.js';
 import StockLock from './models/StockLock.js';
+import StockBalance from './models/StockBalance.js';
+import { rebuildStockBalances } from './services/stockBalanceService.js';
 import AuditLog from './models/AuditLog.js';
 import PriceHistory from './models/PriceHistory.js';
 import { allowAppendOnlyNativeWrite } from './utils/appendOnly.js';
@@ -553,7 +555,8 @@ const clearCollections = async () => {
     Procurement.deleteMany({}),
     TrustedBuyer.deleteMany({}),
     PriceSetting.deleteMany({}),
-    User.deleteMany({})
+    User.deleteMany({}),
+    StockBalance.deleteMany({})
   ]);
   // Dev reseeds would otherwise keep audit rows that point at users and procurements just deleted.
   // Append-only hooks stay closed to normal traffic; this uses the restore escape hatch.
@@ -744,6 +747,7 @@ const main = async () => {
   await seedProcurements(userByUsername);
   await seedSales(userByUsername);
   await seedCreditSales(userByUsername, buyerByNin);
+  await rebuildStockBalances();
 
   printLoginSummary();
   console.log('Database seed completed successfully.');

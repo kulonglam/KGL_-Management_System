@@ -852,6 +852,22 @@ const swaggerSpec = {
         }
       }
     },
+    '/auth/users/{id}/restore': {
+      post: {
+        tags: ['Users'],
+        summary: 'Restore a removed user',
+        description: 'Clears the removal flag so the account can sign in again.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/UserPublic' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
     '/auth/users/{id}': {
       put: {
         tags: ['Users'],
@@ -1022,6 +1038,22 @@ const swaggerSpec = {
           200: successResponse({ $ref: '#/components/schemas/SalesAggregation' }),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/sales/{id}/restore': {
+      post: {
+        tags: ['Sales'],
+        summary: 'Restore a removed cash sale',
+        description: 'Puts a removed sale back when the branch still has enough stock.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/Sale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
         }
       }
     },
@@ -1216,6 +1248,21 @@ const swaggerSpec = {
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/trusted-buyers/{id}/restore': {
+      post: {
+        tags: ['Trusted Buyers'],
+        summary: 'Restore a removed trusted buyer',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/TrustedBuyer' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
         }
       }
     },

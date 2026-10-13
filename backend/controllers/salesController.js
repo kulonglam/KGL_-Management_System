@@ -15,7 +15,8 @@ import {
   buildManagerDashboardSummary
 } from '../services/dashboardSummaryService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
-import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
+import { removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import {
   normalizeProduceName,
@@ -54,6 +55,7 @@ const getAllSales = async (req, res, next) => {
     if (String(req.query.mine) === 'true') {
       filter.recordedBy = req.user._id;
     }
+    Object.assign(filter, removedRecordFilter(req.query.deleted));
 
     const dateRange = buildDateRangeFilter(req.query.from, req.query.to);
     if (dateRange.error) {
@@ -74,10 +76,7 @@ const getAllSales = async (req, res, next) => {
       .populate('recordedBy', 'name')
       .sort(sort)
       .lean();
-
-    if (pagination.enabled) {
-      salesQuery.skip(pagination.skip).limit(pagination.limit);
-    }
+    applyListLimit(salesQuery, pagination);
 
     const sales = await salesQuery;
     if (!pagination.enabled) {
@@ -257,7 +256,8 @@ const deleteSale = async (req, res, next) => {
         produceType: sale.produceType
       },
       async () => {
-        await sale.deleteOne();
+        sale.deletedAt = new Date();
+        await sale.save();
         const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
         await syncStockLevelNotifications({
           branch: sale.branch,
@@ -268,7 +268,50 @@ const deleteSale = async (req, res, next) => {
       }
     );
     await recordSaleAudit(req.user, 'delete', sale);
-    res.json({ message: 'Sale deleted' });
+    res.json({ message: 'Sale removed. You can restore it from removed records.' });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const restoreSale = async (req, res, next) => {
+  try {
+    const sale = await Sale.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    if (!sale) {
+      return res.status(404).json({ message: 'Removed sale not found' });
+    }
+    if (deniesBranchAccess(req.user, sale.branch)) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+
+    await withStockLock(
+      {
+        branch: sale.branch,
+        produceName: sale.produceName,
+        produceType: sale.produceType
+      },
+      async () => {
+        const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
+        const available = getBucketTonnage(snapshot, sale.produceName, sale.produceType, sale.branch);
+        if (available < Number(sale.tonnageKg || 0)) {
+          const error = new Error(`Not enough stock to restore this sale. Available: ${available} kg`);
+          error.statusCode = 400;
+          throw error;
+        }
+        sale.deletedAt = null;
+        await sale.save();
+        const afterSnapshot = await calculateInventoryByFilter({ branch: sale.branch });
+        await syncStockLevelNotifications({
+          branch: sale.branch,
+          produceName: sale.produceName,
+          produceType: sale.produceType,
+          remainingStock: getBucketTonnage(afterSnapshot, sale.produceName, sale.produceType, sale.branch)
+        });
+      }
+    );
+
+    await recordSaleAudit(req.user, 'update', sale);
+    res.json(sale);
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -448,7 +491,16 @@ const updateSale = async (req, res, next) => {
   }
 };
 
-export { getAllSales, createSale, getSalesAggregation, getManagerDashboard, getAgentDashboard, updateSale, deleteSale };
+export {
+  getAllSales,
+  createSale,
+  getSalesAggregation,
+  getManagerDashboard,
+  getAgentDashboard,
+  updateSale,
+  deleteSale,
+  restoreSale
+};
 
 
 

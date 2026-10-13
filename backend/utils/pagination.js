@@ -31,4 +31,16 @@ const buildPaginationMeta = ({ page, limit, total }) => ({
   totalPages: Math.max(Math.ceil(total / limit), 1)
 });
 
-export { parsePagination, buildPaginationMeta };
+const UNPAGED_LIST_CAP = 200;
+
+// Page when the client asks. Otherwise stop at the same maximum page size.
+const applyListLimit = (query, pagination) => {
+  if (pagination?.enabled) {
+    query.skip(pagination.skip).limit(pagination.limit);
+    return query;
+  }
+  query.limit(UNPAGED_LIST_CAP);
+  return query;
+};
+
+export { parsePagination, buildPaginationMeta, applyListLimit, UNPAGED_LIST_CAP };

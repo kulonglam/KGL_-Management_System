@@ -2,6 +2,7 @@
  
 import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
+import { excludeRemovedRecords } from '../utils/softDelete.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Configure alphanumeric words pattern.
@@ -15,7 +16,8 @@ const trustedBuyerSchema = new mongoose.Schema(
     location: { type: String, required: true, minlength: 2, match: ALPHANUMERIC_WORDS_PATTERN },
     contact: { type: String, required: true, set: normalizeLocalPhone, match: LOCAL_PHONE_PATTERN },
     branch: createBranchSchemaField(),
-    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    deletedAt: { type: Date, default: null }
   },
   {
     timestamps: true
@@ -24,5 +26,7 @@ const trustedBuyerSchema = new mongoose.Schema(
 
 trustedBuyerSchema.index({ nationalId: 1, branch: 1 }, { unique: true });
 trustedBuyerSchema.index({ branch: 1, createdAt: -1 });
+trustedBuyerSchema.index({ deletedAt: 1, branch: 1 });
+excludeRemovedRecords(trustedBuyerSchema);
 
 export default mongoose.model('TrustedBuyer', trustedBuyerSchema);

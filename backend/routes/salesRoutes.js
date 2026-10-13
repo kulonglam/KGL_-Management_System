@@ -9,7 +9,8 @@ import {
   getManagerDashboard,
   getAgentDashboard,
   updateSale,
-  deleteSale
+  deleteSale,
+  restoreSale
 } from '../controllers/salesController.js';
 import { protect, authorize, authorizeDirector } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
@@ -55,7 +56,17 @@ router.get(
   getSalesAggregation
 );
 
-// DELETE /api/sales/:id: delete one sale record (manager only).
+router.post(
+  '/:id/restore',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  restoreSale
+);
+
+// DELETE /api/sales/:id: remove one sale record so it can be restored (manager only).
 router.delete(
   '/:id',
   protect,

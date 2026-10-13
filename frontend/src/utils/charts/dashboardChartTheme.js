@@ -1,4 +1,4 @@
-import { formatUgx, toNumber } from '../numberFormat.js';
+import { formatCompactNumber, formatUgx, toNumber } from '../numberFormat.js';
 import {
   Chart as ChartJS,
   Title,
@@ -58,12 +58,6 @@ const tonalPalettes = {
   grain: ['#a16207', '#b45309', '#ca8a04', '#d97706', '#eab308', '#facc15'],
   sky: ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd']
 };
-
-const formatCompact = (value) =>
-  new Intl.NumberFormat('en-UG', {
-    notation: 'compact',
-    maximumFractionDigits: 1
-  }).format(toNumber(value));
 
 export const formatCurrencyValue = formatUgx;
 
@@ -178,7 +172,7 @@ export const dashboardChartOptions = {
         ticks: baseTickStyle
       },
       y: {
-        ...axisTicks((value) => `UGX ${formatCompact(value)}`),
+        ...axisTicks((value) => `UGX ${formatCompactNumber(value)}`),
         beginAtZero: true
       }
     }
@@ -204,7 +198,7 @@ export const dashboardChartOptions = {
         ticks: baseTickStyle
       },
       y: {
-        ...axisTicks((value) => `UGX ${formatCompact(value)}`),
+        ...axisTicks((value) => `UGX ${formatCompactNumber(value)}`),
         beginAtZero: true
       }
     }
@@ -225,7 +219,7 @@ export const dashboardChartOptions = {
         ticks: baseTickStyle
       },
       y: {
-        ...axisTicks((value) => `${formatCompact(value)} kg`),
+        ...axisTicks((value) => `${formatCompactNumber(value)} kg`),
         beginAtZero: true
       }
     }
@@ -245,7 +239,7 @@ export const dashboardChartOptions = {
         ticks: baseTickStyle
       },
       x: {
-        ...axisTicks((value) => `UGX ${formatCompact(value)}`),
+        ...axisTicks((value) => `UGX ${formatCompactNumber(value)}`),
         beginAtZero: true
       }
     }
@@ -267,7 +261,7 @@ export const dashboardChartOptions = {
         ticks: baseTickStyle
       },
       x: {
-        ...axisTicks((value) => `${formatCompact(value)} kg`),
+        ...axisTicks((value) => `${formatCompactNumber(value)} kg`),
         beginAtZero: true
       }
     }

@@ -139,6 +139,9 @@ const restoreDatabase = async (directory) => {
     }
   });
 
+  const { rebuildStockBalances } = await import('./stockBalanceService.js');
+  await rebuildStockBalances();
+
   return manifest;
 };
 

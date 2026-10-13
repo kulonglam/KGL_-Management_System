@@ -6,8 +6,6 @@ const isEmpty = (value) => {
   return false;
 };
 
-const toNumber = (value) => Number(value);
-
 // Each validator returns a function so schemas can compose rules declaratively per field.
 const validators = {
   required:
@@ -30,14 +28,14 @@ const validators = {
     (message = 'Must be a valid number.') =>
     (value) => {
       if (isEmpty(value)) return '';
-      const parsed = toNumber(value);
+      const parsed = Number(value);
       return Number.isFinite(parsed) ? '' : message;
     },
   minValue:
     (min, message = `Must be at least ${min}.`) =>
     (value) => {
       if (isEmpty(value)) return '';
-      const parsed = toNumber(value);
+      const parsed = Number(value);
       if (!Number.isFinite(parsed)) return 'Must be a valid number.';
       return parsed >= min ? '' : message;
     },
