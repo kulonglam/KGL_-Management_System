@@ -105,7 +105,7 @@ const getAllCreditSales = async (req, res, next) => {
         dueDate: trustedQuery({ $gte: today })
       }),
       CreditSale.aggregate([
-        { $match: { ...summaryFilter, isPaid: false } },
+        { $match: { ...summaryFilter, deletedAt: null, isPaid: false } },
         { $group: { _id: null, total: { $sum: '$balanceUgx' } } }
       ])
     ]);
@@ -230,9 +230,10 @@ const deleteCreditSale = async (req, res, next) => {
       });
     }
 
-    await creditSale.deleteOne();
+    creditSale.deletedAt = new Date();
+    await creditSale.save();
     await recordCreditSaleAudit(req.user, 'delete', creditSale);
-    res.json({ message: 'Credit sale deleted' });
+    res.json({ message: 'Credit sale removed.' });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }

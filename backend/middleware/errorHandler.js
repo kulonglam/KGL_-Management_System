@@ -11,15 +11,22 @@ const notFound = (req, res, next) => {
 
 // Handle error handler.
 const errorHandler = (err, req, res, _next) => {
-  const statusCode = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+  const statusCode =
+    err.expose === true && err.statusCode
+      ? err.statusCode
+      : res.statusCode && res.statusCode !== 200
+        ? res.statusCode
+        : 500;
   const isServerError = statusCode >= 500;
   const exposeDetails = !isServerError || process.env.NODE_ENV !== 'production';
   // Configure error payload.
   const errorPayload = {
     message:
-      isServerError && process.env.NODE_ENV === 'production'
-        ? 'Internal Server Error'
-        : err.message || 'Internal Server Error',
+      err.expose === true
+        ? err.message || 'Internal Server Error'
+        : isServerError && process.env.NODE_ENV === 'production'
+          ? 'Internal Server Error'
+          : err.message || 'Internal Server Error',
     details: exposeDetails ? err.details || null : null,
     statusCode,
     requestId: req.requestId || null

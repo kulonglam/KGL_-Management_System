@@ -144,7 +144,7 @@ const restoreTrustedBuyer = async (req, res, next) => {
     if (!buyer) {
       return res.status(404).json({ message: 'Removed trusted buyer not found' });
     }
-    if (buyer.branch !== req.user.branch && req.user.role !== 'director') {
+    if (buyer.branch !== req.user.branch) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
     buyer.deletedAt = null;

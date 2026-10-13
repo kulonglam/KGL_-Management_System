@@ -312,12 +312,12 @@ const loadDirectorAggregation = async ({ period, branch, specificDate }) => {
       aggregateByBranch(Sale, { ...branchMatch, deletedAt: null, ...dateMatch('date', rangeStart, rangeEnd) }, 'amountPaidUgx'),
       aggregateByBranch(
         CreditSale,
-        { ...branchMatch, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
+        { ...branchMatch, deletedAt: null, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
         'amountDueUgx'
       ),
       aggregateByBranch(
         Procurement,
-        { ...branchMatch, ...dateMatch('dateReceived', rangeStart, rangeEnd) },
+        { ...branchMatch, deletedAt: null, ...dateMatch('dateReceived', rangeStart, rangeEnd) },
         'costUgx'
       ),
       aggregateByBucket(
@@ -329,7 +329,7 @@ const loadDirectorAggregation = async ({ period, branch, specificDate }) => {
       ),
       aggregateByBucket(
         CreditSale,
-        { ...branchMatch, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
+        { ...branchMatch, deletedAt: null, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
         'dateOfDispatch',
         'amountDueUgx',
         boundaries

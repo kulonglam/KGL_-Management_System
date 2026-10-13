@@ -1,10 +1,24 @@
 import mongoose from 'mongoose';
 import { isProduction } from '../config/security.js';
 
+const topologyType = () => {
+  if (mongoose.connection?.readyState !== 1) return 'disconnected';
+  return mongoose.connection.client?.topology?.description?.type || 'Unknown';
+};
+
 const replicaSetReady = () => {
-  if (mongoose.connection?.readyState !== 1) return false;
-  const type = mongoose.connection.client?.topology?.description?.type;
+  const type = topologyType();
   return type === 'ReplicaSetWithPrimary' || type === 'Sharded' || type === 'LoadBalanced';
+};
+
+const replicaSetRequiredError = () => {
+  const type = topologyType();
+  const error = new Error(
+    `MongoDB replica set is required before this change can be saved. The API is connected to "${type}", so branch and price updates cannot be stored atomically. Use a replica set (ReplicaSetWithPrimary, Sharded, or LoadBalanced) and restart the API.`
+  );
+  error.statusCode = 503;
+  error.expose = true;
+  return error;
 };
 
 const transactionsUnsupported = (error) => {
@@ -22,9 +36,7 @@ const transactionsUnsupported = (error) => {
 const runInTransaction = async (work) => {
   if (!replicaSetReady()) {
     if (isProduction()) {
-      const error = new Error('MongoDB replica set is required before this change can be saved.');
-      error.statusCode = 503;
-      throw error;
+      throw replicaSetRequiredError();
     }
     return work(null);
   }
@@ -42,9 +54,7 @@ const runInTransaction = async (work) => {
       throw error;
     }
     if (isProduction()) {
-      const failure = new Error('MongoDB replica set is required before this change can be saved.');
-      failure.statusCode = 503;
-      throw failure;
+      throw replicaSetRequiredError();
     }
   } finally {
     if (session) {

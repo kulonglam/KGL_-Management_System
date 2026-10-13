@@ -3,7 +3,7 @@
  * totals, low-stock/out-of-stock views, and produce-level stock lookups.
   */
 
-import { listStockBalances } from './stockBalanceService.js';
+import { listStockBalances, reconcileStockBalances } from './stockBalanceService.js';
 import { roundUgx } from '../utils/money.js';
 import {
   normalizeProduceName,
@@ -109,6 +109,7 @@ const buildInventorySnapshot = (procurements, sales, creditSales) => {
 
 // Read the stored balance for a branch or produce bucket. Writers keep that row current.
 const calculateInventoryByFilter = async (filter = {}) => {
+  await reconcileStockBalances();
   const rows = await listStockBalances(filter);
   return rows.map((row) => ({
     produceName: row.produceName,

@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 import { trackStockMovement } from '../services/stockBalanceService.js';
+import { excludeRemovedRecords } from '../utils/softDelete.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define credit sale schema.
@@ -45,6 +46,7 @@ const creditSaleSchema = new mongoose.Schema(
     trustedBuyer: { type: mongoose.Schema.Types.ObjectId, ref: 'TrustedBuyer', required: true },
     isPaid: { type: Boolean, default: false },
     lastOverdueNoticeAt: { type: Date, default: null },
+    deletedAt: { type: Date, default: null },
     payments: [
       {
         amountUgx: { type: Number, required: true, min: 1 },
@@ -63,6 +65,8 @@ creditSaleSchema.index({ branch: 1, dateOfDispatch: -1 });
 creditSaleSchema.index({ branch: 1, dueDate: 1, isPaid: 1 });
 creditSaleSchema.index({ trustedBuyer: 1, createdAt: -1 });
 creditSaleSchema.index({ balanceUgx: 1, dueDate: 1, isPaid: 1 });
+creditSaleSchema.index({ deletedAt: 1, branch: 1, dateOfDispatch: -1 });
+excludeRemovedRecords(creditSaleSchema);
 trackStockMovement(creditSaleSchema, -1);
 
 export default mongoose.model('CreditSale', creditSaleSchema);

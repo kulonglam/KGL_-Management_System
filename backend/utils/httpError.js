@@ -3,7 +3,7 @@
 const forwardControllerError = (error, res, next) => {
   const statusCode = Number(error?.statusCode || error?.status || 0);
 
-  if (statusCode >= 400 && statusCode < 500) {
+  if ((error?.expose === true && statusCode >= 400 && statusCode <= 599) || (statusCode >= 400 && statusCode < 500)) {
     return res.status(statusCode).json({ message: error.message });
   }
 
