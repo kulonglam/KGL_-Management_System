@@ -61,6 +61,9 @@ const createBranchWithManager = async ({ actorUser, name, managerName, managerUs
   const passwordHash = await hashPassword(managerPassword);
   const created = await runInTransaction(async (session) => {
     const [branch] = await Branch.create([{ name: branchName, isActive: true }], withSession(session));
+    const previousNames = getRegisteredBranches();
+    // User.branch only accepts names already in the registered list.
+    setBranchCache([...previousNames, branchName]);
     try {
       const [manager] = await User.create(
         [
@@ -95,6 +98,7 @@ const createBranchWithManager = async ({ actorUser, name, managerName, managerUs
         }
       };
     } catch (error) {
+      setBranchCache(previousNames);
       if (!session) {
         await Branch.deleteOne({ _id: branch._id });
       }
