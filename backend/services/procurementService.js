@@ -89,12 +89,7 @@ const resolveSellingPriceDetails = async ({ branch, produceName, produceType }) 
   );
 };
 
-// Resolve current manager-configured selling price for a branch + produce combination.
-const resolveSellingPrice = async ({ branch, produceName, produceType }) => {
-  return (await resolveSellingPriceDetails({ branch, produceName, produceType })).priceUgx;
-};
-
 // Return true when requester is allowed to access records for the specified branch.
 const canManagerAccessBranch = (user, branch) => !deniesBranchAccess(user, branch);
 
-export { resolveSellingPrice, resolveSellingPriceDetails, canManagerAccessBranch };
+export { resolveSellingPriceDetails, canManagerAccessBranch };

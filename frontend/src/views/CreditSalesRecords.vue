@@ -428,6 +428,7 @@ import { debounce } from '../utils/debounce.js';
 import { asListPayload } from '../utils/listPayload.js';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.js';
 import { formatDisplayDate } from '../utils/dateFormat.js';
+import { toDateInput } from '../utils/dateInput.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 export default {
@@ -635,12 +636,6 @@ export default {
     hasRepayments(item) {
       return Array.isArray(item?.payments) && item.payments.length > 0;
     },
-    toDateInput(value) {
-      if (!value) return '';
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toISOString().slice(0, 10);
-    },
     startEdit(item) {
       this.cancelRepay();
       this.editOpSeq += 1;
@@ -654,8 +649,8 @@ export default {
         amountDueUgx: item.amountDueUgx || '',
         balanceUgx: this.getBalance(item),
         salesAgentName: item.salesAgentName || '',
-        dueDate: this.toDateInput(item.dueDate),
-        dateOfDispatch: this.toDateInput(item.dateOfDispatch)
+        dueDate: toDateInput(item.dueDate),
+        dateOfDispatch: toDateInput(item.dateOfDispatch)
       };
       this.editError = '';
       this.editSuccess = '';

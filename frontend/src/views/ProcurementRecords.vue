@@ -98,9 +98,9 @@ import ProcurementRecordsTable from '../components/procurement/ProcurementRecord
 import { useFormFeedback } from '../composables/useFormFeedback';
 import {
   createInitialProcurementForm,
-  toDateInput,
   useProcurementPricing
 } from '../composables/useProcurementForm';
+import { toDateInput } from '../utils/dateInput.js';
 import { procurementAPI } from '../services/api';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';

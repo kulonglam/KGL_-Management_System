@@ -208,7 +208,7 @@ import { inventoryAPI } from '../services/api';
 import TablePagination from '../components/common/TablePagination.vue';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
+import { formatCompactCurrency, formatCompactNumber, formatUgx } from '../utils/numberFormat';
 
 export default {
   name: 'Inventory',
@@ -243,39 +243,6 @@ export default {
   },
   computed: {
     // Items below normal threshold but not fully depleted.
-    lowStockItems() {
-      return this.inventory.filter((item) => {
-        const tonnage = Number(item.totalTonnageKg || 0);
-        return tonnage > 0 && tonnage < 500;
-      });
-    },
-    outOfStockAlertMessage() {
-      const labels = this.outOfStockItems
-        .map((item) => `${item.produceName} (${item.produceType})`)
-        .slice(0, 4);
-
-      if (labels.length === 0) return '';
-
-      const suffix =
-        this.outOfStockItems.length > 4 ? `, and ${this.outOfStockItems.length - 4} more` : '';
-
-      return `${labels.join(', ')}${suffix} need restocking.`;
-    },
-    lowStockAlertMessage() {
-      const labels = this.lowStockItems
-        .map(
-          (item) =>
-            `${item.produceName} (${Number(item.totalTonnageKg || 0).toLocaleString('en-UG')} kg)`
-        )
-        .slice(0, 4);
-
-      if (labels.length === 0) return '';
-
-      const suffix =
-        this.lowStockItems.length > 4 ? `, and ${this.lowStockItems.length - 4} more` : '';
-
-      return `${labels.join(', ')}${suffix} running low on stock.`;
-    },
     // Build table output as search -> status filter -> sort so each control composes predictably.
     filteredInventory() {
       const query = this.searchQuery.trim().toLowerCase();
@@ -361,11 +328,7 @@ export default {
       }
     },
     formatCurrency(amount) {
-      return new Intl.NumberFormat('en-UG', {
-        style: 'currency',
-        currency: 'UGX',
-        minimumFractionDigits: 0
-      }).format(amount);
+      return formatUgx(amount);
     },
     formatStatCurrency(amount) {
       return formatCompactCurrency(amount);

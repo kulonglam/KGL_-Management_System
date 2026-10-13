@@ -1,6 +1,6 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { inventoryAPI, salesAPI } from '../services/api';
-import { formatCompactCurrency } from '../utils/numberFormat';
+import { formatCompactCurrency, toNumber } from '../utils/numberFormat';
 import {
   buildManagerCsvContent,
   buildManagerExcelContent,
@@ -84,8 +84,6 @@ const createEmptyCreditCollection = () => ({
   collected: 0,
   outstanding: 0
 });
-
-const toNumber = (value) => Number(value || 0);
 
 const getSelectedPeriodLabel = (period, specificDate) => {
   if (specificDate) return 'Specific Date';

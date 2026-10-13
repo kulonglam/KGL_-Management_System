@@ -291,6 +291,7 @@ import { asListPayload } from '../utils/listPayload.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayDateTime } from '../utils/dateFormat.js';
+import { toDateInput } from '../utils/dateInput.js';
 import { salesValidationSchema } from '../utils/formSchemas.js';
 import { useFormValidation } from '../composables/useFormValidation';
 
@@ -466,13 +467,6 @@ const goToPage = (page) => {
 
 const handlePageSizeUpdate = (size) => {
   pageSize.value = Number(size || 20);
-};
-
-const toDateInput = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
 };
 
 const openEditModal = (item) => {

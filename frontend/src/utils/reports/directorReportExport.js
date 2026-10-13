@@ -1,22 +1,14 @@
 //  Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
  
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import { downloadReportFile } from '../downloadFile.js';
+import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   buildReportBrandingHtml,
   getReportBrandingRows
 } from './reportBranding.js';
 
-// Coerce nullable numeric fields from dashboard state into numbers.
-const toNumber = (value) => Number(value || 0);
-
-// Format a value as whole-shilling Ugandan currency.
-const formatCurrencyValue = (value) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(toNumber(value));
+const formatCurrencyValue = formatUgx;
 
 // Return raw number for machine exports or localized number for HTML views.
 const formatNumberValue = (value, formatted) =>
@@ -265,15 +257,4 @@ export const buildDirectorReportHtml = (state) => {
   `;
 };
 
-// Trigger browser download for a generated report payload.
-export const downloadReportFile = ({ filename, content, type }) => {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+export { downloadReportFile };

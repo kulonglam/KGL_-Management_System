@@ -87,9 +87,6 @@
         <div v-else-if="users.length === 0" class="empty-state">
           No users found for this branch.
         </div>
-        <div v-else-if="displayedUsers.length === 0" class="empty-state">
-          No users match your current filters.
-        </div>
         <div v-else class="table-responsive">
           <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
@@ -102,7 +99,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in paginatedUsers" :key="item._id">
+              <tr v-for="item in users" :key="item._id">
                 <td data-label="Name">{{ item.name }}</td>
                 <td data-label="Username">{{ item.username }}</td>
                 <td data-label="Role">{{ formatRole(item.role) }}</td>
@@ -126,7 +123,7 @@
         </div>
         <TablePagination
           :current-page="currentPage"
-          :total-pages="totalUserPages"
+          :total-pages="listTotalPages"
           :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
@@ -309,15 +306,6 @@ export default {
   },
   computed: {
     // Build table rows as search -> role filter -> sort so state changes remain predictable.
-    displayedUsers() {
-      return this.users;
-    },
-    totalUserPages() {
-      return this.listTotalPages;
-    },
-    paginatedUsers() {
-      return this.users;
-    },
     managerCount() {
       return Number(this.listSummary.managerCount ?? this.users.filter((item) => item.role === 'manager').length);
     },
@@ -421,7 +409,7 @@ export default {
       this.loadUsers();
     },
     goToPage(page) {
-      const nextPage = Math.max(1, Math.min(this.totalUserPages, Number(page || 1)));
+      const nextPage = Math.max(1, Math.min(this.listTotalPages, Number(page || 1)));
       this.currentPage = nextPage;
     },
     handlePageSizeUpdate(size) {

@@ -1,3 +1,4 @@
+import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   Chart as ChartJS,
   Title,
@@ -58,21 +59,13 @@ const tonalPalettes = {
   sky: ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8', '#7dd3fc', '#bae6fd']
 };
 
-const toNumber = (value) => Number(value || 0);
-
 const formatCompact = (value) =>
   new Intl.NumberFormat('en-UG', {
     notation: 'compact',
     maximumFractionDigits: 1
   }).format(toNumber(value));
 
-export const formatCurrencyValue = (value) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(toNumber(value));
+export const formatCurrencyValue = formatUgx;
 
 export const buildTonalPalette = (count, tone = 'forest') => {
   const palette = tonalPalettes[tone] || chartPalette;
@@ -195,25 +188,6 @@ export const dashboardChartOptions = {
       tooltip: baseTooltip(
         (context) => `${context.dataset.label}: ${formatCurrencyValue(context.raw)}`
       )
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        border: { display: false },
-        ticks: baseTickStyle
-      },
-      y: {
-        ...axisTicks((value) => `UGX ${formatCompact(value)}`),
-        beginAtZero: true
-      }
-    }
-  },
-  barCurrency: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: baseTooltip((context) => `Amount: ${formatCurrencyValue(context.raw)}`)
     },
     scales: {
       x: {

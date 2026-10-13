@@ -1,6 +1,6 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { salesAPI, branchAPI } from '../services/api';
-import { formatCompactCurrency, formatCompactNumber } from '../utils/numberFormat';
+import { formatCompactCurrency, formatCompactNumber, toNumber } from '../utils/numberFormat';
 import {
   buildDirectorCsvContent,
   buildDirectorExcelContent,
@@ -39,8 +39,6 @@ const createEmptyRange = () => ({
   from: '',
   to: ''
 });
-
-const toNumber = (value) => Number(value || 0);
 
 const getSelectedPeriodLabel = (period, specificDate) => {
   if (specificDate) return 'Specific Date';

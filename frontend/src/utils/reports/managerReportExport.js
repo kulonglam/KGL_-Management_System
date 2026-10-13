@@ -4,22 +4,14 @@
  */
 
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import { downloadReportFile } from '../downloadFile.js';
+import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   buildReportBrandingHtml,
   getReportBrandingRows
 } from './reportBranding.js';
 
-// Coerce nullable metric values into safe numeric output.
-const toNumber = (value) => Number(value || 0);
-
-// Format amounts as whole-shilling Ugandan currency.
-const formatCurrencyValue = (value) =>
-  new Intl.NumberFormat('en-UG', {
-    style: 'currency',
-    currency: 'UGX',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(toNumber(value));
+const formatCurrencyValue = formatUgx;
 
 // Return raw number values for data exports or localized values for HTML display.
 const formatNumberValue = (value, formatted) =>
@@ -290,15 +282,4 @@ export const buildManagerReportHtml = (state) => {
   `;
 };
 
-// Trigger browser download for generated report payloads.
-export const downloadReportFile = ({ filename, content, type }) => {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
+export { downloadReportFile };

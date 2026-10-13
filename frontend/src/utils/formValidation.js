@@ -60,18 +60,6 @@ const validators = {
       if (isEmpty(value)) return '';
       return /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(value)) ? '' : message;
     },
-  notPastDate:
-    (message = 'Date cannot be in the past.') =>
-    (value) => {
-      if (isEmpty(value)) return '';
-      const parsed = new Date(value);
-      if (Number.isNaN(parsed.getTime())) return 'Must be a valid date.';
-      const selected = new Date(parsed);
-      selected.setHours(0, 0, 0, 0);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return selected >= today ? '' : message;
-    },
   mongoId:
     (message = 'Invalid value.') =>
     (value) => {

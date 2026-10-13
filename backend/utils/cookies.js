@@ -132,7 +132,6 @@ const readRememberedUsername = (req) => {
 };
 
 export {
-  REFRESH_COOKIE_NAME,
   clearRefreshCookie,
   clearRememberedUsernameCookie,
   readRefreshCookie,

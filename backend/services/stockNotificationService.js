@@ -100,9 +100,4 @@ const syncStockLevelNotifications = async ({ branch, produceName, produceType, r
   await resolveNotifications({ branch, produceName, produceType, category: 'low_stock' });
 };
 
-export {
-  createLowStockNotification,
-  createOutOfStockNotification,
-  resolveOutOfStockNotification,
-  syncStockLevelNotifications
-};
+export { syncStockLevelNotifications };

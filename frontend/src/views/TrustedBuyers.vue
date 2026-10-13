@@ -83,9 +83,6 @@
         <div v-else-if="buyers.length === 0" class="empty-state">
           No trusted buyers found for this branch.
         </div>
-        <div v-else-if="displayedBuyers.length === 0" class="empty-state">
-          No trusted buyers match your current filters.
-        </div>
         <div v-else class="table-responsive">
           <table class="table align-middle table-sticky table-row-hover responsive-stack-table">
             <thead>
@@ -99,7 +96,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in paginatedBuyers" :key="item._id">
+              <tr v-for="item in buyers" :key="item._id">
                 <td data-label="Name">{{ item.name }}</td>
                 <td data-label="National ID">{{ item.nationalId }}</td>
                 <td data-label="Location">{{ item.location }}</td>
@@ -121,7 +118,7 @@
         </div>
         <TablePagination
           :current-page="currentPage"
-          :total-pages="totalBuyerPages"
+          :total-pages="listTotalPages"
           :total-items="listTotal"
           :page-size="pageSize"
           :page-size-options="pageSizeOptions"
@@ -322,25 +319,13 @@ export default {
     };
   },
   computed: {
-    displayedBuyers() {
-      return this.buyers;
-    },
-    totalBuyerPages() {
-      return this.listTotalPages;
-    },
-    paginatedBuyers() {
-      return this.buyers;
-    },
     uniqueLocations() {
       return Number(
         this.listSummary.uniqueLocations ?? new Set(this.buyers.map((item) => item.location).filter(Boolean)).size
       );
     },
     overviewItems() {
-      const visibleMeta =
-        this.displayedBuyers.length === this.buyers.length
-          ? 'No filters applied'
-          : `${this.displayedBuyers.length.toLocaleString('en-UG')} visible after filters`;
+      const visibleMeta = this.searchQuery ? 'Matching the current filters' : 'No filters applied';
 
       return [
         {
@@ -433,7 +418,7 @@ export default {
       this.currentPage = 1;
     },
     goToPage(page) {
-      const nextPage = Math.max(1, Math.min(this.totalBuyerPages, Number(page || 1)));
+      const nextPage = Math.max(1, Math.min(this.listTotalPages, Number(page || 1)));
       this.currentPage = nextPage;
     },
     handlePageSizeUpdate(size) {

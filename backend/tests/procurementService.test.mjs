@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import PriceSetting from '../models/PriceSetting.js';
-import {
-  resolveSellingPrice,
-  resolveSellingPriceDetails
-} from '../services/procurementService.js';
+import { resolveSellingPriceDetails } from '../services/procurementService.js';
 
 const originalFind = PriceSetting.find;
 
@@ -24,13 +21,13 @@ test('resolveSellingPrice falls back to a legacy blank-string type-default row',
     ]
   });
 
-  const price = await resolveSellingPrice({
+  const price = await resolveSellingPriceDetails({
     branch: 'Maganjo',
     produceName: 'Yellow Beans',
     produceType: 'Beans'
   });
 
-  assert.equal(price, 36000);
+  assert.equal(price.priceUgx, 36000);
 });
 
 test('resolveSellingPrice matches produce-specific prices despite harmless spacing differences', async () => {
@@ -99,7 +96,7 @@ test('resolveSellingPrice reports the exact missing target and available branch 
 
   await assert.rejects(
     () =>
-      resolveSellingPrice({
+      resolveSellingPriceDetails({
         branch: 'Maganjo',
         produceName: 'Beans',
         produceType: 'Beans'

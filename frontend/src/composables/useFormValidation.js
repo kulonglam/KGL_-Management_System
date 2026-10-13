@@ -1,7 +1,7 @@
 // Wraps schema-based field/form validation with a reactive error object for Vue forms.
  
 import { reactive } from 'vue';
-import { validateFieldValue, validateValues } from '../utils/formValidation.js';
+import { validateValues } from '../utils/formValidation.js';
 
 // Build validation helpers bound to one schema instance.
 const useFormValidation = (schema) => {
@@ -27,17 +27,6 @@ const useFormValidation = (schema) => {
     return result;
   };
 
-  // Validate a single field to support blur/change feedback.
-  const validateField = (fieldName, values) => {
-    const message = validateFieldValue(fieldName, values, schema);
-    if (message) {
-      errors[fieldName] = message;
-      return false;
-    }
-    delete errors[fieldName];
-    return true;
-  };
-
   // Remove one field error after user correction.
   const clearFieldError = (fieldName) => {
     delete errors[fieldName];
@@ -52,9 +41,7 @@ const useFormValidation = (schema) => {
 
   return {
     errors,
-    setErrors,
     validateForm,
-    validateField,
     clearFieldError,
     resetErrors
   };

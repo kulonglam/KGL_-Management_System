@@ -271,7 +271,6 @@ export {
   buildInventorySnapshot,
   calculateInventoryByBranch,
   calculateInventoryByFilter,
-  findInventoryBucket,
   findUnmatchedStockMovements,
   getBucketTonnage,
   getInventoryOverview

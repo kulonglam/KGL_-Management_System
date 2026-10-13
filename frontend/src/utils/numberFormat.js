@@ -46,4 +46,4 @@ const formatUgx = (value) =>
     maximumFractionDigits: 0
   }).format(toNumber(value));
 
-export { formatCompactNumber, formatCompactCurrency, formatUgx };
+export { formatCompactNumber, formatCompactCurrency, formatUgx, toNumber };

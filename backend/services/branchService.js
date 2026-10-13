@@ -143,13 +143,4 @@ const updateBranchStatus = async ({ actorUser, branchId, isActive }) => {
   return saved;
 };
 
-export {
-  createBranchWithManager,
-  ensureDefaultBranches,
-  getRegisteredBranches,
-  isRegisteredBranch,
-  listBranches,
-  normalizeBranchName,
-  refreshBranchCache,
-  updateBranchStatus
-};
+export { createBranchWithManager, ensureDefaultBranches, listBranches, updateBranchStatus };
