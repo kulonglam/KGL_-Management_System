@@ -132,8 +132,6 @@ const cloneChartValue = (value) => {
   );
 };
 
-export const createDashboardChartOptions = (name) => cloneChartValue(dashboardChartOptions[name]);
-
 export const dashboardChartOptions = {
   doughnutCurrency: {
     responsive: true,
@@ -275,3 +273,5 @@ export const dashboardChartOptions = {
     }
   }
 };
+
+export const createDashboardChartOptions = (name) => cloneChartValue(dashboardChartOptions[name]);
