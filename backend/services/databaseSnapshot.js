@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import mongoose from 'mongoose';
+import { isProduction } from '../config/security.js';
 import '../models/AuditLog.js';
 import '../models/Branch.js';
 import '../models/CreditSale.js';
@@ -50,6 +51,73 @@ const backupDatabase = async (directory) => {
   return manifest;
 };
 
+const safeBackupFileName = (name) => {
+  const fileName = String(name || '');
+  if (!fileName || fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+    throw new Error('Backup file name is not safe');
+  }
+  return fileName;
+};
+
+const readBackupPayload = async (directory) => {
+  const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+  const files = { 'manifest.json': JSON.stringify(manifest) };
+  for (const entry of manifest.collections || []) {
+    const fileName = safeBackupFileName(entry.file);
+    files[fileName] = await readFile(path.join(directory, fileName), 'utf8');
+  }
+  return { manifest, files };
+};
+
+const materializeBackup = async (payload, directory) => {
+  if (!payload || typeof payload !== 'object' || !payload.files || !payload.files['manifest.json']) {
+    throw new Error('Uploaded backup is missing its manifest');
+  }
+  await mkdir(directory, { recursive: true });
+  for (const [name, contents] of Object.entries(payload.files)) {
+    const fileName = safeBackupFileName(name);
+    await writeFile(path.join(directory, fileName), String(contents));
+  }
+};
+
+// Copy a snapshot off this machine. Production refuses to finish without that copy.
+const publishBackup = async (directory, fetchImpl = globalThis.fetch) => {
+  const url = String(process.env.BACKUP_UPLOAD_URL || '').trim();
+  if (!url) {
+    if (isProduction()) {
+      throw new Error('BACKUP_UPLOAD_URL is required in production so the snapshot leaves this machine');
+    }
+    return { published: false };
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('BACKUP_UPLOAD_URL must be an https URL');
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('BACKUP_UPLOAD_URL must be an https URL');
+  }
+
+  const payload = await readBackupPayload(directory);
+  const headers = { 'Content-Type': 'application/json' };
+  const token = String(process.env.BACKUP_UPLOAD_TOKEN || '').trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetchImpl(url, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(payload)
+  });
+  if (!response?.ok) {
+    throw new Error(`Backup upload failed with status ${response?.status || 'unknown'}`);
+  }
+  return { published: true };
+};
+
 const restoreDatabase = async (directory) => {
   const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
   if (!Array.isArray(manifest.collections) || manifest.collections.length === 0) {
@@ -71,4 +139,4 @@ const restoreDatabase = async (directory) => {
   return manifest;
 };
 
-export { SNAPSHOT_MODELS, backupDatabase, restoreDatabase };
+export { SNAPSHOT_MODELS, backupDatabase, materializeBackup, publishBackup, restoreDatabase };

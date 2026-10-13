@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import PriceHistory from '../models/PriceHistory.js';
 import User from '../models/User.js';
-import { backupDatabase, restoreDatabase } from '../services/databaseSnapshot.js';
+import { backupDatabase, materializeBackup, publishBackup, restoreDatabase } from '../services/databaseSnapshot.js';
 
 const installedMongod = 'C:\\Program Files\\MongoDB\\Server\\8.2\\bin\\mongod.exe';
 if (!process.env.MONGOMS_SYSTEM_BINARY && existsSync(installedMongod)) {
@@ -54,11 +54,41 @@ test('a snapshot restores users and price history after they are removed', { tim
   const manifest = await backupDatabase(backupDir);
   assert.ok(manifest.collections.some((entry) => entry.model === 'User' && entry.count === 1));
 
+  const previousEnv = process.env.NODE_ENV;
+  const previousUrl = process.env.BACKUP_UPLOAD_URL;
+  const previousToken = process.env.BACKUP_UPLOAD_TOKEN;
+  process.env.NODE_ENV = 'production';
+  delete process.env.BACKUP_UPLOAD_URL;
+  await assert.rejects(() => publishBackup(backupDir), /BACKUP_UPLOAD_URL/);
+  process.env.BACKUP_UPLOAD_URL = 'http://backups.example.com/kgl';
+  await assert.rejects(() => publishBackup(backupDir), /https/);
+
+  let uploaded;
+  process.env.BACKUP_UPLOAD_URL = 'https://backups.example.com/kgl';
+  process.env.BACKUP_UPLOAD_TOKEN = 'secret-token';
+  await publishBackup(backupDir, async (url, options) => {
+    assert.equal(url, 'https://backups.example.com/kgl');
+    assert.equal(options.method, 'PUT');
+    assert.equal(options.headers.Authorization, 'Bearer secret-token');
+    uploaded = JSON.parse(options.body);
+    return { ok: true, status: 200 };
+  });
+  process.env.NODE_ENV = previousEnv;
+  if (previousUrl === undefined) delete process.env.BACKUP_UPLOAD_URL;
+  else process.env.BACKUP_UPLOAD_URL = previousUrl;
+  if (previousToken === undefined) delete process.env.BACKUP_UPLOAD_TOKEN;
+  else process.env.BACKUP_UPLOAD_TOKEN = previousToken;
+
+  await rm(backupDir, { recursive: true, force: true });
+  const copyDir = await mkdtemp(path.join(tmpdir(), 'kgl-backup-copy-'));
+  await materializeBackup(uploaded, copyDir);
+
   await User.collection.deleteMany({});
   await PriceHistory.collection.deleteMany({});
   assert.equal(await User.countDocuments(), 0);
 
-  await restoreDatabase(backupDir);
+  await restoreDatabase(copyDir);
+  await rm(copyDir, { recursive: true, force: true });
   const restoredUser = await User.findById(user._id).lean();
   const restoredHistory = await PriceHistory.findById(history._id).lean();
   assert.equal(restoredUser.username, 'amina-backup');

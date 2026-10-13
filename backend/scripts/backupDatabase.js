@@ -1,7 +1,7 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { backupDatabase } from '../services/databaseSnapshot.js';
+import { backupDatabase, publishBackup } from '../services/databaseSnapshot.js';
 
 dotenv.config();
 
@@ -18,7 +18,12 @@ try {
   await mongoose.connect(process.env.MONGODB_URI);
   const manifest = await backupDatabase(directory);
   const total = manifest.collections.reduce((sum, entry) => sum + entry.count, 0);
-  console.log(`Backup written to ${directory} (${total} documents)`);
+  const published = await publishBackup(directory);
+  if (published.published) {
+    console.log(`Backup copied off this machine (${total} documents)`);
+  } else {
+    console.log(`Backup written to ${directory} (${total} documents). It is still on this machine.`);
+  }
   await mongoose.disconnect();
 } catch (error) {
   console.error(`Backup failed: ${error.message}`);

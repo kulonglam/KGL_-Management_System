@@ -16,7 +16,7 @@ import StockLock from './models/StockLock.js';
 import { isProduction } from './config/security.js';
 import { DOCUMENTED_SEED_PASSWORD } from './config/seedPolicy.js';
 import { validatePasswordStrength } from './services/authService.js';
-import { backupDatabase } from './services/databaseSnapshot.js';
+import { backupDatabase, publishBackup } from './services/databaseSnapshot.js';
 import { findUnmatchedStockMovements } from './services/inventoryService.js';
 
 dotenv.config();
@@ -718,7 +718,12 @@ const main = async () => {
     new Date().toISOString().replace(/[:.]/g, '-')
   );
   await backupDatabase(backupDirectory);
-  console.log(`Backup written to ${backupDirectory}`);
+  const published = await publishBackup(backupDirectory);
+  if (published.published) {
+    console.log('Backup copied off this machine before clear.');
+  } else {
+    console.log(`Backup written to ${backupDirectory}`);
+  }
 
   await clearCollections();
   const userByUsername = await seedUsers();

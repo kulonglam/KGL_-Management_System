@@ -56,7 +56,9 @@ node seedData.js
   - Managers: `kulong`, `lam`
   - Sales agents: `wuol`, `makhol`, `nyar`, `chuol`
 - Password: from `SEED_DEFAULT_PASSWORD` env var if set, otherwise `Karibu@2026!`
-- Production seed is refused unless `ALLOW_PRODUCTION_SEED=true` and `SEED_DEFAULT_PASSWORD` is not the documented demo password. Every seed writes a snapshot under `backend/backups` before it clears data. Restore with `CONFIRM_DATABASE_RESTORE=yes npm run restore -- <backup-directory>` from `backend`.
+- Production seed is refused unless `ALLOW_PRODUCTION_SEED=true` and `SEED_DEFAULT_PASSWORD` is not the documented demo password. Every seed writes a snapshot before it clears data. In production that snapshot must also be copied to `BACKUP_UPLOAD_URL` (https). A local folder alone stops the seed before any collection is cleared.
+- `kgl-backup` is a Render cron. It runs `npm run backup` every day at 02:15 UTC. Set `MONGODB_URI` and `BACKUP_UPLOAD_URL` on that cron. `BACKUP_UPLOAD_TOKEN` is sent as a bearer token when it is set. The cron fails when the copy does not leave the machine. Render bills the cron after the blueprint is applied.
+- Restore a downloaded copy with `CONFIRM_DATABASE_RESTORE=yes npm run restore -- <backup-directory-or-json>` from `backend`. In production also set `ALLOW_PRODUCTION_RESTORE=true`.
 
 ## 6. Common Deploy Failure
 If Render crashes with:

@@ -22,6 +22,27 @@
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: https://kgl-frontend.onrender.com
+      - key: BACKUP_UPLOAD_URL
+        sync: false
+      - key: BACKUP_UPLOAD_TOKEN
+        sync: false
+
+  - type: cron
+    name: kgl-backup
+    runtime: node
+    rootDir: backend
+    schedule: "15 2 * * *"
+    buildCommand: npm ci
+    startCommand: npm run backup
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: BACKUP_UPLOAD_URL
+        sync: false
+      - key: BACKUP_UPLOAD_TOKEN
+        sync: false
 
   - type: web
     name: kgl-frontend
