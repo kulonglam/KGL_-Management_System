@@ -8,7 +8,8 @@ import { expectNoA11yViolations, runA11yAudit } from './a11y-utils.mjs';
 vi.mock('../../src/services/api', () => ({
   authAPI: {
     login: vi.fn(),
-    verifyMfa: vi.fn()
+    verifyMfa: vi.fn(),
+    getRememberedUsername: vi.fn().mockResolvedValue({ data: { username: '' } })
   }
 }));
 
@@ -17,10 +18,11 @@ describe('Login view', () => {
     vi.clearAllMocks();
     localStorage.clear();
     sessionStorage.clear();
+    authAPI.getRememberedUsername.mockResolvedValue({ data: { username: '' } });
   });
 
-  it('preloads remembered username from localStorage', () => {
-    localStorage.setItem('rememberedUsername', 'saved-user');
+  it('preloads remembered username from the server cookie endpoint', async () => {
+    authAPI.getRememberedUsername.mockResolvedValue({ data: { username: 'saved-user' } });
     const wrapper = mount(Login, {
       global: {
         mocks: {
@@ -28,9 +30,11 @@ describe('Login view', () => {
         }
       }
     });
+    await flushPromises();
 
     const usernameInput = wrapper.find('#username');
     expect(usernameInput.element.value).toBe('saved-user');
+    expect(localStorage.getItem('rememberedUsername')).toBeNull();
   });
 
   it('opens the recovery page when forgot password is clicked', async () => {
@@ -76,10 +80,11 @@ describe('Login view', () => {
 
     expect(authAPI.login).toHaveBeenCalledWith({
       username: 'manager-user',
-      password: 'secret123'
+      password: 'secret123',
+      rememberMe: true
     });
     expect(sessionStorage.getItem('token')).toBeNull();
-    expect(localStorage.getItem('rememberedUsername')).toBe('manager-user');
+    expect(localStorage.getItem('rememberedUsername')).toBeNull();
     expect(push).toHaveBeenCalledWith('/dashboard/manager');
   });
 

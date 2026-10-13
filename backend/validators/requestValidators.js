@@ -90,7 +90,8 @@ const loginValidation = [
     .isLength({ min: 10 })
     .withMessage('password must be at least 10 characters')
     .matches(PASSWORD_COMPLEXITY_PATTERN)
-    .withMessage('password must include uppercase, lowercase, number, and symbol')
+    .withMessage('password must include uppercase, lowercase, number, and symbol'),
+  body('rememberMe').optional().isBoolean().withMessage('rememberMe must be true or false')
 ];
 
 // Configure register validation.
@@ -560,7 +561,8 @@ const mfaDisableValidation = [
 
 const mfaLoginValidation = [
   body('mfaToken').notEmpty().withMessage('mfaToken is required'),
-  body('code').trim().matches(/^\d{6}$/).withMessage('code must be a 6-digit authenticator value')
+  body('code').trim().matches(/^\d{6}$/).withMessage('code must be a 6-digit authenticator value'),
+  body('rememberMe').optional().isBoolean().withMessage('rememberMe must be true or false')
 ];
 
 export {

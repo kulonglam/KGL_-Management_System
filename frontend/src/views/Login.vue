@@ -1,6 +1,6 @@
 <template>
   <div class="login-container d-flex align-items-center justify-content-center min-vh-100">
-    <div class="card shadow-lg border-0 overflow-hidden" style="max-width: 900px; width: 100%">
+    <div class="card shadow-lg border-0 overflow-hidden login-card">
       <div class="row g-0">
         <!-- Left Side -->
         <div
@@ -229,11 +229,17 @@ export default {
       confirmPassword: ''
     };
   },
-  created() {
-    const rememberedUsername = localStorage.getItem('rememberedUsername') || '';
-    if (rememberedUsername) {
-      this.credentials.username = rememberedUsername;
-      this.rememberMe = true;
+  async created() {
+    localStorage.removeItem('rememberedUsername');
+    try {
+      const response = await authAPI.getRememberedUsername();
+      const username = String(response?.data?.username || '').trim();
+      if (username) {
+        this.credentials.username = username;
+        this.rememberMe = true;
+      }
+    } catch {
+      // Sign-in still works when the remembered-username request fails.
     }
   },
   methods: {
@@ -242,11 +248,6 @@ export default {
       const { token, ...user } = authPayload;
       const authStore = useAuthStore(pinia);
       authStore.setSession(token, user);
-      if (this.rememberMe) {
-        localStorage.setItem('rememberedUsername', this.credentials.username.trim());
-      } else {
-        localStorage.removeItem('rememberedUsername');
-      }
       this.$router.push(getHomeRouteForUser(user));
     },
     setupRequest() {
@@ -286,7 +287,8 @@ export default {
         if (this.mfaRequired) {
           const response = await authAPI.verifyMfa({
             mfaToken: this.mfaToken,
-            code: this.mfaCode
+            code: this.mfaCode,
+            rememberMe: this.rememberMe
           });
           this.completeLogin(response?.data);
           return;
@@ -294,7 +296,8 @@ export default {
 
         const payload = {
           username: this.credentials.username.trim(),
-          password: this.credentials.password
+          password: this.credentials.password,
+          rememberMe: this.rememberMe
         };
         const response = await authAPI.login(payload);
         const authPayload = response?.data;
@@ -334,6 +337,11 @@ export default {
 
 <style scoped>
 /* Component styles */
+.login-card {
+  max-width: 900px;
+  width: 100%;
+}
+
 .login-container {
   background-image:
     linear-gradient(135deg, rgba(15, 23, 42, 0.55), rgba(30, 64, 175, 0.35)),

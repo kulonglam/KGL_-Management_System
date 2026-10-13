@@ -128,6 +128,8 @@ test('buildDirectorReportHtml includes company branding and logo when available'
     assert.match(html, /Karibu Groceries LTD/);
     assert.match(html, /Wholesale Produce Management System/);
     assert.match(html, /assets\/logo\.png/);
+    assert.match(html, /report-print\.css/);
+    assert.doesNotMatch(html, /<style>/);
   } finally {
     globalThis.document = originalDocument;
   }
@@ -175,6 +177,8 @@ test('buildManagerReportHtml includes company branding and logo when available',
     assert.match(html, /Karibu Groceries LTD/);
     assert.match(html, /Wholesale Produce Management System/);
     assert.match(html, /assets\/logo\.png/);
+    assert.match(html, /report-print\.css/);
+    assert.doesNotMatch(html, /<style>/);
   } finally {
     globalThis.document = originalDocument;
   }

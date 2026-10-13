@@ -4,6 +4,7 @@ import express from 'express';
 import {
   login,
   logout,
+  getRememberedUsername,
   register,
   getMe,
   updateMe,
@@ -47,6 +48,7 @@ const noStore = (_req, res, next) => {
 router.use(noStore);
 
 // POST /api/auth/login: authenticate credentials and return signed session details.
+router.get('/remembered', getRememberedUsername);
 router.post('/login', authLimiter, loginValidation, validateRequest, login);
 router.post('/login/mfa', authLimiter, mfaLoginValidation, validateRequest, verifyMfaLogin);
 router.post('/refresh', authLimiter, refreshSession);

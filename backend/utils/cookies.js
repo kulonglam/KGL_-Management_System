@@ -3,6 +3,8 @@ import { isProduction } from '../config/security.js';
 const REFRESH_COOKIE_NAME = 'kgl_refresh';
 const REFRESH_COOKIE_PATH = '/api';
 const LEGACY_REFRESH_COOKIE_PATH = '/api/auth';
+const REMEMBERED_USERNAME_COOKIE = 'kgl_username';
+const REMEMBERED_USERNAME_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const parseCookieValue = (cookieHeader, name) => {
   if (!cookieHeader) return '';
@@ -93,4 +95,40 @@ const clearRefreshCookie = (res) => {
 
 const readRefreshCookie = (req) => parseCookieValue(req.headers?.cookie, REFRESH_COOKIE_NAME);
 
-export { REFRESH_COOKIE_NAME, clearRefreshCookie, readRefreshCookie, setRefreshCookie };
+const isSafeRememberedUsername = (value) => {
+  const username = String(value || '');
+  return username.length >= 2 && username.length <= 64 && !/[\u0000-\u001f\u007f;]/.test(username);
+};
+
+const rememberedUsernameCookie = (username, maxAgeMs) => {
+  const options = getRefreshCookieOptions();
+  return serializeRefreshCookie(username, {
+    ...options,
+    maxAge: maxAgeMs
+  }).replace(`${REFRESH_COOKIE_NAME}=`, `${REMEMBERED_USERNAME_COOKIE}=`);
+};
+
+const setRememberedUsernameCookie = (res, username) => {
+  const value = String(username || '').trim();
+  if (!isSafeRememberedUsername(value)) return;
+  writeSetCookie(res, rememberedUsernameCookie(value, REMEMBERED_USERNAME_MAX_AGE_MS));
+};
+
+const clearRememberedUsernameCookie = (res) => {
+  writeSetCookie(res, rememberedUsernameCookie('', 0));
+};
+
+const readRememberedUsername = (req) => {
+  const value = parseCookieValue(req.headers?.cookie, REMEMBERED_USERNAME_COOKIE).trim();
+  return isSafeRememberedUsername(value) ? value : '';
+};
+
+export {
+  REFRESH_COOKIE_NAME,
+  clearRefreshCookie,
+  clearRememberedUsernameCookie,
+  readRefreshCookie,
+  readRememberedUsername,
+  setRefreshCookie,
+  setRememberedUsernameCookie
+};

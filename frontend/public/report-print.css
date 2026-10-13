@@ -1,0 +1,84 @@
+body {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: #0f172a;
+  margin: 24px;
+}
+
+.report-branding {
+  margin-bottom: 24px;
+}
+
+.report-branding-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.report-brand-logo {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+}
+
+.report-company-name {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.report-system-name {
+  color: #475569;
+  margin-top: 4px;
+}
+
+.report-title {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.report-generated-at {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+h2 {
+  margin: 24px 0 10px;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+p {
+  margin: 0 0 16px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+}
+
+th,
+td {
+  border: 1px solid #e2e8f0;
+  padding: 8px;
+  font-size: 12px;
+  text-align: left;
+}
+
+th {
+  background: #f1f5f9;
+  font-weight: 600;
+}
+
+.summary th {
+  width: 32%;
+}

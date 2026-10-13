@@ -1,6 +1,6 @@
 <template>
   <div class="login-container d-flex align-items-center justify-content-center min-vh-100">
-    <div class="card border-0" style="max-width: 480px; width: 100%">
+    <div class="card border-0 reset-card">
       <div class="card-body p-4">
         <h2 class="h4 fw-bold">Reset password</h2>
         <p class="text-muted">
@@ -75,3 +75,10 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.reset-card {
+  max-width: 480px;
+  width: 100%;
+}
+</style>

@@ -57,6 +57,7 @@ let refreshPromise = null;
 const isAuthRefreshUrl = (url = '') =>
   String(url).includes('/auth/refresh') ||
   String(url).includes('/auth/login') ||
+  String(url).includes('/auth/remembered') ||
   String(url).includes('/auth/password-reset');
 
 api.interceptors.request.use(
@@ -147,6 +148,7 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
+  getRememberedUsername: () => api.get('/auth/remembered'),
   verifyMfa: (data) => api.post('/auth/login/mfa', data),
   refresh: () => api.post('/auth/refresh'),
   resetPassword: (data) => api.post('/auth/password-reset', data),

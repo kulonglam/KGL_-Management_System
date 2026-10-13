@@ -2,9 +2,13 @@
  
 import { getAllowedOrigins } from '../config/security.js';
 
-const buildCspValue = () => {
+const buildCspValue = (req) => {
   // Allow API/XHR/WebSocket connections only to self + configured client origins.
   const connectSources = ["'self'", ...getAllowedOrigins()].join(' ');
+  // Swagger UI still injects a style element. JSON API responses and the app do not.
+  const styleSrc = String(req?.path || '').startsWith('/api-docs')
+    ? "style-src 'self' 'unsafe-inline'"
+    : "style-src 'self'";
   return [
     // Restrict all unspecified resource types to same-origin by default.
     "default-src 'self'",
@@ -16,8 +20,7 @@ const buildCspValue = () => {
     "object-src 'none'",
     // Permit trusted images plus inline data/blob URLs used by previews.
     "img-src 'self' data: blob:",
-    // Keep inline styles enabled for current UI stack compatibility.
-    "style-src 'self' 'unsafe-inline'",
+    styleSrc,
     // Only execute scripts served from same origin.
     "script-src 'self'",
     // Explicitly list endpoints the frontend can connect to.
@@ -28,7 +31,7 @@ const buildCspValue = () => {
 // Apply security headers to every response before request handlers continue.
 const securityHeaders = (req, res, next) => {
   // Central CSP policy controlling allowed content sources.
-  res.setHeader('Content-Security-Policy', buildCspValue());
+  res.setHeader('Content-Security-Policy', buildCspValue(req));
   // Prevent MIME-type sniffing.
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // Block page framing.

@@ -29,7 +29,14 @@ import { DOCUMENTED_SEED_PASSWORD, rejectDocumentedPassword } from '../config/se
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
-import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '../utils/cookies.js';
+import {
+  clearRefreshCookie,
+  clearRememberedUsernameCookie,
+  readRefreshCookie,
+  readRememberedUsername,
+  setRefreshCookie,
+  setRememberedUsernameCookie
+} from '../utils/cookies.js';
 import { buildOtpAuthUri, generateTotpSecret, verifyTotpCode } from '../utils/totp.js';
 import { recordAudit } from '../services/auditService.js';
 
@@ -132,6 +139,7 @@ const login = async (req, res) => {
         });
       }
       setRefreshCookie(res, generateRefreshToken(user._id, Number(user.refreshTokenVersion || 0)));
+      applyRememberedUsername(res, req.body?.rememberMe, user.username);
       await recordAudit({
         actor: user,
         action: 'login',
@@ -385,6 +393,23 @@ const issueSession = (res, user) => {
   return toUserPayload(user, true);
 };
 
+const applyRememberedUsername = (res, rememberMe, username) => {
+  if (rememberMe === true) {
+    setRememberedUsernameCookie(res, username);
+  } else if (rememberMe === false) {
+    clearRememberedUsernameCookie(res);
+  }
+};
+
+const getRememberedUsername = (req, res) => {
+  const username = readRememberedUsername(req);
+  const raw = String(req.headers?.cookie || '');
+  if (raw.includes('kgl_username=') && !username) {
+    clearRememberedUsernameCookie(res);
+  }
+  return res.json({ username });
+};
+
 const refreshSession = async (req, res) => {
   try {
     const token = readRefreshCookie(req);
@@ -573,6 +598,7 @@ const verifyMfaLogin = async (req, res) => {
       return res.status(GENERIC_LOGIN_FAILURE.statusCode).json({ message: GENERIC_LOGIN_FAILURE.message });
     }
     await ensureLegacyDirectorTotalsAccess(user);
+    applyRememberedUsername(res, req.body?.rememberMe, user.username);
     return res.json(issueSession(res, user));
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized, token failed' });
@@ -582,6 +608,7 @@ const verifyMfaLogin = async (req, res) => {
 export {
   login,
   logout,
+  getRememberedUsername,
   getMe,
   updateMe,
   register,
