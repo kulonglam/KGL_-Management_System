@@ -53,8 +53,7 @@
 <script>
 // Sales-agent dashboard showing today's personal cash/credit performance snapshot.
  
-import { salesAPI, creditSalesAPI } from '../services/api';
-import { asListPayload, fetchAllPages } from '../utils/listPayload.js';
+import { salesAPI } from '../services/api';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
@@ -201,24 +200,8 @@ export default {
       this.loading = true;
       this.loadError = '';
       try {
-        const { startOfDay, endOfDay } = this.getTodayRange();
-        const range = { from: startOfDay.toISOString(), to: new Date(endOfDay.getTime() - 1).toISOString() };
-        const [salesRows, creditRows, overdueResponse] = await Promise.all([
-          this.fetchMine(salesAPI, range),
-          this.fetchMine(creditSalesAPI, range),
-          creditSalesAPI.getAll({ mine: true, status: 'overdue', page: 1, limit: 1 })
-        ]);
-
-        this.stats.cashSales = salesRows.reduce((sum, sale) => sum + sale.amountPaidUgx, 0);
-        this.stats.cashCount = salesRows.length;
-
-        this.stats.creditSales = creditRows.reduce((sum, sale) => sum + sale.amountDueUgx, 0);
-        this.stats.creditCount = creditRows.length;
-
-        this.stats.totalKg =
-          salesRows.reduce((sum, sale) => sum + sale.tonnageKg, 0) +
-          creditRows.reduce((sum, sale) => sum + sale.tonnageKg, 0);
-        this.stats.overdueCount = asListPayload(overdueResponse.data).total;
+        const response = await salesAPI.getAgentDashboard();
+        Object.assign(this.stats, response.data || {});
       } catch (error) {
         this.loadError = error.response?.data?.message || error.message || 'Unable to load sales summary.';
       } finally {
@@ -244,15 +227,6 @@ export default {
           24 * 60 * 60 * 1000
         );
       }, msUntilMidnight);
-    },
-    fetchMine(api, range) {
-      return fetchAllPages((params) => api.getAll({ ...params, mine: true, ...range }));
-    },
-    getTodayRange() {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      return { startOfDay, endOfDay };
     },
     formatStatCurrency(amount) {
       return formatCompactCurrency(amount);

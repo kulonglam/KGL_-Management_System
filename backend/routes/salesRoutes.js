@@ -6,6 +6,8 @@ import {
   getAllSales,
   createSale,
   getSalesAggregation,
+  getManagerDashboard,
+  getAgentDashboard,
   updateSale,
   deleteSale
 } from '../controllers/salesController.js';
@@ -38,6 +40,11 @@ router.post(
   validateRequest,
   createSale
 );
+
+// GET /api/sales/dashboard: manager chart totals grouped in the database.
+router.get('/dashboard', protect, authorize('manager'), getManagerDashboard);
+// GET /api/sales/agent-dashboard: today's totals for the signed-in sales agent.
+router.get('/agent-dashboard', protect, authorize('sales_agent'), getAgentDashboard);
 
 // GET /api/sales/aggregation: return cross-branch sales totals for director reporting.
 router.get(

@@ -1,16 +1,16 @@
 // Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 import Sale from '../models/Sale.js';
-import CreditSale from '../models/CreditSale.js';
-import Procurement from '../models/Procurement.js';
-import mongoose from 'mongoose';
 import { calculateInventoryByBranch, calculateInventoryByFilter, getBucketTonnage } from '../services/inventoryService.js';
 import { syncStockLevelNotifications } from '../services/stockNotificationService.js';
 import { withStockLock } from '../services/stockLockService.js';
 import {
   resolveProduceTypeForSale,
-  buildAggregationContext,
-  buildSalesAggregationPayload
+  loadDirectorAggregation
 } from '../services/salesAggregationService.js';
+import {
+  buildAgentDashboardSummary,
+  buildManagerDashboardSummary
+} from '../services/dashboardSummaryService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
@@ -184,52 +184,51 @@ const createSale = async (req, res) => {
 // GET /api/sales/aggregation: build director-facing totals/trends across selected branches and time window.
 const getSalesAggregation = async (req, res) => {
   try {
-    const aggregationContext = buildAggregationContext({
+    const payload = await loadDirectorAggregation({
       period: req.query.period,
       branch: req.query.branch,
       specificDate: req.query.specificDate
     });
-    if (aggregationContext.error) {
-      return res.status(400).json({ message: aggregationContext.error });
+    if (payload.error) {
+      return res.status(400).json({ message: payload.error });
     }
-
-    const {
-      period,
-      branch: branchFilter,
-      selectedBranches,
-      trendBuckets,
-      rangeStart,
-      rangeEnd
-    } = aggregationContext;
-
-    const [sales, creditSales, procurements] = await Promise.all([
-      Sale.find({
-        branch: mongoose.trusted({ $in: selectedBranches }),
-        date: mongoose.trusted({ $gte: rangeStart, $lt: rangeEnd })
-      }),
-      CreditSale.find({
-        branch: mongoose.trusted({ $in: selectedBranches }),
-        dateOfDispatch: mongoose.trusted({ $gte: rangeStart, $lt: rangeEnd })
-      }),
-      Procurement.find({
-        branch: mongoose.trusted({ $in: selectedBranches }),
-        dateReceived: mongoose.trusted({ $gte: rangeStart, $lt: rangeEnd })
-      })
-    ]);
-
-    const payload = buildSalesAggregationPayload({
-      period,
-      branch: branchFilter,
-      rangeStart,
-      rangeEnd,
-      selectedBranches,
-      trendBuckets,
-      sales,
-      creditSales,
-      procurements
-    });
-
     res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET /api/sales/dashboard: branch totals for the manager dashboard, grouped in the database.
+const getManagerDashboard = async (req, res) => {
+  try {
+    if (!req.user.branch) {
+      return res.status(400).json({ message: 'Manager branch is missing.' });
+    }
+    const summary = await buildManagerDashboardSummary({
+      branch: req.user.branch,
+      period: req.query.period,
+      specificDate: req.query.specificDate
+    });
+    if (summary.error) {
+      return res.status(400).json({ message: summary.error });
+    }
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET /api/sales/agent-dashboard: today's personal totals for the signed-in sales agent.
+const getAgentDashboard = async (req, res) => {
+  try {
+    if (!req.user.branch) {
+      return res.status(400).json({ message: 'Sales agent branch is missing.' });
+    }
+    const summary = await buildAgentDashboardSummary({
+      userId: req.user._id,
+      branch: req.user.branch
+    });
+    res.json(summary);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -424,7 +423,7 @@ const updateSale = async (req, res) => {
   }
 };
 
-export { getAllSales, createSale, getSalesAggregation, updateSale, deleteSale };
+export { getAllSales, createSale, getSalesAggregation, getManagerDashboard, getAgentDashboard, updateSale, deleteSale };
 
 
 

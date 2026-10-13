@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref } from 'vue';
-import { inventoryAPI, salesAPI, creditSalesAPI, procurementAPI } from '../services/api';
+import { inventoryAPI, salesAPI } from '../services/api';
 import { formatCompactCurrency } from '../utils/numberFormat';
 import {
   buildManagerCsvContent,
@@ -10,8 +10,7 @@ import {
 } from '../utils/reports/managerReportExport.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
-import { formatDisplayDate, formatDisplayRange } from '../utils/dateFormat.js';
-import { fetchAllPages } from '../utils/listPayload.js';
+import { formatDisplayRange } from '../utils/dateFormat.js';
 import { buildTonalPalette, dashboardChartColors } from '../utils/charts/dashboardChartTheme.js';
 
 const PERIOD_OPTIONS = [
@@ -93,234 +92,6 @@ const getSelectedPeriodLabel = (period, specificDate) => {
   return PERIOD_OPTIONS.find((option) => option.value === period)?.label || 'Weekly';
 };
 
-const getDateRangeByFilters = (period, specificDate = '') => {
-  if (specificDate) {
-    const start = new Date(`${specificDate}T00:00:00.000Z`);
-    if (!Number.isNaN(start.getTime())) {
-      const end = new Date(start);
-      end.setUTCDate(end.getUTCDate() + 1);
-      end.setUTCMilliseconds(end.getUTCMilliseconds() - 1);
-      return { from: start.toISOString(), to: end.toISOString() };
-    }
-  }
-
-  const end = new Date();
-  if (period === 'yearly') {
-    const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
-    return { from: start.toISOString(), to: end.toISOString() };
-  }
-
-  const days = period === 'monthly' ? 30 : 7;
-  const start = new Date(end);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
-  return { from: start.toISOString(), to: end.toISOString() };
-};
-
-const filterRecordsByDate = (records, dateField, range) => {
-  const start = new Date(range.from);
-  const end = new Date(range.to);
-  return (records || []).filter((record) => {
-    const recordDate = new Date(record?.[dateField]);
-    return !Number.isNaN(recordDate.getTime()) && recordDate >= start && recordDate <= end;
-  });
-};
-
-const buildTrendBuckets = (period, specificDate = '') => {
-  if (specificDate) {
-    const start = new Date(`${specificDate}T00:00:00.000Z`);
-    if (!Number.isNaN(start.getTime())) {
-      const end = new Date(start);
-      end.setUTCDate(end.getUTCDate() + 1);
-      return [
-        {
-          start,
-          end,
-          label: formatDisplayDate(start),
-          amount: 0
-        }
-      ];
-    }
-  }
-
-  const now = new Date();
-  const buckets = [];
-
-  if (period === 'yearly') {
-    for (let index = 11; index >= 0; index -= 1) {
-      const start = new Date(now.getFullYear(), now.getMonth() - index, 1);
-      const end = new Date(now.getFullYear(), now.getMonth() - index + 1, 1);
-      buckets.push({
-        start,
-        end,
-        label: formatDisplayDate(start),
-        amount: 0
-      });
-    }
-    return buckets;
-  }
-
-  const days = period === 'monthly' ? 30 : 7;
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-
-  for (let index = days - 1; index >= 0; index -= 1) {
-    const start = new Date(today);
-    start.setDate(today.getDate() - index);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 1);
-    buckets.push({
-      start,
-      end,
-      label: formatDisplayDate(start),
-      amount: 0
-    });
-  }
-
-  return buckets;
-};
-
-const addAmountToBuckets = (buckets, dateValue, amount) => {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return;
-
-  for (let index = 0; index < buckets.length; index += 1) {
-    const bucket = buckets[index];
-    if (date >= bucket.start && date < bucket.end) {
-      bucket.amount += toNumber(amount);
-      return;
-    }
-  }
-};
-
-const buildRankedMetrics = (itemsMap, mapper, limit = 5) =>
-  Object.keys(itemsMap)
-    .map((name) => mapper(name, itemsMap[name]))
-    .sort((left, right) => right.amount - left.amount)
-    .slice(0, limit);
-
-const buildManagerDashboardSnapshot = ({
-  inventory,
-  inventoryStatistics,
-  salesRecords,
-  creditSalesRecords,
-  procurementRecords,
-  period,
-  specificDate
-}) => {
-  const reportRange = getDateRangeByFilters(period, specificDate);
-  const filteredSales = filterRecordsByDate(salesRecords, 'date', reportRange);
-  const filteredCreditSales = filterRecordsByDate(
-    creditSalesRecords,
-    'dateOfDispatch',
-    reportRange
-  );
-  const filteredProcurements = filterRecordsByDate(
-    procurementRecords,
-    'dateReceived',
-    reportRange
-  );
-
-  const stats = createEmptyStats();
-  stats.inventoryValue = toNumber(inventoryStatistics?.totalValue);
-  stats.inventoryItems = toNumber(inventoryStatistics?.totalItems);
-  stats.cashSales = filteredSales.reduce((sum, sale) => sum + toNumber(sale.amountPaidUgx), 0);
-  stats.cashCount = filteredSales.length;
-  stats.creditSales = filteredCreditSales.reduce(
-    (sum, sale) => sum + toNumber(sale.amountDueUgx),
-    0
-  );
-  stats.creditCount = filteredCreditSales.length;
-  stats.procurementTotal = filteredProcurements.reduce(
-    (sum, record) => sum + toNumber(record.costUgx),
-    0
-  );
-  stats.procurementCount = filteredProcurements.length;
-
-  const lowStockItems = inventory.filter((item) => toNumber(item.totalTonnageKg) < 500);
-
-  const productMap = {};
-  filteredSales.forEach((sale) => {
-    productMap[sale.produceName] = toNumber(productMap[sale.produceName]) + toNumber(sale.tonnageKg);
-  });
-  filteredCreditSales.forEach((sale) => {
-    productMap[sale.produceName] =
-      toNumber(productMap[sale.produceName]) + toNumber(sale.tonnageKg);
-  });
-  const topProducts = Object.keys(productMap)
-    .map((name) => ({ name, totalKg: productMap[name] }))
-    .sort((left, right) => right.totalKg - left.totalKg)
-    .slice(0, 5);
-
-  const stockByProduct = inventory
-    .map((item) => ({ name: item.produceName, totalKg: toNumber(item.totalTonnageKg) }))
-    .sort((left, right) => right.totalKg - left.totalKg)
-    .slice(0, 5);
-
-  const creditCollection = createEmptyCreditCollection();
-  creditCollection.collected = filteredCreditSales.reduce(
-    (sum, sale) => sum + toNumber(sale.amountPaidUgx),
-    0
-  );
-  creditCollection.outstanding = filteredCreditSales.reduce((sum, sale) => {
-    const balance =
-      sale.balanceUgx !== undefined && sale.balanceUgx !== null
-        ? toNumber(sale.balanceUgx)
-        : Math.max(toNumber(sale.amountDueUgx) - toNumber(sale.amountPaidUgx), 0);
-    return sum + balance;
-  }, 0);
-
-  const agentMap = {};
-  filteredSales.forEach((sale) => {
-    agentMap[sale.salesAgentName] =
-      toNumber(agentMap[sale.salesAgentName]) + toNumber(sale.amountPaidUgx);
-  });
-  filteredCreditSales.forEach((sale) => {
-    agentMap[sale.salesAgentName] =
-      toNumber(agentMap[sale.salesAgentName]) + toNumber(sale.amountDueUgx);
-  });
-  const agentPerformance = buildRankedMetrics(
-    agentMap,
-    (name, amount) => ({ name, amount }),
-    5
-  );
-
-  const dealerMap = {};
-  filteredProcurements.forEach((procurement) => {
-    dealerMap[procurement.dealerName] =
-      toNumber(dealerMap[procurement.dealerName]) + toNumber(procurement.costUgx);
-  });
-  const dealerPerformance = buildRankedMetrics(
-    dealerMap,
-    (name, amount) => ({ name, amount }),
-    5
-  );
-
-  const trendBuckets = buildTrendBuckets(period, specificDate);
-  filteredSales.forEach((sale) => {
-    addAmountToBuckets(trendBuckets, sale.date, sale.amountPaidUgx);
-  });
-  filteredCreditSales.forEach((sale) => {
-    addAmountToBuckets(trendBuckets, sale.dateOfDispatch, sale.amountDueUgx);
-  });
-  const salesOverTime = trendBuckets.map((bucket) => ({
-    label: bucket.label,
-    amount: bucket.amount
-  }));
-
-  return {
-    reportRange,
-    stats,
-    lowStockItems,
-    topProducts,
-    stockByProduct,
-    salesOverTime,
-    creditCollection,
-    agentPerformance,
-    dealerPerformance
-  };
-};
-
 export function useManagerDashboard() {
   const authStore = useAuthStore(pinia);
 
@@ -335,9 +106,6 @@ export function useManagerDashboard() {
   const todayIsoDate = new Date().toISOString().split('T')[0];
   const reportRange = reactive(createEmptyRange());
   const inventory = ref([]);
-  const salesRecords = ref([]);
-  const creditSalesRecords = ref([]);
-  const procurementRecords = ref([]);
   const stats = reactive(createEmptyStats());
   const lowStockItems = ref([]);
   const topProducts = ref([]);
@@ -526,32 +294,16 @@ export function useManagerDashboard() {
     ]
   }));
 
-  const applySnapshot = (snapshot) => {
-    Object.assign(reportRange, snapshot.reportRange);
-    Object.assign(stats, snapshot.stats);
-    Object.assign(creditCollection, snapshot.creditCollection);
-    lowStockItems.value = snapshot.lowStockItems;
-    topProducts.value = snapshot.topProducts;
-    stockByProduct.value = snapshot.stockByProduct;
-    salesOverTime.value = snapshot.salesOverTime;
-    agentPerformance.value = snapshot.agentPerformance;
-    dealerPerformance.value = snapshot.dealerPerformance;
+  const applyInventoryCharts = () => {
+    lowStockItems.value = inventory.value.filter((item) => toNumber(item.totalTonnageKg) < 500);
+    stockByProduct.value = inventory.value
+      .map((item) => ({ name: item.produceName, totalKg: toNumber(item.totalTonnageKg) }))
+      .sort((left, right) => right.totalKg - left.totalKg)
+      .slice(0, 5);
   };
 
   const buildDashboardData = () => {
-    const snapshot = buildManagerDashboardSnapshot({
-      inventory: inventory.value,
-      inventoryStatistics: {
-        totalValue: stats.inventoryValue,
-        totalItems: stats.inventoryItems
-      },
-      salesRecords: salesRecords.value,
-      creditSalesRecords: creditSalesRecords.value,
-      procurementRecords: procurementRecords.value,
-      period: filters.period,
-      specificDate: filters.specificDate
-    });
-    applySnapshot(snapshot);
+    applyInventoryCharts();
   };
 
   const loadData = async () => {
@@ -559,26 +311,28 @@ export function useManagerDashboard() {
     loadError.value = '';
 
     try {
-      const range = getDateRangeByFilters(filters.period, filters.specificDate);
-      const [inventoryResponse, salesRows, creditRows, procurementRows] = await Promise.all([
+      const [inventoryResponse, summaryResponse] = await Promise.all([
         inventoryAPI.get(),
-        fetchAllPages((params) => salesAPI.getAll({ ...params, from: range.from, to: range.to })),
-        fetchAllPages((params) =>
-          creditSalesAPI.getAll({ ...params, from: range.from, to: range.to })
-        ),
-        fetchAllPages((params) =>
-          procurementAPI.getAll({ ...params, from: range.from, to: range.to })
-        )
+        salesAPI.getDashboard({
+          period: filters.period,
+          specificDate: filters.specificDate || undefined
+        })
       ]);
+      const summary = summaryResponse.data || {};
 
       inventory.value = inventoryResponse.data.inventory || [];
-      salesRecords.value = salesRows;
-      creditSalesRecords.value = creditRows;
-      procurementRecords.value = procurementRows;
-      stats.inventoryValue = toNumber(inventoryResponse.data.statistics?.totalValue);
-      stats.inventoryItems = toNumber(inventoryResponse.data.statistics?.totalItems);
-
-      buildDashboardData();
+      Object.assign(reportRange, summary.reportRange || createEmptyRange());
+      Object.assign(stats, {
+        ...(summary.stats || createEmptyStats()),
+        inventoryValue: toNumber(inventoryResponse.data.statistics?.totalValue),
+        inventoryItems: toNumber(inventoryResponse.data.statistics?.totalItems)
+      });
+      Object.assign(creditCollection, summary.creditCollection || createEmptyCreditCollection());
+      topProducts.value = summary.topProducts || [];
+      salesOverTime.value = summary.salesOverTime || [];
+      agentPerformance.value = summary.agentPerformance || [];
+      dealerPerformance.value = summary.dealerPerformance || [];
+      applyInventoryCharts();
     } catch (error) {
       loadError.value = error.response?.data?.message || error.message || 'Unable to load dashboard data. Try again.';
       console.error('Error loading data:', error);

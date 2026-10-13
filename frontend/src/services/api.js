@@ -176,6 +176,8 @@ export const salesAPI = {
   create: (data) => api.post('/sales', data),
   update: (id, data) => api.put(`/sales/${id}`, data),
   getAggregation: (params = {}) => api.get('/sales/aggregation', { params }),
+  getDashboard: (params = {}) => api.get('/sales/dashboard', { params }),
+  getAgentDashboard: () => api.get('/sales/agent-dashboard'),
   delete: (id) => api.delete(`/sales/${id}`)
 };
 

@@ -3,6 +3,9 @@
  * period windows, trend buckets, and combined cash/credit/procurement totals.
  */
 
+import Sale from '../models/Sale.js';
+import CreditSale from '../models/CreditSale.js';
+import Procurement from '../models/Procurement.js';
 import {
   normalizeProduceNameKey,
   normalizeProduceType
@@ -145,21 +148,6 @@ const buildTrendBuckets = (period, specificDate = null) => {
   return buckets;
 };
 
-// Add one monetary amount to its corresponding trend bucket by transaction date.
-const addAmountToTrend = (buckets, dateValue, amount) => {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return;
-
-  const numericAmount = Number(amount || 0);
-  for (let i = 0; i < buckets.length; i += 1) {
-    const bucket = buckets[i];
-    if (date >= bucket.start && date < bucket.end) {
-      bucket.total += numericAmount;
-      return;
-    }
-  }
-};
-
 // Build validated aggregation context (filters, date range, branches, and trend buckets).
 const buildAggregationContext = ({ period, branch, specificDate }) => {
   const normalizedPeriod = normalizePeriod(period);
@@ -189,6 +177,53 @@ const buildAggregationContext = ({ period, branch, specificDate }) => {
   };
 };
 
+const bucketBoundaries = (trendBuckets) => {
+  const boundaries = trendBuckets.map((bucket) => new Date(bucket.start));
+  boundaries.push(new Date(trendBuckets[trendBuckets.length - 1].end));
+  return boundaries;
+};
+
+const dateMatch = (dateField, rangeStart, rangeEnd) => ({
+  [dateField]: { $gte: rangeStart, $lt: rangeEnd }
+});
+
+const aggregateByBranch = (Model, match, amountField) =>
+  Model.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: '$branch',
+        amount: { $sum: `$${amountField}` },
+        totalKg: { $sum: '$tonnageKg' },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+const aggregateByBucket = (Model, match, dateField, amountField, boundaries) =>
+  Model.aggregate([
+    { $match: match },
+    {
+      $bucket: {
+        groupBy: `$${dateField}`,
+        boundaries,
+        default: 'other',
+        output: { amount: { $sum: `$${amountField}` } }
+      }
+    }
+  ]);
+
+const applyBucketRows = (trendBuckets, rows) => {
+  rows.forEach((row) => {
+    if (row._id === 'other' || row._id == null) return;
+    const key = new Date(row._id).getTime();
+    const bucket = trendBuckets.find((item) => item.start.getTime() === key);
+    if (bucket) bucket.total += Number(row.amount || 0);
+  });
+};
+
+const sumCount = (rows) => rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
+
 // Build final aggregation response payload with branch totals, trends, and report counters.
 const buildSalesAggregationPayload = ({
   period,
@@ -197,9 +232,11 @@ const buildSalesAggregationPayload = ({
   rangeEnd,
   selectedBranches,
   trendBuckets,
-  sales,
-  creditSales,
-  procurements
+  salesByBranch,
+  creditByBranch,
+  procurementByBranch,
+  salesTrend,
+  creditTrend
 }) => {
   const branchTotals = {};
   const procurementTotals = {};
@@ -209,27 +246,28 @@ const buildSalesAggregationPayload = ({
     procurementTotals[selectedBranch] = { totalCost: 0, totalKg: 0, count: 0 };
   });
 
-  sales.forEach((sale) => {
-    if (!branchTotals[sale.branch]) return;
-    branchTotals[sale.branch].cash += Number(sale.amountPaidUgx || 0);
-    branchTotals[sale.branch].totalKg += Number(sale.tonnageKg || 0);
-    addAmountToTrend(trendBuckets, sale.date, sale.amountPaidUgx);
+  salesByBranch.forEach((row) => {
+    if (!branchTotals[row._id]) return;
+    branchTotals[row._id].cash += Number(row.amount || 0);
+    branchTotals[row._id].totalKg += Number(row.totalKg || 0);
   });
 
-  creditSales.forEach((creditSale) => {
-    if (!branchTotals[creditSale.branch]) return;
-    branchTotals[creditSale.branch].credit += Number(creditSale.amountDueUgx || 0);
-    branchTotals[creditSale.branch].totalKg += Number(creditSale.tonnageKg || 0);
-    addAmountToTrend(trendBuckets, creditSale.dateOfDispatch, creditSale.amountDueUgx);
+  creditByBranch.forEach((row) => {
+    if (!branchTotals[row._id]) return;
+    branchTotals[row._id].credit += Number(row.amount || 0);
+    branchTotals[row._id].totalKg += Number(row.totalKg || 0);
   });
 
-  procurements.forEach((procurement) => {
-    const totals = procurementTotals[procurement.branch];
+  procurementByBranch.forEach((row) => {
+    const totals = procurementTotals[row._id];
     if (!totals) return;
-    totals.totalCost += Number(procurement.costUgx || 0);
-    totals.totalKg += Number(procurement.tonnageKg || 0);
-    totals.count += 1;
+    totals.totalCost += Number(row.amount || 0);
+    totals.totalKg += Number(row.totalKg || 0);
+    totals.count += Number(row.count || 0);
   });
+
+  applyBucketRows(trendBuckets, salesTrend);
+  applyBucketRows(trendBuckets, creditTrend);
 
   const grandTotal = Object.values(branchTotals).reduce(
     (totals, selectedBranch) => ({
@@ -240,8 +278,8 @@ const buildSalesAggregationPayload = ({
     { cash: 0, credit: 0, totalKg: 0 }
   );
 
-  const procurementTotal = procurements.reduce(
-    (sum, procurement) => sum + Number(procurement.costUgx || 0),
+  const procurementTotal = procurementByBranch.reduce(
+    (sum, row) => sum + Number(row.amount || 0),
     0
   );
 
@@ -260,12 +298,72 @@ const buildSalesAggregationPayload = ({
       data: trendBuckets.map((bucket) => bucket.total)
     },
     report: {
-      salesCount: sales.length,
-      creditSalesCount: creditSales.length,
-      procurementCount: procurements.length,
+      salesCount: sumCount(salesByBranch),
+      creditSalesCount: sumCount(creditByBranch),
+      procurementCount: sumCount(procurementByBranch),
       procurementTotal
     }
   };
 };
 
-export { resolveProduceTypeForSale, buildAggregationContext, buildSalesAggregationPayload };
+const loadDirectorAggregation = async ({ period, branch, specificDate }) => {
+  const context = buildAggregationContext({ period, branch, specificDate });
+  if (context.error) return context;
+
+  const { selectedBranches, trendBuckets, rangeStart, rangeEnd } = context;
+  const boundaries = bucketBoundaries(trendBuckets);
+  const branchMatch = { branch: { $in: selectedBranches } };
+
+  const [salesByBranch, creditByBranch, procurementByBranch, salesTrend, creditTrend] =
+    await Promise.all([
+      aggregateByBranch(Sale, { ...branchMatch, ...dateMatch('date', rangeStart, rangeEnd) }, 'amountPaidUgx'),
+      aggregateByBranch(
+        CreditSale,
+        { ...branchMatch, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
+        'amountDueUgx'
+      ),
+      aggregateByBranch(
+        Procurement,
+        { ...branchMatch, ...dateMatch('dateReceived', rangeStart, rangeEnd) },
+        'costUgx'
+      ),
+      aggregateByBucket(
+        Sale,
+        { ...branchMatch, ...dateMatch('date', rangeStart, rangeEnd) },
+        'date',
+        'amountPaidUgx',
+        boundaries
+      ),
+      aggregateByBucket(
+        CreditSale,
+        { ...branchMatch, ...dateMatch('dateOfDispatch', rangeStart, rangeEnd) },
+        'dateOfDispatch',
+        'amountDueUgx',
+        boundaries
+      )
+    ]);
+
+  return buildSalesAggregationPayload({
+    period: context.period,
+    branch: context.branch,
+    rangeStart,
+    rangeEnd,
+    selectedBranches,
+    trendBuckets,
+    salesByBranch,
+    creditByBranch,
+    procurementByBranch,
+    salesTrend,
+    creditTrend
+  });
+};
+
+export {
+  resolveProduceTypeForSale,
+  buildAggregationContext,
+  buildSalesAggregationPayload,
+  bucketBoundaries,
+  aggregateByBranch,
+  aggregateByBucket,
+  loadDirectorAggregation
+};
