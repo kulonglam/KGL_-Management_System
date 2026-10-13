@@ -51,6 +51,9 @@ const recordFailedLogin = (userId) => {
             '$loginAttempts',
             { $add: [{ $ifNull: ['$loginAttempts', 0] }, 1] }
           ]
+        },
+        lockUntil: {
+          $cond: [{ $gt: ['$lockUntil', now] }, '$lockUntil', null]
         }
       }
     },

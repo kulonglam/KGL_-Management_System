@@ -60,3 +60,24 @@ test('concurrent failures lock the account once the threshold is crossed', { tim
   const stillLocked = await User.findOne({ username }).lean();
   assert.equal(stillLocked.loginAttempts, 0);
 });
+
+test('a failed login after an expired lock clears the old lock time', { timeout: 60_000 }, async () => {
+  const app = createApp();
+  const username = 'lock-expired';
+  await User.create({
+    name: 'Lock Expired',
+    username,
+    password: await bcrypt.hash('Unique@Launch2026', 4),
+    role: 'manager',
+    branch: 'Maganjo',
+    loginAttempts: 2,
+    lockUntil: new Date(Date.now() - 60_000)
+  });
+
+  const response = await failLogin(app, username);
+  assert.equal(response.status, 401);
+
+  const stored = await User.findOne({ username }).lean();
+  assert.equal(stored.loginAttempts, 3);
+  assert.equal(stored.lockUntil, null);
+});
