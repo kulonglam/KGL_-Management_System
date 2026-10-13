@@ -42,18 +42,6 @@ const getAllCreditSales = async (req, res) => {
         'contact'
       ])
     );
-    const status = String(req.query.status || 'all');
-    if (status === 'paid') {
-      filter.isPaid = true;
-    } else if (status === 'outstanding') {
-      filter.isPaid = false;
-      filter.dueDate = trustedQuery({ $gte: startOfToday() });
-    } else if (status === 'overdue') {
-      filter.isPaid = false;
-      filter.dueDate = trustedQuery({ $lt: startOfToday() });
-      filter.balanceUgx = trustedQuery({ $gt: 0 });
-    }
-
     if (String(req.query.mine) === 'true') {
       filter.recordedBy = req.user._id;
     }
@@ -66,7 +54,20 @@ const getAllCreditSales = async (req, res) => {
       filter.dateOfDispatch = dateRange.filter;
     }
 
+    // Summary stays branch-wide. Status only narrows the table rows.
     const summaryFilter = { ...filter };
+    const status = String(req.query.status || 'all');
+    const today = startOfToday();
+    if (status === 'paid') {
+      filter.isPaid = true;
+    } else if (status === 'outstanding') {
+      filter.isPaid = false;
+      filter.dueDate = trustedQuery({ $gte: today });
+    } else if (status === 'overdue') {
+      filter.isPaid = false;
+      filter.dueDate = trustedQuery({ $lt: today });
+      filter.balanceUgx = trustedQuery({ $gt: 0 });
+    }
 
     const pagination = parsePagination(req.query);
     const sort = resolveSort(req.query.sort, {
@@ -90,7 +91,6 @@ const getAllCreditSales = async (req, res) => {
     }
 
     const total = await CreditSale.countDocuments(filter);
-    const today = startOfToday();
     const [paidCount, overdueCount, outstandingCount, balanceRows] = await Promise.all([
       CreditSale.countDocuments({ ...summaryFilter, isPaid: true }),
       CreditSale.countDocuments({

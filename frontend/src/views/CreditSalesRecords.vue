@@ -522,6 +522,12 @@ export default {
           this.creditSales.reduce((sum, item) => sum + this.getBalance(item), 0)
       );
     },
+    overdueCount() {
+      if (this.listSummary.overdueCount !== undefined && this.listSummary.overdueCount !== null) {
+        return Number(this.listSummary.overdueCount);
+      }
+      return this.creditSales.filter((item) => this.isOverdue(item)).length;
+    },
     activeFilterCount() {
       let count = 0;
       if (this.searchQuery) count += 1;
@@ -550,6 +556,11 @@ export default {
           label: 'Outstanding',
           value: this.outstandingCount.toLocaleString('en-UG'),
           meta: `Paid: ${this.paidCount.toLocaleString('en-UG')}`
+        },
+        {
+          label: 'Overdue',
+          value: this.overdueCount.toLocaleString('en-UG'),
+          meta: 'Past due with a balance'
         },
         {
           label: 'Open Balance',

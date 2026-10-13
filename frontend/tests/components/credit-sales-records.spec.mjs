@@ -171,4 +171,51 @@ describe('CreditSalesRecords repayment dialog', () => {
     expect(wrapper.find('.repay-modal').exists()).toBe(true);
     expect(wrapper.find('.repay-modal button[type="submit"]').attributes('disabled')).toBeDefined();
   });
+
+  it('keeps an over-balance repayment on screen and does not call the API', async () => {
+    const wrapper = mount(CreditSalesRecords, {
+      global: {
+        stubs: {
+          InsightStrip: { template: '<div />' },
+          TablePagination: { template: '<div />' },
+          ConfirmDialog: { template: '<div />' }
+        }
+      }
+    });
+    await flushPromises();
+
+    await wrapper.findAll('button').find((button) => button.text().trim() === 'Repay').trigger('click');
+    await wrapper.find('#repay-amount').setValue('100001');
+    await wrapper.find('.repay-modal form').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(creditSalesAPI.repay).not.toHaveBeenCalled();
+    expect(wrapper.find('.repay-modal').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Amount paid cannot exceed the current balance.');
+  });
+
+  it('shows the overdue count from the list summary and marks a past-due row', async () => {
+    creditSalesAPI.getAll.mockResolvedValue({
+      data: {
+        items: [{ ...outstandingSale, dueDate: '2020-01-01' }],
+        pagination: { total: 1, page: 1, totalPages: 1 },
+        summary: { outstandingCount: 0, paidCount: 0, overdueCount: 1, outstandingBalance: 100000 }
+      }
+    });
+
+    const wrapper = mount(CreditSalesRecords, {
+      global: {
+        stubs: {
+          InsightStrip: { template: '<div />' },
+          TablePagination: { template: '<div />' },
+          ConfirmDialog: { template: '<div />' }
+        }
+      }
+    });
+    await flushPromises();
+
+    const overdue = wrapper.vm.overviewItems.find((item) => item.label === 'Overdue');
+    expect(overdue.value).toBe('1');
+    expect(wrapper.text()).toContain('Overdue');
+  });
 });
