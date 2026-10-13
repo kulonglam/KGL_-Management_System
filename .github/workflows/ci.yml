@@ -93,6 +93,6 @@ jobs:
         working-directory: frontend
         run: npx playwright install chromium --with-deps
 
-      - name: Record a cash sale in the browser
+      - name: Record a cash sale and open staff and branch screens
         working-directory: backend
-        run: node --test tests/browser/cashSale.browser.mjs
+        run: node --test --test-concurrency=1 tests/browser/cashSale.browser.mjs tests/browser/staffBranches.browser.mjs

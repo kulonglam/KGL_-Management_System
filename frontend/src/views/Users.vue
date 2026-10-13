@@ -157,7 +157,7 @@
                 class="form-control"
                 v-model="form.name"
                 minlength="2"
-                pattern="^[A-Za-z0-9\\s]+$"
+                pattern="^[A-Za-z0-9\s.]+$"
                 required
               />
             </div>
