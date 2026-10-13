@@ -197,3 +197,28 @@ test('protect allows access tokens with typ access', async () => {
     User.findById = originalFindById;
   }
 });
+
+test('protect rejects production access tokens until MFA is on', async () => {
+  const originalEnv = process.env.NODE_ENV;
+  const originalFindById = User.findById;
+  process.env.NODE_ENV = 'production';
+  User.findById = () => ({
+    select: async () => ({ _id: 'u1', role: 'manager', tokenVersion: 0, mfaEnabled: false })
+  });
+
+  try {
+    const req = {
+      headers: { authorization: `Bearer ${signToken({ id: 'u1', typ: 'access', tokenVersion: 0 })}` }
+    };
+    const res = createRes();
+    let nextCalled = false;
+    await protect(req, res, () => {
+      nextCalled = true;
+    });
+    assert.equal(nextCalled, false);
+    assert.equal(res.statusCode, 401);
+  } finally {
+    process.env.NODE_ENV = originalEnv;
+    User.findById = originalFindById;
+  }
+});

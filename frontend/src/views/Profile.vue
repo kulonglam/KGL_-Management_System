@@ -259,14 +259,20 @@ export default {
     // Keep Pinia session user details synchronized with profile updates.
     updateSessionUser(user) {
       const authStore = useAuthStore(pinia);
-      authStore.updateUser({
+      const nextUser = {
         _id: user._id,
         name: user.name,
         username: user.username,
         profileImage: user.profileImage ?? '',
         role: user.role,
-        branch: user.branch
-      });
+        branch: user.branch,
+        mfaEnabled: Boolean(user.mfaEnabled)
+      };
+      if (user.token) {
+        authStore.setSession(user.token, nextUser);
+        return;
+      }
+      authStore.updateUser(nextUser);
     },
     // Validate and preview selected profile image before upload.
     handleImageChange(event) {
@@ -374,7 +380,8 @@ export default {
       this.securityBusy = true;
       this.error = '';
       try {
-        await authAPI.enableMfa({ code: this.mfaCode });
+        const response = await authAPI.enableMfa({ code: this.mfaCode });
+        this.updateSessionUser(response.data || {});
         this.success = 'Authenticator MFA is enabled.';
         this.otpauthUri = '';
         this.mfaCode = '';

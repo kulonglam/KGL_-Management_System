@@ -44,6 +44,67 @@ const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
 
+const refreshReuseGraceMs = () => {
+  const configured = Number(process.env.AUTH_REFRESH_REUSE_GRACE_MS);
+  if (Number.isFinite(configured) && configured >= 0) return configured;
+  return 10_000;
+};
+
+const refreshVersionFilter = (presented) =>
+  presented === 0 ? mongoose.trusted({ $in: [0, null] }) : presented;
+
+// Rotate the refresh cookie on use. A second copy is accepted only briefly, then the session is revoked.
+const acceptRefreshToken = async (decoded) => {
+  const presented = Number(decoded.refreshTokenVersion);
+  if (!Number.isInteger(presented) || presented < 0) {
+    return { status: 'invalid' };
+  }
+
+  const presentedJti = String(decoded.jti || '');
+  const rotated = await User.findOneAndUpdate(
+    { _id: decoded.id, refreshTokenVersion: refreshVersionFilter(presented) },
+    {
+      $inc: { refreshTokenVersion: 1 },
+      $set: { refreshRotatedAt: new Date(), previousRefreshJti: presentedJti }
+    },
+    { new: true }
+  );
+  if (rotated) {
+    return { status: 'rotated', user: rotated };
+  }
+
+  const existing = await User.findById(decoded.id);
+  if (!existing) {
+    return { status: 'invalid' };
+  }
+
+  const current = Number(existing.refreshTokenVersion || 0);
+  const rotatedAt = existing.refreshRotatedAt ? new Date(existing.refreshRotatedAt).getTime() : 0;
+  const withinGrace =
+    presented === current - 1 &&
+    presentedJti !== '' &&
+    presentedJti === String(existing.previousRefreshJti || '') &&
+    Number.isFinite(rotatedAt) &&
+    Date.now() - rotatedAt <= refreshReuseGraceMs();
+
+  if (withinGrace) {
+    return { status: 'grace', user: existing };
+  }
+
+  if (presented < current) {
+    await revokeUserTokens(existing._id);
+    return { status: 'reused' };
+  }
+
+  return { status: 'invalid' };
+};
+
+const cutOffRefreshSessions = (user) => {
+  user.refreshTokenVersion = Number(user.refreshTokenVersion || 0) + 1;
+  user.refreshRotatedAt = new Date();
+  user.previousRefreshJti = '';
+};
+
 // Increment and, once the threshold is reached, lock the account in the same document write.
 const recordFailedLogin = (userId) => {
   const now = new Date();
@@ -191,9 +252,12 @@ const logout = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    return res.json(toUserPayload(user));
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -253,6 +317,7 @@ const updateMe = async (req, res) => {
       }
       user.password = await hashPassword(password);
       user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+      cutOffRefreshSessions(user);
       passwordUpdated = true;
     }
 
@@ -263,10 +328,18 @@ const updateMe = async (req, res) => {
     const updatedUser = await user.save();
 
     if (setupPasswordChange) {
+      clearRefreshCookie(res);
       return res.json({
         passwordChanged: true,
         message: 'Password updated. Sign in with the new password.'
       });
+    }
+
+    if (passwordUpdated) {
+      setRefreshCookie(
+        res,
+        generateRefreshToken(updatedUser._id, Number(updatedUser.refreshTokenVersion || 0))
+      );
     }
 
     return res.json(toUserPayload(updatedUser, passwordUpdated));
@@ -322,7 +395,7 @@ const getUsers = async (req, res) => {
       usersQuery.skip(pagination.skip).limit(pagination.limit);
     }
 
-    const users = await usersQuery;
+    const users = (await usersQuery).map((user) => toUserPayload(user));
     const branchScope = req.user.role === 'manager' ? { branch: req.user.branch } : {};
     const summary = {
       managerCount: await User.countDocuments({ ...branchScope, role: 'manager' }),
@@ -425,12 +498,21 @@ const refreshSession = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
 
-    const user = await User.findById(decoded.id);
-    if (!user || Number(decoded.refreshTokenVersion) !== Number(user.refreshTokenVersion || 0)) {
+    const outcome = await acceptRefreshToken(decoded);
+    if (outcome.status !== 'rotated' && outcome.status !== 'grace') {
+      if (outcome.status === 'reused') {
+        clearRefreshCookie(res);
+      }
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
 
-    return res.json(issueSession(res, user));
+    if (isProduction() && !outcome.user.mfaEnabled) {
+      await revokeUserTokens(outcome.user._id);
+      clearRefreshCookie(res);
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    return res.json(issueSession(res, outcome.user));
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized, token failed' });
   }
@@ -470,7 +552,7 @@ const resetPasswordWithRecoveryCode = async (req, res) => {
     user.recoveryCodeHashes = hashes;
     user.password = await hashPassword(newPassword);
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
-    user.refreshTokenVersion = Number(user.refreshTokenVersion || 0) + 1;
+    cutOffRefreshSessions(user);
     await user.save();
     clearRefreshCookie(res);
     return res.json({ message: 'Password reset successfully. Sign in with your new password.' });
@@ -550,11 +632,14 @@ const enableMfa = async (req, res) => {
     user.mfaSecret = secret;
     user.mfaPendingSecret = '';
     user.mfaEnabled = true;
-    if (req.setupPurpose === 'mfa') {
-      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
-    }
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    cutOffRefreshSessions(user);
     await user.save();
-    return res.json({ mfaEnabled: true });
+    if (req.setupPurpose === 'mfa') {
+      clearRefreshCookie(res);
+      return res.json({ mfaEnabled: true });
+    }
+    return res.json(issueSession(res, user));
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error' });
   }

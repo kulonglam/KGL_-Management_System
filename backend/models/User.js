@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema(
     canViewCrossBranchTotals: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0, min: 0 },
     refreshTokenVersion: { type: Number, default: 0, min: 0 },
+    refreshRotatedAt: { type: Date, default: null },
+    previousRefreshJti: { type: String, default: '' },
     loginAttempts: { type: Number, default: 0, min: 0 },
     lockUntil: { type: Date, default: null },
     recoveryCodeHashes: { type: [String], default: [] },

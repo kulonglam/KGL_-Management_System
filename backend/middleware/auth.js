@@ -1,7 +1,7 @@
 // Provides reusable Express middleware for auth, validation, security, logging, and response shaping.
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
+import { getJwtAlgorithms, getJwtClaimOptions, isProduction } from '../config/security.js';
 import { isDirectorAccount } from '../services/authService.js';
 import logger from '../utils/logger.js';
 
@@ -58,6 +58,14 @@ const protect = async (req, res, next) => {
     ) {
       logger.warn('auth.token.rejected', {
         reason: 'token_version_mismatch',
+        userId: String(req.user._id)
+      });
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    if (decoded.typ === 'access' && isProduction() && !req.user.mfaEnabled) {
+      logger.warn('auth.token.rejected', {
+        reason: 'mfa_required',
         userId: String(req.user._id)
       });
       return res.status(401).json({ message: 'Not authorized, token failed' });
