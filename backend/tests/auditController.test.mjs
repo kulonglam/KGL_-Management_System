@@ -169,3 +169,38 @@ test('listAuditLogs fills missing details for sales and credit sales', async () 
   assert.deepEqual(deletedLog.metadata, {});
   assert.equal(deletedLog.detailsNote, 'The original record is no longer available.');
 });
+
+test('listAuditLogs keeps stored facts and fills the blank ones from the live sale', async () => {
+  const saleId = '507f1f77bcf86cd799439011';
+  AuditLog.find = () =>
+    queryFor([
+      {
+        _id: 'log-sparse',
+        entityType: 'sale',
+        entityId: saleId,
+        metadata: { produceName: 'Yellow Beans' }
+      }
+    ]);
+  AuditLog.countDocuments = async () => 1;
+  Sale.find = findDocs([
+    {
+      _id: saleId,
+      produceName: 'Changed Later',
+      produceType: 'Beans',
+      tonnageKg: 20,
+      buyerName: 'Amina Kato',
+      amountPaidUgx: 800000
+    }
+  ]);
+  CreditSale.find = findDocs([]);
+  Procurement.find = findDocs([]);
+
+  const res = createRes();
+  await listAuditLogs({ user: { role: 'director' }, query: { page: 1, limit: 20 } }, res);
+
+  const row = res.body.items[0];
+  assert.equal(row.metadata.produceName, 'Yellow Beans');
+  assert.equal(row.metadata.tonnageKg, 20);
+  assert.equal(row.metadata.amountPaidUgx, 800000);
+  assert.equal(row.detailsNote, undefined);
+});

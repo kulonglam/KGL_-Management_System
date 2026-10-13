@@ -11,9 +11,12 @@ const TRANSACTION_DETAIL_FIELDS = [
   'produceType',
   'tonnageKg',
   'buyerName',
+  'dealerName',
   'amountPaidUgx',
   'amountDueUgx',
-  'balanceUgx'
+  'balanceUgx',
+  'costUgx',
+  'sellingPrice'
 ];
 
 const ENTITY_SOURCES = {
@@ -22,8 +25,22 @@ const ENTITY_SOURCES = {
   procurement: Procurement
 };
 
+const ENTITY_DETAIL_FIELDS = {
+  sale: ['produceName', 'produceType', 'tonnageKg', 'buyerName', 'amountPaidUgx'],
+  creditSale: ['produceName', 'produceType', 'tonnageKg', 'buyerName', 'amountDueUgx', 'balanceUgx'],
+  procurement: ['produceName', 'produceType', 'tonnageKg', 'dealerName', 'costUgx', 'sellingPrice']
+};
+
 const hasAuditDetails = (metadata) =>
   Boolean(metadata && typeof metadata === 'object' && !Array.isArray(metadata) && Object.keys(metadata).length > 0);
+
+const isBlankDetail = (value) => value === undefined || value === null || value === '';
+
+const needsSourceDetails = (entityType, metadata) => {
+  const fields = ENTITY_DETAIL_FIELDS[entityType];
+  if (!fields) return false;
+  return fields.some((field) => isBlankDetail(metadata?.[field]));
+};
 
 const transactionAuditMetadata = (record, extra = {}) => {
   const metadata = {};
@@ -41,7 +58,7 @@ const transactionAuditMetadata = (record, extra = {}) => {
   return metadata;
 };
 
-// Fill details for older transaction rows that were stored without metadata.
+// Fill blank transaction facts from the live record. Stored facts stay when that record is gone.
 const enrichAuditItems = async (items) => {
   const missingIds = {
     sale: new Set(),
@@ -50,7 +67,7 @@ const enrichAuditItems = async (items) => {
   };
 
   for (const item of items) {
-    if (hasAuditDetails(item.metadata) || !ENTITY_SOURCES[item.entityType] || !item.entityId) {
+    if (!ENTITY_SOURCES[item.entityType] || !item.entityId || !needsSourceDetails(item.entityType, item.metadata)) {
       continue;
     }
     missingIds[item.entityType].add(String(item.entityId));
@@ -73,20 +90,18 @@ const enrichAuditItems = async (items) => {
   );
 
   return items.map((item) => {
-    if (hasAuditDetails(item.metadata)) {
-      return item;
-    }
     const doc = loaded[item.entityType]?.get(String(item.entityId));
-    if (!doc) {
-      if (ENTITY_SOURCES[item.entityType]) {
-        return {
-          ...item,
-          detailsNote: 'The original record is no longer available.'
-        };
-      }
-      return item;
+    if (doc) {
+      const stored = hasAuditDetails(item.metadata) ? item.metadata : {};
+      return { ...item, metadata: { ...transactionAuditMetadata(doc), ...stored } };
     }
-    return { ...item, metadata: transactionAuditMetadata(doc) };
+    if (!hasAuditDetails(item.metadata) && ENTITY_SOURCES[item.entityType]) {
+      return {
+        ...item,
+        detailsNote: 'The original record is no longer available.'
+      };
+    }
+    return item;
   });
 };
 

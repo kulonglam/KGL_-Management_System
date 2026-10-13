@@ -15,7 +15,7 @@ import {
   getBucketTonnage
 } from '../services/inventoryService.js';
 import { withStockLock } from '../services/stockLockService.js';
-import { recordAudit } from '../services/auditService.js';
+import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -162,7 +162,7 @@ const createProcurement = async (req, res) => {
       entityType: 'procurement',
       entityId: procurement._id,
       branch: req.user.branch,
-      metadata: { produceName, produceType, tonnageKg: procurement.tonnageKg }
+      metadata: transactionAuditMetadata(procurement)
     });
 
     res.status(201).json(procurement);
@@ -323,7 +323,7 @@ const updateProcurement = async (req, res) => {
       entityType: 'procurement',
       entityId: updatedProcurement._id,
       branch: procurement.branch,
-      metadata: { produceName: nextProduceName, produceType: nextProduceType, tonnageKg: nextTonnageKg }
+      metadata: transactionAuditMetadata(updatedProcurement)
     });
 
     res.json(normalizeProcurementPayload(updatedProcurement.toObject()));
@@ -388,11 +388,7 @@ const deleteProcurement = async (req, res) => {
       entityType: 'procurement',
       entityId: procurement._id,
       branch: procurement.branch,
-      metadata: {
-        produceName: procurement.produceName,
-        produceType: procurement.produceType,
-        tonnageKg: procurement.tonnageKg
-      }
+      metadata: transactionAuditMetadata(procurement)
     });
 
     res.json({ message: 'Procurement record deleted successfully' });

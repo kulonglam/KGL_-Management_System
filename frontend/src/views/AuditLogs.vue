@@ -28,7 +28,7 @@
                 <td>{{ item.action }}</td>
                 <td>{{ item.entityType }} {{ item.entityId }}</td>
                 <td>
-                  <pre v-if="formatMetadata(item.metadata)" class="mb-0 small">{{ formatMetadata(item.metadata) }}</pre>
+                  <pre v-if="formatMetadata(item.metadata)" class="mb-0 small audit-details">{{ formatMetadata(item.metadata) }}</pre>
                   <span v-else-if="item.detailsNote">{{ item.detailsNote }}</span>
                   <span v-else>-</span>
                 </td>
@@ -55,6 +55,7 @@
 <script>
 import TablePagination from '../components/common/TablePagination.vue';
 import { auditAPI } from '../services/api';
+import { formatAuditDetails } from '../utils/auditDetails.js';
 import { asListPayload } from '../utils/listPayload.js';
 import { formatDisplayTimestamp } from '../utils/dateFormat.js';
 
@@ -111,12 +112,7 @@ export default {
       this.pageSize = Number(size || 20);
     },
     formatTime: formatDisplayTimestamp,
-    formatMetadata(metadata) {
-      if (!metadata || typeof metadata !== 'object' || Object.keys(metadata).length === 0) {
-        return '';
-      }
-      return JSON.stringify(metadata, null, 2);
-    }
+    formatMetadata: formatAuditDetails
   }
 };
 </script>
