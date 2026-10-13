@@ -52,7 +52,7 @@ router.put(
 router.post(
   '/:id/restore',
   protect,
-  authorize('manager'),
+  authorize('manager', 'director'),
   writeLimiter,
   mongoIdParamValidation,
   validateRequest,
