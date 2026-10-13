@@ -57,27 +57,31 @@ test('a snapshot restores users and price history after they are removed', { tim
   const previousEnv = process.env.NODE_ENV;
   const previousUrl = process.env.BACKUP_UPLOAD_URL;
   const previousToken = process.env.BACKUP_UPLOAD_TOKEN;
-  process.env.NODE_ENV = 'production';
-  delete process.env.BACKUP_UPLOAD_URL;
-  await assert.rejects(() => publishBackup(backupDir), /BACKUP_UPLOAD_URL/);
-  process.env.BACKUP_UPLOAD_URL = 'http://backups.example.com/kgl';
-  await assert.rejects(() => publishBackup(backupDir), /https/);
-
   let uploaded;
-  process.env.BACKUP_UPLOAD_URL = 'https://backups.example.com/kgl';
-  process.env.BACKUP_UPLOAD_TOKEN = 'secret-token';
-  await publishBackup(backupDir, async (url, options) => {
-    assert.equal(url, 'https://backups.example.com/kgl');
-    assert.equal(options.method, 'PUT');
-    assert.equal(options.headers.Authorization, 'Bearer secret-token');
-    uploaded = JSON.parse(options.body);
-    return { ok: true, status: 200 };
-  });
-  process.env.NODE_ENV = previousEnv;
-  if (previousUrl === undefined) delete process.env.BACKUP_UPLOAD_URL;
-  else process.env.BACKUP_UPLOAD_URL = previousUrl;
-  if (previousToken === undefined) delete process.env.BACKUP_UPLOAD_TOKEN;
-  else process.env.BACKUP_UPLOAD_TOKEN = previousToken;
+  try {
+    process.env.NODE_ENV = 'production';
+    delete process.env.BACKUP_UPLOAD_URL;
+    await assert.rejects(() => publishBackup(backupDir), /BACKUP_UPLOAD_URL/);
+    process.env.BACKUP_UPLOAD_URL = 'http://backups.example.com/kgl';
+    await assert.rejects(() => publishBackup(backupDir), /https/);
+
+    process.env.BACKUP_UPLOAD_URL = 'https://backups.example.com/kgl';
+    process.env.BACKUP_UPLOAD_TOKEN = 'secret-token';
+    await publishBackup(backupDir, async (url, options) => {
+      assert.equal(url, 'https://backups.example.com/kgl');
+      assert.equal(options.method, 'PUT');
+      assert.equal(options.headers.Authorization, 'Bearer secret-token');
+      uploaded = JSON.parse(options.body);
+      return { ok: true, status: 200 };
+    });
+  } finally {
+    if (previousEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousEnv;
+    if (previousUrl === undefined) delete process.env.BACKUP_UPLOAD_URL;
+    else process.env.BACKUP_UPLOAD_URL = previousUrl;
+    if (previousToken === undefined) delete process.env.BACKUP_UPLOAD_TOKEN;
+    else process.env.BACKUP_UPLOAD_TOKEN = previousToken;
+  }
 
   await rm(backupDir, { recursive: true, force: true });
   const copyDir = await mkdtemp(path.join(tmpdir(), 'kgl-backup-copy-'));
