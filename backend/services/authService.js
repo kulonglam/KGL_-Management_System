@@ -9,6 +9,8 @@ import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { getJwtClaimOptions } from '../config/security.js';
+import { rejectDocumentedPassword } from '../config/seedPolicy.js';
+import { escapeRegex, trustedQuery } from '../utils/listQuery.js';
 
 // Maximum allowed profile image payload size (1 MB).
 const MAX_PROFILE_IMAGE_SIZE = 1024 * 1024;
@@ -18,6 +20,46 @@ const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'im
 const BRANCH_ROLE_LIMITS = {
   manager: { min: 1, max: 1 },
   sales_agent: { min: 2, max: 2 }
+};
+const STAFF_ROLES = ['manager', 'sales_agent'];
+const ACCOUNT_ROLES = ['director', 'manager', 'sales_agent'];
+
+// Managers can only list their own branch staff. Other roles keep the requested role.
+const resolveUserListRoleFilter = (actorRole, requestedRole = 'all') => {
+  const role = String(requestedRole || 'all');
+
+  if (actorRole === 'manager') {
+    if (role === 'all') {
+      return { roleIn: STAFF_ROLES };
+    }
+    if (!STAFF_ROLES.includes(role)) {
+      return { error: 'Invalid role filter', statusCode: 400 };
+    }
+    return { role };
+  }
+
+  if (role === 'all') {
+    return {};
+  }
+  if (!ACCOUNT_ROLES.includes(role)) {
+    return { error: 'Invalid role filter', statusCode: 400 };
+  }
+  return { role };
+};
+
+const findUserByUsername = (username, excludeUserId = null) => {
+  const query = {
+    username: trustedQuery({
+      $regex: `^${escapeRegex(String(username || '').trim())}$`,
+      $options: 'i'
+    })
+  };
+
+  if (excludeUserId) {
+    query._id = trustedQuery({ $ne: excludeUserId });
+  }
+
+  return User.findOne(query);
 };
 const PASSWORD_POLICY = {
   minLength: 10,
@@ -96,6 +138,16 @@ const generateMfaToken = (id) =>
     process.env.JWT_SECRET,
     {
       expiresIn: '5m',
+      ...getJwtClaimOptions()
+    }
+  );
+
+const generateSetupToken = (id, tokenVersion = 0, purpose) =>
+  jwt.sign(
+    { id, tokenVersion, typ: 'setup', purpose, jti: randomUUID() },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: '10m',
       ...getJwtClaimOptions()
     }
   );
@@ -271,6 +323,10 @@ const registerUser = async ({ actorUser, payload }) => {
   if (passwordPolicyError) {
     throw createServiceError(400, passwordPolicyError);
   }
+  const documentedPasswordError = rejectDocumentedPassword(password);
+  if (documentedPasswordError) {
+    throw createServiceError(400, documentedPasswordError);
+  }
 
   const isManager = actorUser && actorUser.role === 'manager';
   if (isManager) {
@@ -283,7 +339,7 @@ const registerUser = async ({ actorUser, payload }) => {
     }
   }
 
-  const userExists = await User.findOne({ username });
+  const userExists = await findUserByUsername(username);
   if (userExists) {
     throw createServiceError(400, 'User already exists');
   }
@@ -346,10 +402,7 @@ const updateUserRecord = async ({ actorUser, targetUserId, payload }) => {
 
   if (name !== undefined) user.name = name;
   if (username !== undefined) {
-    const existing = await User.findOne({
-      username,
-      _id: mongoose.trusted({ $ne: user._id })
-    });
+    const existing = await findUserByUsername(username, user._id);
     if (existing) {
       throw createServiceError(400, 'Username already exists');
     }
@@ -397,9 +450,12 @@ export {
   getManagerUserAccessError,
   revokeUserTokens,
   validatePasswordStrength,
+  findUserByUsername,
+  resolveUserListRoleFilter,
   registerUser,
   updateUserRecord,
   generateRefreshToken,
   generateMfaToken,
+  generateSetupToken,
   createRecoveryCodes
 };

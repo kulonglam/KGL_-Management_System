@@ -9,6 +9,7 @@ frontend/dist/
 # Runtime files
 *.log
 coverage/
+backend/backups/
 
 # Secrets (allow committed examples only)
 **/.env

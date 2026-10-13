@@ -79,8 +79,7 @@ export default {
       saving: false,
       error: '',
       success: '',
-      form: { name: '', managerName: '', managerUsername: '', managerPassword: '' },
-      defaultBranches: ['Maganjo', 'Matugga']
+      form: { name: '', managerName: '', managerUsername: '', managerPassword: '' }
     };
   },
   async created() {
@@ -88,7 +87,7 @@ export default {
   },
   methods: {
     canDeactivate(branch) {
-      return branch?._id && !this.defaultBranches.includes(branch.name);
+      return branch?._id && branch.isDefault !== true;
     },
     async toggleActive(branch) {
       this.saving = true;

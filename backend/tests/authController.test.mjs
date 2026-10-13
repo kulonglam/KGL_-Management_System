@@ -45,13 +45,18 @@ test('login returns a generic 401 response when an account is locked', async (t)
 
 test('login returns the same generic 401 response for invalid credentials', async (t) => {
   const user = {
+    _id: 'user-1',
     password: 'stored-hash',
     loginAttempts: 0,
-    lockUntil: null,
-    async save() {}
+    lockUntil: null
   };
 
   t.mock.method(User, 'findOne', async () => user);
+  t.mock.method(User, 'findOneAndUpdate', async (_filter, update) => {
+    user.loginAttempts += update.$inc.loginAttempts;
+    return user;
+  });
+  t.mock.method(User, 'updateOne', async () => ({}));
   t.mock.method(bcrypt, 'compare', async () => false);
 
   const req = {

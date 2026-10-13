@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import User from '../models/User.js';
-import { getGenericLoginFailure, revokeUserTokens } from '../services/authService.js';
+import { getGenericLoginFailure, resolveUserListRoleFilter, revokeUserTokens } from '../services/authService.js';
 
 test('getGenericLoginFailure returns a generic auth error without account details', () => {
   assert.deepEqual(getGenericLoginFailure(), {
@@ -37,4 +37,16 @@ test('revokeUserTokens throws a not-found error when the user does not exist', a
     () => revokeUserTokens('missing-user'),
     (error) => error.statusCode === 404 && error.message === 'User not found'
   );
+});
+
+test('a manager cannot list director accounts through the role filter', () => {
+  const allowed = resolveUserListRoleFilter('manager', 'all');
+  assert.deepEqual(allowed.roleIn, ['manager', 'sales_agent']);
+
+  const rejected = resolveUserListRoleFilter('manager', 'director');
+  assert.equal(rejected.statusCode, 400);
+  assert.equal(rejected.error, 'Invalid role filter');
+
+  const agent = resolveUserListRoleFilter('manager', 'sales_agent');
+  assert.equal(agent.role, 'sales_agent');
 });

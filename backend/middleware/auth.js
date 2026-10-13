@@ -27,9 +27,23 @@ const protect = async (req, res, next) => {
       ...getJwtClaimOptions()
     });
 
-    if (decoded.typ !== 'access') {
+    if (decoded.typ !== 'access' && decoded.typ !== 'setup') {
       logger.warn('auth.token.rejected', { reason: 'wrong_token_type', typ: decoded.typ || 'missing' });
       return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+
+    if (decoded.typ === 'setup') {
+      const pathName = String(req.path || '');
+      const passwordChange =
+        decoded.purpose === 'password' && req.method === 'PUT' && pathName.endsWith('/me');
+      const mfaEnrollment =
+        decoded.purpose === 'mfa' &&
+        req.method === 'POST' &&
+        (pathName.endsWith('/mfa/setup') || pathName.endsWith('/mfa/enable'));
+      if (!passwordChange && !mfaEnrollment) {
+        return res.status(403).json({ message: 'Finish account setup before using the app' });
+      }
+      req.setupPurpose = decoded.purpose;
     }
 
     req.user = await User.findById(decoded.id).select('-password');

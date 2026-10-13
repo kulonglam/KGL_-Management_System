@@ -32,4 +32,31 @@ const resolveSort = (sortKey, sortMap = {}, fallback = { createdAt: -1 }) => {
   return fallback;
 };
 
-export { buildSearchFilter, startOfToday, resolveSort, trustedQuery };
+// Inclusive from/to bounds for list queries. Blank bounds are omitted.
+const buildDateRangeFilter = (fromValue, toValue) => {
+  const bounds = {};
+
+  if (fromValue !== undefined && fromValue !== null && String(fromValue).trim() !== '') {
+    const from = new Date(fromValue);
+    if (Number.isNaN(from.getTime())) {
+      return { error: 'from must be a valid date' };
+    }
+    bounds.$gte = from;
+  }
+
+  if (toValue !== undefined && toValue !== null && String(toValue).trim() !== '') {
+    const to = new Date(toValue);
+    if (Number.isNaN(to.getTime())) {
+      return { error: 'to must be a valid date' };
+    }
+    bounds.$lte = to;
+  }
+
+  if (!bounds.$gte && !bounds.$lte) {
+    return { filter: null };
+  }
+
+  return { filter: trustedQuery(bounds) };
+};
+
+export { buildDateRangeFilter, buildSearchFilter, escapeRegex, startOfToday, resolveSort, trustedQuery };

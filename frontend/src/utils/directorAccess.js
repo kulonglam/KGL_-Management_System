@@ -9,4 +9,12 @@ const getHomeRouteForUser = (user) => {
   return '/';
 };
 
-export { isDirector, getHomeRouteForUser };
+const buildBranchFilterOptions = (names = []) => [
+  { value: 'all', label: 'All Branches' },
+  ...names
+    .map((name) => String(name || '').trim())
+    .filter(Boolean)
+    .map((name) => ({ value: name, label: name }))
+];
+
+export { isDirector, getHomeRouteForUser, buildBranchFilterOptions };

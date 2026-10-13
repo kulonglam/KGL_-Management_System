@@ -134,6 +134,28 @@ test('protect rejects refresh and MFA tokens even when the signature is valid', 
   }
 });
 
+test('protect rejects a setup token outside the account-setup routes', async () => {
+  const req = {
+    method: 'GET',
+    path: '/sales',
+    headers: {
+      authorization: `Bearer ${signToken({
+        id: 'u1',
+        typ: 'setup',
+        purpose: 'password',
+        tokenVersion: 0
+      })}`
+    }
+  };
+  const res = createRes();
+  let nextCalled = false;
+  await protect(req, res, () => {
+    nextCalled = true;
+  });
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 403);
+});
+
 test('protect rejects legacy tokens that omit the typ claim', async () => {
   const originalFindById = User.findById;
   User.findById = () => ({

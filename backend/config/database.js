@@ -28,12 +28,12 @@ const normalizeGroundnutProduceTypes = async () => {
     CreditSale.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
     PriceSetting.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
     StockNotification.updateMany({ produceType: legacyGroundnutTypeFilter }, canonicalGroundnutUpdate),
-    PriceHistory.updateMany(
-      { previousProduceType: legacyGroundnutTypeFilter },
+    PriceHistory.collection.updateMany(
+      { previousProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
       { $set: { previousProduceType: 'Groundnuts' } }
     ),
-    PriceHistory.updateMany(
-      { nextProduceType: legacyGroundnutTypeFilter },
+    PriceHistory.collection.updateMany(
+      { nextProduceType: { $in: LEGACY_GROUNDNUT_TYPES } },
       { $set: { nextProduceType: 'Groundnuts' } }
     )
   ]);

@@ -16,14 +16,18 @@ import {
   getManagerUserAccessError,
   getGenericLoginFailure,
   revokeUserTokens,
+  resolveUserListRoleFilter,
   registerUser,
   updateUserRecord,
   generateRefreshToken,
   generateMfaToken,
+  generateSetupToken,
   createRecoveryCodes
 } from '../services/authService.js';
+import { isProduction } from '../config/security.js';
+import { DOCUMENTED_SEED_PASSWORD, rejectDocumentedPassword } from '../config/seedPolicy.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '../utils/cookies.js';
 import { buildOtpAuthUri, generateTotpSecret, verifyTotpCode } from '../utils/totp.js';
@@ -32,6 +36,31 @@ import { recordAudit } from '../services/auditService.js';
 const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
+
+const productionLoginGate = async (user) => {
+  if (!isProduction()) {
+    return null;
+  }
+
+  const usesDemoPassword = await bcrypt.compare(DOCUMENTED_SEED_PASSWORD, user.password);
+  if (usesDemoPassword) {
+    return {
+      passwordChangeRequired: true,
+      setupToken: generateSetupToken(user._id, Number(user.tokenVersion || 0), 'password'),
+      message: 'Replace the documented demo password before using this account.'
+    };
+  }
+
+  if (!user.mfaEnabled) {
+    return {
+      mfaEnrollmentRequired: true,
+      setupToken: generateSetupToken(user._id, Number(user.tokenVersion || 0), 'mfa'),
+      message: 'Turn on authenticator MFA before using this account.'
+    };
+  }
+
+  return null;
+};
 
 // POST /api/auth/login: authenticate credentials, apply lockout policy, and return auth payload.
 const login = async (req, res) => {
@@ -59,6 +88,10 @@ const login = async (req, res) => {
         await user.save();
       }
       await ensureLegacyDirectorTotalsAccess(user);
+      const setupResponse = await productionLoginGate(user);
+      if (setupResponse) {
+        return res.json(setupResponse);
+      }
       if (user.mfaEnabled) {
         return res.json({
           mfaRequired: true,
@@ -76,13 +109,25 @@ const login = async (req, res) => {
       return res.json(toUserPayload(user, true));
     } else {
       if (user) {
-        const nextAttempts = Number(user.loginAttempts || 0) + 1;
-        user.loginAttempts = nextAttempts;
-        if (nextAttempts >= MAX_LOGIN_ATTEMPTS) {
-          user.lockUntil = new Date(Date.now() + LOGIN_LOCK_WINDOW_MS);
-          user.loginAttempts = 0;
+        const updated = await User.findOneAndUpdate(
+          { _id: user._id },
+          { $inc: { loginAttempts: 1 } },
+          { new: true }
+        );
+        if (updated && Number(updated.loginAttempts) >= MAX_LOGIN_ATTEMPTS) {
+          await User.updateOne(
+            {
+              _id: user._id,
+              loginAttempts: trustedQuery({ $gte: MAX_LOGIN_ATTEMPTS })
+            },
+            {
+              $set: {
+                loginAttempts: 0,
+                lockUntil: new Date(Date.now() + LOGIN_LOCK_WINDOW_MS)
+              }
+            }
+          );
         }
-        await user.save();
       }
       logger.warn('auth.login.failed', {
         username,
@@ -139,16 +184,21 @@ const updateMe = async (req, res) => {
     }
 
     const { name, username, password, profileImage } = req.body;
+    const setupPasswordChange = req.setupPurpose === 'password';
+    if (setupPasswordChange && !password) {
+      return res.status(400).json({ message: 'Choose a new password' });
+    }
+
     const parsedProfileImage = parseProfileImageUpdate(profileImage);
     if (parsedProfileImage.error) {
       return res.status(400).json({ message: parsedProfileImage.error });
     }
 
-    if (name !== undefined) {
+    if (!setupPasswordChange && name !== undefined) {
       user.name = name;
     }
 
-    if (username !== undefined) {
+    if (!setupPasswordChange && username !== undefined) {
       const existing = await User.findOne({
         username,
         _id: mongoose.trusted({ $ne: user._id })
@@ -168,16 +218,27 @@ const updateMe = async (req, res) => {
       if (passwordPolicyError) {
         return res.status(400).json({ message: passwordPolicyError });
       }
+      const documentedPasswordError = rejectDocumentedPassword(password);
+      if (documentedPasswordError) {
+        return res.status(400).json({ message: documentedPasswordError });
+      }
       user.password = await hashPassword(password);
       user.tokenVersion = Number(user.tokenVersion || 0) + 1;
       passwordUpdated = true;
     }
 
-    if (parsedProfileImage.hasUpdate) {
+    if (!setupPasswordChange && parsedProfileImage.hasUpdate) {
       user.profileImage = parsedProfileImage.value;
     }
 
     const updatedUser = await user.save();
+
+    if (setupPasswordChange) {
+      return res.json({
+        passwordChanged: true,
+        message: 'Password updated. Sign in with the new password.'
+      });
+    }
 
     return res.json(toUserPayload(updatedUser, passwordUpdated));
   } catch (error) {
@@ -206,12 +267,16 @@ const getUsers = async (req, res) => {
     const filter = {};
     if (req.user.role === 'manager') {
       filter.branch = req.user.branch;
-      filter.role = mongoose.trusted({ $in: ['manager', 'sales_agent'] });
     }
 
-    const requestedRole = String(req.query.role || 'all');
-    if (requestedRole !== 'all' && ['manager', 'sales_agent', 'director'].includes(requestedRole)) {
-      filter.role = requestedRole;
+    const roleFilter = resolveUserListRoleFilter(req.user.role, req.query.role);
+    if (roleFilter.error) {
+      return res.status(roleFilter.statusCode).json({ message: roleFilter.error });
+    }
+    if (roleFilter.roleIn) {
+      filter.role = trustedQuery({ $in: roleFilter.roleIn });
+    } else if (roleFilter.role) {
+      filter.role = roleFilter.role;
     }
 
     Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'username', 'role', 'branch']));
@@ -337,6 +402,10 @@ const resetPasswordWithRecoveryCode = async (req, res) => {
     if (passwordError) {
       return res.status(400).json({ message: passwordError });
     }
+    const documentedPasswordError = rejectDocumentedPassword(newPassword);
+    if (documentedPasswordError) {
+      return res.status(400).json({ message: documentedPasswordError });
+    }
 
     const hashes = Array.isArray(user.recoveryCodeHashes) ? user.recoveryCodeHashes : [];
     let matchedIndex = -1;
@@ -435,6 +504,9 @@ const enableMfa = async (req, res) => {
     user.mfaSecret = secret;
     user.mfaPendingSecret = '';
     user.mfaEnabled = true;
+    if (req.setupPurpose === 'mfa') {
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    }
     await user.save();
     return res.json({ mfaEnabled: true });
   } catch (error) {
@@ -445,6 +517,9 @@ const enableMfa = async (req, res) => {
 const disableMfa = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
+    if (isProduction()) {
+      return res.status(403).json({ message: 'MFA stays on for production accounts.' });
+    }
     const passwordOk = await bcrypt.compare(String(req.body.password || ''), user.password);
     if (!passwordOk) {
       return res.status(400).json({ message: 'Invalid password' });

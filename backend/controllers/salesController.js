@@ -13,7 +13,7 @@ import {
 } from '../services/salesAggregationService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import {
   normalizeProduceName,
   normalizeProduceNameKey,
@@ -46,6 +46,18 @@ const getAllSales = async (req, res) => {
     );
     if (req.query.produceType && req.query.produceType !== 'all') {
       filter.produceType = req.query.produceType;
+    }
+
+    if (String(req.query.mine) === 'true') {
+      filter.recordedBy = req.user._id;
+    }
+
+    const dateRange = buildDateRangeFilter(req.query.from, req.query.to);
+    if (dateRange.error) {
+      return res.status(400).json({ message: dateRange.error });
+    }
+    if (dateRange.filter) {
+      filter.date = dateRange.filter;
     }
 
     const pagination = parsePagination(req.query);

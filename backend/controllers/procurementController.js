@@ -8,7 +8,7 @@ import {
   canManagerAccessBranch
 } from '../services/procurementService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
+import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import {
   assertProcurementKeepsStockNonNegative,
   calculateInventoryByFilter,
@@ -53,6 +53,14 @@ const getAllProcurement = async (req, res) => {
     );
     if (req.query.produceType && req.query.produceType !== 'all') {
       filter.produceType = req.query.produceType;
+    }
+
+    const dateRange = buildDateRangeFilter(req.query.from, req.query.to);
+    if (dateRange.error) {
+      return res.status(400).json({ message: dateRange.error });
+    }
+    if (dateRange.filter) {
+      filter.dateReceived = dateRange.filter;
     }
 
     const pagination = parsePagination(req.query);

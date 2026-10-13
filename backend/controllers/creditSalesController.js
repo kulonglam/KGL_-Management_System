@@ -9,7 +9,7 @@ import {
 } from '../services/creditSalesService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
-import { buildSearchFilter, startOfToday, resolveSort, trustedQuery } from '../utils/listQuery.js';
+import { buildSearchFilter, startOfToday, resolveSort, trustedQuery, buildDateRangeFilter } from '../utils/listQuery.js';
 
 const recordCreditSaleAudit = (actor, action, creditSale, extra) =>
   recordAudit({
@@ -53,6 +53,19 @@ const getAllCreditSales = async (req, res) => {
       filter.dueDate = trustedQuery({ $lt: startOfToday() });
       filter.balanceUgx = trustedQuery({ $gt: 0 });
     }
+
+    if (String(req.query.mine) === 'true') {
+      filter.recordedBy = req.user._id;
+    }
+
+    const dateRange = buildDateRangeFilter(req.query.from, req.query.to);
+    if (dateRange.error) {
+      return res.status(400).json({ message: dateRange.error });
+    }
+    if (dateRange.filter) {
+      filter.dateOfDispatch = dateRange.filter;
+    }
+
     const summaryFilter = { ...filter };
 
     const pagination = parsePagination(req.query);

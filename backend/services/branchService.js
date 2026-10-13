@@ -7,7 +7,7 @@ import {
   normalizeBranchName,
   setBranchCache
 } from '../config/branches.js';
-import { hashPassword, validatePasswordStrength } from './authService.js';
+import { hashPassword, validatePasswordStrength, findUserByUsername } from './authService.js';
 import { recordAudit } from './auditService.js';
 
 const refreshBranchCache = async () => {
@@ -50,7 +50,7 @@ const createBranchWithManager = async ({ actorUser, name, managerName, managerUs
     throw error;
   }
 
-  const existingUser = await User.findOne({ username: managerUsername });
+  const existingUser = await findUserByUsername(managerUsername);
   if (existingUser) {
     const error = new Error('User already exists');
     error.statusCode = 400;
@@ -60,32 +60,38 @@ const createBranchWithManager = async ({ actorUser, name, managerName, managerUs
   const branch = await Branch.create({ name: branchName, isActive: true });
   await refreshBranchCache();
 
-  const manager = await User.create({
-    name: managerName,
-    username: managerUsername,
-    password: await hashPassword(managerPassword),
-    role: 'manager',
-    branch: branchName
-  });
+  try {
+    const manager = await User.create({
+      name: managerName,
+      username: managerUsername,
+      password: await hashPassword(managerPassword),
+      role: 'manager',
+      branch: branchName
+    });
 
-  await recordAudit({
-    actor: actorUser,
-    action: 'create',
-    entityType: 'branch',
-    entityId: branch._id,
-    branch: branchName,
-    metadata: { managerUsername }
-  });
+    await recordAudit({
+      actor: actorUser,
+      action: 'create',
+      entityType: 'branch',
+      entityId: branch._id,
+      branch: branchName,
+      metadata: { managerUsername }
+    });
 
-  return {
-    branch,
-    manager: {
-      _id: manager._id,
-      name: manager.name,
-      username: manager.username,
-      branch: manager.branch
-    }
-  };
+    return {
+      branch,
+      manager: {
+        _id: manager._id,
+        name: manager.name,
+        username: manager.username,
+        branch: manager.branch
+      }
+    };
+  } catch (error) {
+    await Branch.deleteOne({ _id: branch._id });
+    await refreshBranchCache();
+    throw error;
+  }
 };
 
 const updateBranchStatus = async ({ actorUser, branchId, isActive }) => {

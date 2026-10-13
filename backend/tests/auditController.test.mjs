@@ -167,4 +167,5 @@ test('listAuditLogs fills missing details for sales and credit sales', async () 
   assert.equal(creditLog.metadata.balanceUgx, 150000);
   assert.equal(procurementLog.metadata.tonnageKg, 5);
   assert.deepEqual(deletedLog.metadata, {});
+  assert.equal(deletedLog.detailsNote, 'The original record is no longer available.');
 });

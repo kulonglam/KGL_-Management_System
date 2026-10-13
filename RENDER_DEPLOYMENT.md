@@ -49,13 +49,14 @@ node seedData.js
 ```
 
 ## 5. Health And Login Check
-- Backend health: `https://<your-backend-url>/healthz`
+- Backend readiness: `https://<your-backend-url>/readyz` (returns 503 until MongoDB is connected)
 - Frontend: open your Render frontend URL
 - Seeded users:
   - Director: `orban`
   - Managers: `kulong`, `lam`
   - Sales agents: `wuol`, `makhol`, `nyar`, `chuol`
 - Password: from `SEED_DEFAULT_PASSWORD` env var if set, otherwise `Karibu@2026!`
+- Production seed is refused unless `ALLOW_PRODUCTION_SEED=true` and `SEED_DEFAULT_PASSWORD` is not the documented demo password. Every seed writes a snapshot under `backend/backups` before it clears data. Restore with `CONFIRM_DATABASE_RESTORE=yes npm run restore -- <backup-directory>` from `backend`.
 
 ## 6. Common Deploy Failure
 If Render crashes with:

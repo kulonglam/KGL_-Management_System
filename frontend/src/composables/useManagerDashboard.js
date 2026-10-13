@@ -11,10 +11,8 @@ import {
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayDate, formatDisplayRange } from '../utils/dateFormat.js';
-import {
-  buildTonalPalette,
-  dashboardChartColors
-} from '../utils/charts/dashboardChartTheme.js';
+import { fetchAllPages } from '../utils/listPayload.js';
+import { buildTonalPalette, dashboardChartColors } from '../utils/charts/dashboardChartTheme.js';
 
 const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
@@ -561,34 +559,38 @@ export function useManagerDashboard() {
     loadError.value = '';
 
     try {
-      const [inventoryResponse, salesResponse, creditResponse, procurementResponse] =
-        await Promise.all([
-          inventoryAPI.get(),
-          salesAPI.getAll(),
-          creditSalesAPI.getAll(),
-          procurementAPI.getAll()
-        ]);
+      const range = getDateRangeByFilters(filters.period, filters.specificDate);
+      const [inventoryResponse, salesRows, creditRows, procurementRows] = await Promise.all([
+        inventoryAPI.get(),
+        fetchAllPages((params) => salesAPI.getAll({ ...params, from: range.from, to: range.to })),
+        fetchAllPages((params) =>
+          creditSalesAPI.getAll({ ...params, from: range.from, to: range.to })
+        ),
+        fetchAllPages((params) =>
+          procurementAPI.getAll({ ...params, from: range.from, to: range.to })
+        )
+      ]);
 
       inventory.value = inventoryResponse.data.inventory || [];
-      salesRecords.value = salesResponse.data || [];
-      creditSalesRecords.value = creditResponse.data || [];
-      procurementRecords.value = procurementResponse.data || [];
+      salesRecords.value = salesRows;
+      creditSalesRecords.value = creditRows;
+      procurementRecords.value = procurementRows;
       stats.inventoryValue = toNumber(inventoryResponse.data.statistics?.totalValue);
       stats.inventoryItems = toNumber(inventoryResponse.data.statistics?.totalItems);
 
       buildDashboardData();
     } catch (error) {
-      loadError.value = error.response?.data?.message || 'Unable to load dashboard data. Try again.';
+      loadError.value = error.response?.data?.message || error.message || 'Unable to load dashboard data. Try again.';
       console.error('Error loading data:', error);
     } finally {
       loading.value = false;
     }
   };
 
-  const clearSpecificDate = () => {
+  const clearSpecificDate = async () => {
     if (!filters.specificDate) return;
     filters.specificDate = '';
-    buildDashboardData();
+    await loadData();
   };
 
   const getReportExportState = () => ({

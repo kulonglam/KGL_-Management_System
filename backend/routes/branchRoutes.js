@@ -32,7 +32,7 @@ router.put(
   authorizeDirector,
   writeLimiter,
   ...mongoIdParamValidation,
-  body('isActive').exists().withMessage('isActive is required'),
+  body('isActive').isBoolean().withMessage('isActive must be true or false').toBoolean(),
   validateRequest,
   updateBranch
 );

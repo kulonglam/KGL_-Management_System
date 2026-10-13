@@ -88,7 +88,32 @@
               </div>
             </div>
 
-            <div v-if="mfaRequired" class="mb-4">
+            <div v-if="passwordChangeRequired" class="mb-4">
+              <label for="new-password" class="form-label small text-uppercase fw-bold text-muted"
+                >New password</label
+              >
+              <input
+                id="new-password"
+                v-model="newPassword"
+                type="password"
+                class="form-control mb-3"
+                autocomplete="new-password"
+                placeholder="Choose a new password"
+              />
+              <label for="confirm-password" class="form-label small text-uppercase fw-bold text-muted"
+                >Confirm password</label
+              >
+              <input
+                id="confirm-password"
+                v-model="confirmPassword"
+                type="password"
+                class="form-control"
+                autocomplete="new-password"
+                placeholder="Repeat the new password"
+              />
+            </div>
+
+            <div v-if="mfaRequired || mfaEnrollmentRequired" class="mb-4">
               <label for="mfa-code" class="form-label small text-uppercase fw-bold text-muted"
                 >Authenticator code</label
               >
@@ -102,6 +127,12 @@
                 placeholder="6-digit code"
                 autocomplete="one-time-code"
               />
+              <p v-if="mfaEnrollmentRequired && mfaSecret" class="small text-muted mt-3 mb-1">
+                Add this secret to an authenticator app, then enter the code.
+              </p>
+              <p v-if="mfaEnrollmentRequired && mfaSecret" class="small font-monospace text-break mb-0">
+                {{ mfaSecret }}
+              </p>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-4">
               <div class="form-check">
@@ -142,7 +173,17 @@
               :disabled="loading"
             >
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              {{ loading ? 'Signing in...' : mfaRequired ? 'Verify code' : 'Sign In' }}
+              {{
+                loading
+                  ? 'Signing in...'
+                  : passwordChangeRequired
+                    ? 'Update password'
+                    : mfaEnrollmentRequired
+                      ? 'Turn on MFA'
+                      : mfaRequired
+                        ? 'Verify code'
+                        : 'Sign In'
+              }}
             </button>
           </form>
         </div>
@@ -178,8 +219,14 @@ export default {
       error: '',
       helpMessage: '',
       mfaRequired: false,
+      mfaEnrollmentRequired: false,
+      passwordChangeRequired: false,
+      setupToken: '',
       mfaToken: '',
-      mfaCode: ''
+      mfaCode: '',
+      mfaSecret: '',
+      newPassword: '',
+      confirmPassword: ''
     };
   },
   created() {
@@ -202,12 +249,40 @@ export default {
       }
       this.$router.push(getHomeRouteForUser(user));
     },
+    setupRequest() {
+      return { headers: { Authorization: `Bearer ${this.setupToken}` } };
+    },
     async handleLogin() {
       this.loading = true;
       this.error = '';
       this.helpMessage = '';
 
       try {
+        if (this.passwordChangeRequired) {
+          if (!this.newPassword || this.newPassword !== this.confirmPassword) {
+            this.error = 'Enter the new password twice, with the same value.';
+            return;
+          }
+          await authAPI.updateMe({ password: this.newPassword }, this.setupRequest());
+          this.passwordChangeRequired = false;
+          this.setupToken = '';
+          this.newPassword = '';
+          this.confirmPassword = '';
+          this.credentials.password = '';
+          this.helpMessage = 'Password updated. Sign in with the new password.';
+          return;
+        }
+
+        if (this.mfaEnrollmentRequired) {
+          await authAPI.enableMfa({ code: this.mfaCode }, this.setupRequest());
+          this.mfaEnrollmentRequired = false;
+          this.setupToken = '';
+          this.mfaSecret = '';
+          this.mfaCode = '';
+          this.helpMessage = 'Authenticator MFA is on. Sign in again and enter the 6-digit code.';
+          return;
+        }
+
         if (this.mfaRequired) {
           const response = await authAPI.verifyMfa({
             mfaToken: this.mfaToken,
@@ -223,6 +298,20 @@ export default {
         };
         const response = await authAPI.login(payload);
         const authPayload = response?.data;
+        if (authPayload?.passwordChangeRequired) {
+          this.passwordChangeRequired = true;
+          this.setupToken = authPayload.setupToken;
+          this.helpMessage = authPayload.message;
+          return;
+        }
+        if (authPayload?.mfaEnrollmentRequired) {
+          this.mfaEnrollmentRequired = true;
+          this.setupToken = authPayload.setupToken;
+          const setup = await authAPI.setupMfa(this.setupRequest());
+          this.mfaSecret = setup?.data?.secret || '';
+          this.helpMessage = authPayload.message;
+          return;
+        }
         if (authPayload?.mfaRequired) {
           this.mfaRequired = true;
           this.mfaToken = authPayload.mfaToken;

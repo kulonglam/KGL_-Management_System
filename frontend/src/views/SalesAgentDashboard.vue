@@ -54,6 +54,7 @@
 // Sales-agent dashboard showing today's personal cash/credit performance snapshot.
  
 import { salesAPI, creditSalesAPI } from '../services/api';
+import { asListPayload, fetchAllPages } from '../utils/listPayload.js';
 import { formatCompactNumber, formatCompactCurrency } from '../utils/numberFormat';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import QuickActionsPanel from '../components/common/QuickActionsPanel.vue';
@@ -189,7 +190,7 @@ export default {
         {
           label: 'Overdue credit',
           value: String(this.stats.overdueCount || 0),
-          meta: 'Past due in your name'
+          meta: 'Past due on your sales'
         }
       ];
     }
@@ -200,43 +201,26 @@ export default {
       this.loading = true;
       this.loadError = '';
       try {
-        const [salesRes, creditRes, overdueRes] = await Promise.all([
-          salesAPI.getAll(),
-          creditSalesAPI.getAll(),
-          creditSalesAPI.getAll({ status: 'overdue' })
+        const { startOfDay, endOfDay } = this.getTodayRange();
+        const range = { from: startOfDay.toISOString(), to: new Date(endOfDay.getTime() - 1).toISOString() };
+        const [salesRows, creditRows, overdueResponse] = await Promise.all([
+          this.fetchMine(salesAPI, range),
+          this.fetchMine(creditSalesAPI, range),
+          creditSalesAPI.getAll({ mine: true, status: 'overdue', page: 1, limit: 1 })
         ]);
 
-        const salesRows = Array.isArray(salesRes.data) ? salesRes.data : salesRes.data?.items || [];
-        const creditRows = Array.isArray(creditRes.data) ? creditRes.data : creditRes.data?.items || [];
-        const overdueRows = Array.isArray(overdueRes.data) ? overdueRes.data : overdueRes.data?.items || [];
+        this.stats.cashSales = salesRows.reduce((sum, sale) => sum + sale.amountPaidUgx, 0);
+        this.stats.cashCount = salesRows.length;
 
-        const { startOfDay, endOfDay } = this.getTodayRange();
-
-        // Filter by current user and today's date
-        const mySales = salesRows.filter((s) => {
-          if (s.salesAgentName !== this.user.name) return false;
-          const saleDate = new Date(s.date);
-          return saleDate >= startOfDay && saleDate < endOfDay;
-        });
-
-        const myCreditSales = creditRows.filter((c) => {
-          if (c.salesAgentName !== this.user.name) return false;
-          const dispatchDate = new Date(c.dateOfDispatch);
-          return dispatchDate >= startOfDay && dispatchDate < endOfDay;
-        });
-
-        this.stats.cashSales = mySales.reduce((sum, s) => sum + s.amountPaidUgx, 0);
-        this.stats.cashCount = mySales.length;
-
-        this.stats.creditSales = myCreditSales.reduce((sum, c) => sum + c.amountDueUgx, 0);
-        this.stats.creditCount = myCreditSales.length;
+        this.stats.creditSales = creditRows.reduce((sum, sale) => sum + sale.amountDueUgx, 0);
+        this.stats.creditCount = creditRows.length;
 
         this.stats.totalKg =
-          mySales.reduce((sum, s) => sum + s.tonnageKg, 0) +
-          myCreditSales.reduce((sum, c) => sum + c.tonnageKg, 0);
-        this.stats.overdueCount = overdueRows.filter((item) => item.salesAgentName === this.user.name).length;
+          salesRows.reduce((sum, sale) => sum + sale.tonnageKg, 0) +
+          creditRows.reduce((sum, sale) => sum + sale.tonnageKg, 0);
+        this.stats.overdueCount = asListPayload(overdueResponse.data).total;
       } catch (error) {
-        this.loadError = error.response?.data?.message || 'Unable to load sales summary.';
+        this.loadError = error.response?.data?.message || error.message || 'Unable to load sales summary.';
       } finally {
         this.loading = false;
       }
@@ -260,6 +244,9 @@ export default {
           24 * 60 * 60 * 1000
         );
       }, msUntilMidnight);
+    },
+    fetchMine(api, range) {
+      return fetchAllPages((params) => api.getAll({ ...params, mine: true, ...range }));
     },
     getTodayRange() {
       const now = new Date();

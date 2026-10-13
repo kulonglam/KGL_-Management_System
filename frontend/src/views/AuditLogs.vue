@@ -29,6 +29,7 @@
                 <td>{{ item.entityType }} {{ item.entityId }}</td>
                 <td>
                   <pre v-if="formatMetadata(item.metadata)" class="mb-0 small">{{ formatMetadata(item.metadata) }}</pre>
+                  <span v-else-if="item.detailsNote">{{ item.detailsNote }}</span>
                   <span v-else>-</span>
                 </td>
                 <td>{{ item.branch || '-' }}</td>

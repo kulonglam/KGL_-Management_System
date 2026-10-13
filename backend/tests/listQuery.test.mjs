@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
-import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
+import { buildDateRangeFilter, buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
 test('buildSearchFilter returns empty object when search is blank', () => {
@@ -55,4 +55,15 @@ test('sanitizeFilter rewrites untrusted overdue operators but keeps trustedQuery
   });
   assert.equal(safe.balanceUgx.$gt, 0);
   assert.equal(new Date(safe.dueDate.$lt).toISOString(), due.toISOString());
+});
+
+test('buildDateRangeFilter rejects an invalid bound and trusts a valid range', () => {
+  mongoose.set('sanitizeFilter', true);
+  assert.equal(buildDateRangeFilter('not-a-date', '').error, 'from must be a valid date');
+  assert.equal(buildDateRangeFilter('', '').filter, null);
+
+  const range = buildDateRangeFilter('2026-03-07T00:00:00.000Z', '2026-03-07T23:59:59.999Z');
+  const sanitized = mongoose.sanitizeFilter({ date: range.filter });
+  assert.equal(sanitized.date.$gte.toISOString(), '2026-03-07T00:00:00.000Z');
+  assert.equal(sanitized.date.$lte.toISOString(), '2026-03-07T23:59:59.999Z');
 });

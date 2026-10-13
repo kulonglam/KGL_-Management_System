@@ -1,5 +1,7 @@
 ﻿// Resets the database and inserts a clean demo baseline for local testing and demos.
  
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
@@ -11,12 +13,13 @@ import CreditSale from './models/CreditSale.js';
 import TrustedBuyer from './models/TrustedBuyer.js';
 import StockNotification from './models/StockNotification.js';
 import StockLock from './models/StockLock.js';
+import { isProduction } from './config/security.js';
+import { DOCUMENTED_SEED_PASSWORD } from './config/seedPolicy.js';
 import { validatePasswordStrength } from './services/authService.js';
+import { backupDatabase } from './services/databaseSnapshot.js';
 import { findUnmatchedStockMovements } from './services/inventoryService.js';
 
 dotenv.config();
-
-const DOCUMENTED_SEED_PASSWORD = 'Karibu@2026!';
 const ISO_CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 const resolveSeedPassword = (raw = process.env.SEED_DEFAULT_PASSWORD) => {
@@ -509,6 +512,22 @@ const assertSeedDataset = () => {
   validateSeedDocuments();
 };
 
+const assertSeedMayRun = () => {
+  if (!isProduction()) {
+    return;
+  }
+  if (process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    throw new Error(
+      'Refusing to seed a production database. Set ALLOW_PRODUCTION_SEED=true only for a deliberate reset.'
+    );
+  }
+  if (resolveSeedPassword() === DOCUMENTED_SEED_PASSWORD) {
+    throw new Error(
+      'Refusing to seed production with the documented demo password. Set SEED_DEFAULT_PASSWORD to a unique password.'
+    );
+  }
+};
+
 const ensureRequiredEnv = () => {
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI is required to run seedData.js');
@@ -689,8 +708,17 @@ const printLoginSummary = () => {
 
 const main = async () => {
   assertSeedDataset();
+  assertSeedMayRun();
   ensureRequiredEnv();
   await connectDatabase();
+
+  const backupDirectory = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'backups',
+    new Date().toISOString().replace(/[:.]/g, '-')
+  );
+  await backupDatabase(backupDirectory);
+  console.log(`Backup written to ${backupDirectory}`);
 
   await clearCollections();
   const userByUsername = await seedUsers();
@@ -725,6 +753,7 @@ if (isSeedEntryPoint()) {
 export {
   DOCUMENTED_SEED_PASSWORD,
   assertSeedDataset,
+  assertSeedMayRun,
   assertSeedStockIntegrity,
   parseSeedDate,
   resolveSeedPassword

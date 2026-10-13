@@ -1,5 +1,5 @@
 import { computed, onMounted, reactive, ref } from 'vue';
-import { salesAPI } from '../services/api';
+import { salesAPI, branchAPI } from '../services/api';
 import { formatCompactCurrency, formatCompactNumber } from '../utils/numberFormat';
 import {
   buildDirectorCsvContent,
@@ -9,6 +9,7 @@ import {
   downloadReportFile
 } from '../utils/reports/directorReportExport.js';
 import { formatDisplayRange } from '../utils/dateFormat.js';
+import { buildBranchFilterOptions } from '../utils/directorAccess.js';
 import {
   buildTonalPalette,
   dashboardChartColors,
@@ -19,12 +20,6 @@ const PERIOD_OPTIONS = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' }
-];
-
-const BRANCH_OPTIONS = [
-  { value: 'all', label: 'All Branches' },
-  { value: 'Maganjo', label: 'Maganjo' },
-  { value: 'Matugga', label: 'Matugga' }
 ];
 
 const createEmptyGrandTotal = () => ({
@@ -52,10 +47,10 @@ const getSelectedPeriodLabel = (period, specificDate) => {
   return PERIOD_OPTIONS.find((option) => option.value === period)?.label || 'Weekly';
 };
 
-const getSelectedBranchLabel = (branch) =>
-  BRANCH_OPTIONS.find((option) => option.value === branch)?.label || 'All Branches';
+const getSelectedBranchLabel = (branch, options) =>
+  options.find((option) => option.value === branch)?.label || 'All Branches';
 
-const createQuickActions = ({ filters, loadData, exportCsv, exportExcel, exportPdf }) => [
+const createQuickActions = ({ branchNames, filters, loadData, exportCsv, exportExcel, exportPdf }) => [
   {
     key: 'scope-all',
     icon: 'bi bi-diagram-3',
@@ -68,30 +63,18 @@ const createQuickActions = ({ filters, loadData, exportCsv, exportExcel, exportP
       }
     }
   },
-  {
-    key: 'scope-maganjo',
+  ...branchNames.map((name) => ({
+    key: `scope-${name}`,
     icon: 'bi bi-geo-alt',
-    label: 'Maganjo View',
-    meta: 'Focus reporting to Maganjo branch',
+    label: name,
+    meta: `Focus reporting on ${name}`,
     onClick: () => {
-      if (filters.branch !== 'Maganjo') {
-        filters.branch = 'Maganjo';
+      if (filters.branch !== name) {
+        filters.branch = name;
         loadData();
       }
     }
-  },
-  {
-    key: 'scope-matugga',
-    icon: 'bi bi-geo-alt-fill',
-    label: 'Matugga View',
-    meta: 'Focus reporting to Matugga branch',
-    onClick: () => {
-      if (filters.branch !== 'Matugga') {
-        filters.branch = 'Matugga';
-        loadData();
-      }
-    }
-  },
+  })),
   {
     key: 'export-csv',
     icon: 'bi bi-filetype-csv',
@@ -125,6 +108,7 @@ export function useDirectorDashboard() {
     specificDate: ''
   });
   const todayIsoDate = new Date().toISOString().split('T')[0];
+  const branchOptions = ref(buildBranchFilterOptions());
   const branchTotals = ref({});
   const grandTotal = reactive(createEmptyGrandTotal());
   const trendLabels = ref([]);
@@ -137,7 +121,9 @@ export function useDirectorDashboard() {
     getSelectedPeriodLabel(filters.period, filters.specificDate)
   );
 
-  const selectedBranchLabel = computed(() => getSelectedBranchLabel(filters.branch));
+  const selectedBranchLabel = computed(() =>
+    getSelectedBranchLabel(filters.branch, branchOptions.value)
+  );
 
   const formattedRange = computed(() => formatDisplayRange(range.from, range.to));
   const totalRevenue = computed(() => grandTotal.cash + grandTotal.credit);
@@ -290,6 +276,19 @@ export function useDirectorDashboard() {
     Object.assign(range, createEmptyRange());
   };
 
+  const loadBranchOptions = async () => {
+    try {
+      const response = await branchAPI.list();
+      const names = Array.isArray(response.data?.names) ? response.data.names : [];
+      branchOptions.value = buildBranchFilterOptions(names);
+      if (!branchOptions.value.some((option) => option.value === filters.branch)) {
+        filters.branch = 'all';
+      }
+    } catch (error) {
+      loadError.value = error.response?.data?.message || 'Unable to load branches.';
+    }
+  };
+
   const loadData = async () => {
     loading.value = true;
     loadError.value = '';
@@ -380,15 +379,25 @@ export function useDirectorDashboard() {
   };
 
   const quickActions = computed(() =>
-    createQuickActions({ filters, loadData, exportCsv, exportExcel, exportPdf })
+    createQuickActions({
+      branchNames: branchOptions.value
+        .map((option) => option.value)
+        .filter((value) => value !== 'all'),
+      filters,
+      loadData,
+      exportCsv,
+      exportExcel,
+      exportPdf
+    })
   );
 
   onMounted(async () => {
+    await loadBranchOptions();
     await loadData();
   });
 
   return {
-    branchOptions: BRANCH_OPTIONS,
+    branchOptions,
     branchLabels,
     branchRevenueChartData,
     branchTotals,

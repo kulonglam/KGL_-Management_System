@@ -3,6 +3,7 @@
 import mongoose from 'mongoose';
 import { createBranchSchemaField } from '../config/branches.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
+import { protectAppendOnly } from '../utils/appendOnly.js';
 
 const priceHistorySchema = new mongoose.Schema(
   {
@@ -50,5 +51,6 @@ const priceHistorySchema = new mongoose.Schema(
 
 priceHistorySchema.index({ branch: 1, priceSettingId: 1, createdAt: -1 });
 priceHistorySchema.index({ changedBy: 1, createdAt: -1 });
+protectAppendOnly(priceHistorySchema);
 
 export default mongoose.model('PriceHistory', priceHistorySchema);

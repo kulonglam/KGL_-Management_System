@@ -78,6 +78,12 @@ const enrichAuditItems = async (items) => {
     }
     const doc = loaded[item.entityType]?.get(String(item.entityId));
     if (!doc) {
+      if (ENTITY_SOURCES[item.entityType]) {
+        return {
+          ...item,
+          detailsNote: 'The original record is no longer available.'
+        };
+      }
       return item;
     }
     return { ...item, metadata: transactionAuditMetadata(doc) };

@@ -327,9 +327,9 @@ export default {
     },
     overviewItems() {
       const visibleMeta =
-        this.displayedUsers.length === this.users.length
-          ? 'Only three staff are allowed per branch'
-          : `${this.displayedUsers.length.toLocaleString('en-UG')} visible after filters`;
+        this.searchQuery || this.roleFilter !== 'all'
+          ? 'Matching the current filters'
+          : 'One manager and two sales agents per branch';
 
       return [
         {

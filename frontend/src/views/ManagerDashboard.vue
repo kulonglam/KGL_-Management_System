@@ -17,7 +17,7 @@
             v-model="filters.period"
             class="form-select form-select-sm"
             :disabled="loading"
-            @change="buildDashboardData"
+            @change="loadData"
           >
             <option v-for="option in periodOptions" :key="option.value" :value="option.value">
               {{ option.label }}
@@ -33,7 +33,7 @@
             class="form-control form-control-sm"
             :disabled="loading"
             :max="todayIsoDate"
-            @change="buildDashboardData"
+            @change="loadData"
           />
         </div>
       </div>
@@ -139,7 +139,6 @@ import { useManagerDashboard } from '../composables/useManagerDashboard.js';
 const {
   agentPerformance,
   agentPerformanceChartData,
-  buildDashboardData,
   clearSpecificDate,
   clearExportError,
   creditCollectionChartData,
