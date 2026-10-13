@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
-import { login, logout } from '../controllers/authController.js';
+import { login, logout, updateMe } from '../controllers/authController.js';
 
 const createRes = () => ({
   statusCode: 200,
@@ -52,11 +52,10 @@ test('login returns the same generic 401 response for invalid credentials', asyn
   };
 
   t.mock.method(User, 'findOne', async () => user);
-  t.mock.method(User, 'findOneAndUpdate', async (_filter, update) => {
-    user.loginAttempts += update.$inc.loginAttempts;
+  t.mock.method(User, 'findOneAndUpdate', async () => {
+    user.loginAttempts += 1;
     return user;
   });
-  t.mock.method(User, 'updateOne', async () => ({}));
   t.mock.method(bcrypt, 'compare', async () => false);
 
   const req = {
@@ -72,6 +71,29 @@ test('login returns the same generic 401 response for invalid credentials', asyn
   assert.equal(res.statusCode, 401);
   assert.deepEqual(res.body, { message: 'Invalid credentials' });
   assert.equal(user.loginAttempts, 1);
+});
+
+test('password setup rejects profile fields sent with the new password', async (t) => {
+  t.mock.method(User, 'findById', async () => ({
+    _id: 'user-1',
+    role: 'director',
+    save: async () => {
+      throw new Error('profile fields must be rejected before save');
+    }
+  }));
+
+  const res = createRes();
+  await updateMe(
+    {
+      setupPurpose: 'password',
+      user: { _id: 'user-1' },
+      body: { password: 'Unique@Launch2026', name: 'New Name', username: 'new-name' }
+    },
+    res
+  );
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.message, 'Password setup only accepts a new password');
 });
 
 test('logout revokes the current session and returns a success message', async (t) => {

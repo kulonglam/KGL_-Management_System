@@ -37,6 +37,36 @@ const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
 const GENERIC_LOGIN_FAILURE = getGenericLoginFailure();
 
+// Increment and, once the threshold is reached, lock the account in the same document write.
+const recordFailedLogin = (userId) => {
+  const now = new Date();
+  const lockUntil = new Date(now.getTime() + LOGIN_LOCK_WINDOW_MS);
+
+  return User.findOneAndUpdate({ _id: userId }, [
+    {
+      $set: {
+        loginAttempts: {
+          $cond: [
+            { $gt: ['$lockUntil', now] },
+            '$loginAttempts',
+            { $add: [{ $ifNull: ['$loginAttempts', 0] }, 1] }
+          ]
+        }
+      }
+    },
+    {
+      $set: {
+        lockUntil: {
+          $cond: [{ $gte: ['$loginAttempts', MAX_LOGIN_ATTEMPTS] }, lockUntil, '$lockUntil']
+        },
+        loginAttempts: {
+          $cond: [{ $gte: ['$loginAttempts', MAX_LOGIN_ATTEMPTS] }, 0, '$loginAttempts']
+        }
+      }
+    }
+  ]);
+};
+
 const productionLoginGate = async (user) => {
   if (!isProduction()) {
     return null;
@@ -109,25 +139,7 @@ const login = async (req, res) => {
       return res.json(toUserPayload(user, true));
     } else {
       if (user) {
-        const updated = await User.findOneAndUpdate(
-          { _id: user._id },
-          { $inc: { loginAttempts: 1 } },
-          { new: true }
-        );
-        if (updated && Number(updated.loginAttempts) >= MAX_LOGIN_ATTEMPTS) {
-          await User.updateOne(
-            {
-              _id: user._id,
-              loginAttempts: trustedQuery({ $gte: MAX_LOGIN_ATTEMPTS })
-            },
-            {
-              $set: {
-                loginAttempts: 0,
-                lockUntil: new Date(Date.now() + LOGIN_LOCK_WINDOW_MS)
-              }
-            }
-          );
-        }
+        await recordFailedLogin(user._id);
       }
       logger.warn('auth.login.failed', {
         username,
@@ -187,6 +199,12 @@ const updateMe = async (req, res) => {
     const setupPasswordChange = req.setupPurpose === 'password';
     if (setupPasswordChange && !password) {
       return res.status(400).json({ message: 'Choose a new password' });
+    }
+    if (
+      setupPasswordChange &&
+      (name !== undefined || username !== undefined || profileImage !== undefined)
+    ) {
+      return res.status(400).json({ message: 'Password setup only accepts a new password' });
     }
 
     const parsedProfileImage = parseProfileImageUpdate(profileImage);
