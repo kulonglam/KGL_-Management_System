@@ -8,11 +8,23 @@ import {
   repayCreditSaleRecord
 } from '../services/creditSalesService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
+import { emitDomainEvent } from '../services/webhookService.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
 import { buildSearchFilter, startOfToday, resolveSort, trustedQuery, buildDateRangeFilter } from '../utils/listQuery.js';
+import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { roundUgx } from '../utils/money.js';
+import { appendNationalIdSearch } from '../utils/fieldEncryption.js';
+import { businessDateKey } from '../utils/businessTime.js';
+import { assertPeriodOpen } from '../services/periodLockService.js';
+import { requestWriteOff } from '../services/creditWriteOffService.js';
+import {
+  calculateInventoryByFilter,
+  getBucketTonnage
+} from '../services/inventoryService.js';
+import { withStockLock } from '../services/stockLockService.js';
+import { syncStockLevelNotifications } from '../services/stockNotificationService.js';
 
 const recordCreditSaleAudit = (actor, action, creditSale, extra) =>
   recordAudit({
@@ -36,15 +48,18 @@ const getAllCreditSales = async (req, res, next) => {
 
     Object.assign(
       filter,
-      buildSearchFilter(req.query.search, [
-        'buyerName',
-        'nationalId',
-        'produceName',
-        'produceType',
-        'salesAgentName',
-        'contact'
-      ])
+      appendNationalIdSearch(
+        buildSearchFilter(req.query.search, [
+          'buyerName',
+          'produceName',
+          'produceType',
+          'salesAgentName',
+          'contact'
+        ]),
+        req.query.search
+      )
     );
+    Object.assign(filter, removedRecordFilter(req.query.deleted));
     if (String(req.query.mine) === 'true') {
       filter.recordedBy = req.user._id;
     }
@@ -66,6 +81,7 @@ const getAllCreditSales = async (req, res, next) => {
     } else if (status === 'outstanding') {
       filter.isPaid = false;
       filter.dueDate = trustedQuery({ $gte: today });
+      filter.balanceUgx = trustedQuery({ $gt: 0 });
     } else if (status === 'overdue') {
       filter.isPaid = false;
       filter.dueDate = trustedQuery({ $lt: today });
@@ -102,7 +118,8 @@ const getAllCreditSales = async (req, res, next) => {
       CreditSale.countDocuments({
         ...summaryFilter,
         isPaid: false,
-        dueDate: trustedQuery({ $gte: today })
+        dueDate: trustedQuery({ $gte: today }),
+        balanceUgx: trustedQuery({ $gt: 0 })
       }),
       CreditSale.aggregate([
         { $match: { ...summaryFilter, deletedAt: null, isPaid: false } },
@@ -132,11 +149,19 @@ const getAllCreditSales = async (req, res, next) => {
 // POST /api/credit-sales: create a credit sale using service-layer stock, buyer, and balance rules.
 const createCreditSale = async (req, res, next) => {
   try {
+    await assertPeriodOpen({ branch: req.user.branch, dates: [req.body.dateOfDispatch] });
     const creditSale = await createCreditSaleRecord({
       actorUser: req.user,
       payload: req.body
     });
     await recordCreditSaleAudit(req.user, 'create', creditSale);
+    emitDomainEvent('credit.created', {
+      creditSaleId: String(creditSale._id),
+      branch: creditSale.branch,
+      produceName: creditSale.produceName,
+      amountDueUgx: creditSale.amountDueUgx,
+      dueDate: creditSale.dueDate
+    }).catch(() => {});
 
     res.status(201).json(creditSale);
   } catch (error) {
@@ -164,6 +189,11 @@ const updatePaymentStatus = async (req, res, next) => {
 // POST /api/credit-sales/:id/repay: register a repayment installment against one credit sale.
 const repayCreditSale = async (req, res, next) => {
   try {
+    const paidAt = req.body.paidAt;
+    await assertPeriodOpen({
+      branch: req.user.branch,
+      dates: [/^\d{4}-\d{2}-\d{2}$/.test(String(paidAt || '')) ? paidAt : businessDateKey(paidAt || new Date())]
+    });
     const updated = await repayCreditSaleRecord({
       actorUser: req.user,
       creditSaleId: req.params.id,
@@ -191,6 +221,13 @@ const updateCreditSale = async (req, res, next) => {
     if (deniesBranchAccess(req.user, creditSale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    if (creditSale.voidedAt) {
+      return res.status(400).json({ message: 'Cannot edit a voided credit sale' });
+    }
+    await assertPeriodOpen({
+      branch: creditSale.branch,
+      dates: [creditSale.dateOfDispatch, req.body.dateOfDispatch]
+    });
 
     const updatableFields = ['dueDate', 'dateOfDispatch'];
     const fieldsToApply = {};
@@ -223,6 +260,10 @@ const deleteCreditSale = async (req, res, next) => {
     if (deniesBranchAccess(req.user, creditSale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    if (creditSale.voidedAt) {
+      return res.status(400).json({ message: 'Voided credit sales cannot be removed again' });
+    }
+    await assertPeriodOpen({ branch: creditSale.branch, dates: [creditSale.dateOfDispatch] });
 
     if (Array.isArray(creditSale.payments) && creditSale.payments.length > 0) {
       return res.status(400).json({
@@ -230,10 +271,184 @@ const deleteCreditSale = async (req, res, next) => {
       });
     }
 
-    creditSale.deletedAt = new Date();
-    await creditSale.save();
+    await withStockLock(
+      {
+        branch: creditSale.branch,
+        produceName: creditSale.produceName,
+        produceType: creditSale.produceType
+      },
+      async () => {
+        creditSale.deletedAt = new Date();
+        await creditSale.save();
+        const snapshot = await calculateInventoryByFilter({ branch: creditSale.branch });
+        await syncStockLevelNotifications({
+          branch: creditSale.branch,
+          produceName: creditSale.produceName,
+          produceType: creditSale.produceType,
+          remainingStock: getBucketTonnage(
+            snapshot,
+            creditSale.produceName,
+            creditSale.produceType,
+            creditSale.branch
+          )
+        });
+      }
+    );
     await recordCreditSaleAudit(req.user, 'delete', creditSale);
-    res.json({ message: 'Credit sale removed.' });
+    res.json({ message: 'Credit sale removed. You can restore it from removed records.' });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const restoreCreditSale = async (req, res, next) => {
+  try {
+    const creditSale = await CreditSale.findOne({
+      _id: req.params.id,
+      deletedAt: removedOnly()
+    });
+    if (!creditSale) {
+      return res.status(404).json({ message: 'Removed credit sale not found' });
+    }
+    if (deniesBranchAccess(req.user, creditSale.branch)) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    if (creditSale.voidedAt) {
+      return res.status(400).json({ message: 'Voided credit sales cannot be restored' });
+    }
+    await assertPeriodOpen({ branch: creditSale.branch, dates: [creditSale.dateOfDispatch] });
+
+    await withStockLock(
+      {
+        branch: creditSale.branch,
+        produceName: creditSale.produceName,
+        produceType: creditSale.produceType
+      },
+      async () => {
+        const snapshot = await calculateInventoryByFilter({ branch: creditSale.branch });
+        const available = getBucketTonnage(
+          snapshot,
+          creditSale.produceName,
+          creditSale.produceType,
+          creditSale.branch
+        );
+        if (available < Number(creditSale.tonnageKg || 0)) {
+          const error = new Error(
+            `Not enough stock to restore this credit sale. Available: ${available} kg`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+        creditSale.deletedAt = null;
+        await creditSale.save();
+        const afterSnapshot = await calculateInventoryByFilter({ branch: creditSale.branch });
+        await syncStockLevelNotifications({
+          branch: creditSale.branch,
+          produceName: creditSale.produceName,
+          produceType: creditSale.produceType,
+          remainingStock: getBucketTonnage(
+            afterSnapshot,
+            creditSale.produceName,
+            creditSale.produceType,
+            creditSale.branch
+          )
+        });
+      }
+    );
+
+    await recordCreditSaleAudit(req.user, 'update', creditSale);
+    res.json(creditSale);
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const voidCreditSale = async (req, res, next) => {
+  try {
+    const creditSale = await CreditSale.findById(req.params.id);
+    if (!creditSale) {
+      return res.status(404).json({ message: 'Credit sale not found' });
+    }
+    if (deniesBranchAccess(req.user, creditSale.branch)) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    if (creditSale.voidedAt || creditSale.deletedAt) {
+      return res.status(400).json({ message: 'Credit sale is already voided or removed' });
+    }
+    if (Array.isArray(creditSale.payments) && creditSale.payments.length > 0) {
+      return res.status(400).json({
+        message: 'Cannot void credit sale with repayments. Record a write-off workflow instead.'
+      });
+    }
+
+    const voidReason = String(req.body.reason || '').trim();
+    if (voidReason.length < 5) {
+      return res.status(400).json({ message: 'Void reason must be at least 5 characters' });
+    }
+    await assertPeriodOpen({ branch: creditSale.branch, dates: [creditSale.dateOfDispatch] });
+
+    await withStockLock(
+      {
+        branch: creditSale.branch,
+        produceName: creditSale.produceName,
+        produceType: creditSale.produceType
+      },
+      async () => {
+        creditSale.voidedAt = new Date();
+        creditSale.voidReason = voidReason;
+        creditSale.voidedBy = req.user._id;
+        creditSale.deletedAt = creditSale.voidedAt;
+        await creditSale.save();
+        const snapshot = await calculateInventoryByFilter({ branch: creditSale.branch });
+        await syncStockLevelNotifications({
+          branch: creditSale.branch,
+          produceName: creditSale.produceName,
+          produceType: creditSale.produceType,
+          remainingStock: getBucketTonnage(
+            snapshot,
+            creditSale.produceName,
+            creditSale.produceType,
+            creditSale.branch
+          )
+        });
+      }
+    );
+
+    await recordAudit({
+      actor: req.user,
+      action: 'void',
+      entityType: 'creditSale',
+      entityId: creditSale._id,
+      branch: creditSale.branch,
+      metadata: { ...transactionAuditMetadata(creditSale), voidReason }
+    });
+    res.json({ message: 'Credit sale voided. Stock has been returned.', creditSale });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+// POST /api/credit-sales/:id/write-off: ask a director to write off the outstanding balance.
+const requestCreditWriteOff = async (req, res, next) => {
+  try {
+    const creditSale = await requestWriteOff({
+      actorUser: req.user,
+      creditSaleId: req.params.id,
+      reason: req.body.reason
+    });
+    await recordAudit({
+      actor: req.user,
+      action: 'write_off',
+      entityType: 'creditSale',
+      entityId: creditSale._id,
+      branch: creditSale.branch,
+      metadata: {
+        stage: 'requested',
+        requestedAmountUgx: creditSale.writeOff.requestedAmountUgx,
+        reason: creditSale.writeOff.reason
+      }
+    });
+    res.status(202).json(creditSale);
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -245,7 +460,10 @@ export {
   updateCreditSale,
   updatePaymentStatus,
   repayCreditSale,
-  deleteCreditSale
+  deleteCreditSale,
+  restoreCreditSale,
+  voidCreditSale,
+  requestCreditWriteOff
 };
 
 

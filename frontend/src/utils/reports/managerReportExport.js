@@ -4,6 +4,7 @@
  */
 
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import { businessTodayIso } from '../businessTime.js';
 import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   buildReportBrandingHtml,
@@ -98,7 +99,7 @@ const getDealerRows = (state, formatted) =>
 export const buildManagerFileName = (state, extension) => {
   const period = sanitizeFileSegment(state.selectedPeriodLabel);
   const branch = sanitizeFileSegment(state.userBranch || 'branch');
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = businessTodayIso();
   return `manager_report_${branch}_${period}_${stamp}.${extension}`;
 };
 

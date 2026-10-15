@@ -16,13 +16,19 @@ import {
 } from '../services/dashboardSummaryService.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
-import { removedRecordFilter } from '../utils/softDelete.js';
+import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import {
   normalizeProduceName,
   normalizeProduceNameKey,
   normalizeProduceType
 } from '../utils/produceNormalization.js';
+import {
+  issueTaxInvoiceForSale,
+  issueCreditNoteForVoidedSale
+} from '../services/invoiceService.js';
+import { emitDomainEvent } from '../services/webhookService.js';
+import { assertPeriodOpen } from '../services/periodLockService.js';
 
 const recordSaleAudit = (actor, action, sale) =>
   recordAudit({
@@ -107,14 +113,20 @@ const createSale = async (req, res, next) => {
       tonnageKg,
       buyerName,
       date,
-      time
+      time,
+      paymentMethod: rawPaymentMethod,
+      tenderAmountUgx: rawTenderAmountUgx
     } = req.body;
+    const paymentMethod = ['cash', 'momo', 'bank'].includes(String(rawPaymentMethod || '').trim())
+      ? String(rawPaymentMethod).trim()
+      : 'cash';
     const produceName = normalizeProduceName(rawProduceName);
     const requestedType = normalizeProduceType(requestedProduceType || '');
     const tonnage = Number(tonnageKg);
     if (!tonnage || Number.isNaN(tonnage)) {
       return res.status(400).json({ message: 'Invalid tonnage value' });
     }
+    await assertPeriodOpen({ branch: req.user.branch, dates: [date] });
 
     const inventory = await calculateInventoryByBranch(req.user.branch);
     const resolvedType = resolveProduceTypeForSale(inventory, produceName, requestedType);
@@ -150,12 +162,24 @@ const createSale = async (req, res, next) => {
 
         const amountPaidUgx = roundUgx(item.sellingPrice * tonnage);
         const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
+        const tenderAmountUgx =
+          rawTenderAmountUgx === undefined || rawTenderAmountUgx === null || rawTenderAmountUgx === ''
+            ? amountPaidUgx
+            : roundUgx(rawTenderAmountUgx);
+        if (tenderAmountUgx < amountPaidUgx) {
+          throw Object.assign(
+            new Error('tenderAmountUgx must be greater than or equal to amountPaidUgx'),
+            { statusCode: 400 }
+          );
+        }
 
         const createdSale = await Sale.create({
           produceName: item.produceName,
           produceType: item.produceType,
           tonnageKg: tonnage,
           amountPaidUgx,
+          paymentMethod,
+          tenderAmountUgx,
           buyerName,
           salesAgentName: req.user.name,
           date,
@@ -176,7 +200,21 @@ const createSale = async (req, res, next) => {
     );
 
     await recordSaleAudit(req.user, 'create', sale);
-    res.status(201).json(sale);
+    let invoice = null;
+    try {
+      invoice = await issueTaxInvoiceForSale({ actorUser: req.user, sale });
+    } catch {
+      /* invoice failure must not block the sale */
+    }
+    const payload = typeof sale.toObject === 'function' ? sale.toObject() : sale;
+    emitDomainEvent('sale.created', {
+      saleId: String(sale._id),
+      branch: sale.branch,
+      amountPaidUgx: sale.amountPaidUgx,
+      paymentMethod: sale.paymentMethod || 'cash',
+      produceName: sale.produceName
+    }).catch(() => {});
+    res.status(201).json({ ...payload, invoice });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -249,6 +287,11 @@ const deleteSale = async (req, res, next) => {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
 
+    if (sale.voidedAt) {
+      return res.status(400).json({ message: 'Voided sales cannot be removed again' });
+    }
+    await assertPeriodOpen({ branch: sale.branch, dates: [sale.date] });
+
     await withStockLock(
       {
         branch: sale.branch,
@@ -276,13 +319,17 @@ const deleteSale = async (req, res, next) => {
 
 const restoreSale = async (req, res, next) => {
   try {
-    const sale = await Sale.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    const sale = await Sale.findOne({ _id: req.params.id, deletedAt: removedOnly() });
     if (!sale) {
       return res.status(404).json({ message: 'Removed sale not found' });
     }
     if (deniesBranchAccess(req.user, sale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    if (sale.voidedAt) {
+      return res.status(400).json({ message: 'Voided sales cannot be restored' });
+    }
+    await assertPeriodOpen({ branch: sale.branch, dates: [sale.date] });
 
     await withStockLock(
       {
@@ -317,6 +364,77 @@ const restoreSale = async (req, res, next) => {
   }
 };
 
+const voidSale = async (req, res, next) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+    if (deniesBranchAccess(req.user, sale.branch)) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    if (sale.voidedAt || sale.deletedAt) {
+      return res.status(400).json({ message: 'Sale is already voided or removed' });
+    }
+
+    const voidReason = String(req.body.reason || '').trim();
+    if (voidReason.length < 5) {
+      return res.status(400).json({ message: 'Void reason must be at least 5 characters' });
+    }
+    await assertPeriodOpen({ branch: sale.branch, dates: [sale.date] });
+
+    await withStockLock(
+      {
+        branch: sale.branch,
+        produceName: sale.produceName,
+        produceType: sale.produceType
+      },
+      async () => {
+        sale.voidedAt = new Date();
+        sale.voidReason = voidReason;
+        sale.voidedBy = req.user._id;
+        sale.deletedAt = sale.voidedAt;
+        await sale.save();
+        const snapshot = await calculateInventoryByFilter({ branch: sale.branch });
+        await syncStockLevelNotifications({
+          branch: sale.branch,
+          produceName: sale.produceName,
+          produceType: sale.produceType,
+          remainingStock: getBucketTonnage(snapshot, sale.produceName, sale.produceType, sale.branch)
+        });
+      }
+    );
+
+    await recordAudit({
+      actor: req.user,
+      action: 'void',
+      entityType: 'sale',
+      entityId: sale._id,
+      branch: sale.branch,
+      metadata: { ...transactionAuditMetadata(sale), voidReason }
+    });
+    let creditNote = null;
+    try {
+      creditNote = await issueCreditNoteForVoidedSale({
+        actorUser: req.user,
+        sale,
+        voidReason
+      });
+    } catch {
+      /* credit note failure must not block void */
+    }
+    emitDomainEvent('sale.voided', {
+      saleId: String(sale._id),
+      branch: sale.branch,
+      voidReason,
+      amountPaidUgx: sale.amountPaidUgx
+    }).catch(() => {});
+    res.json({ message: 'Sale voided. Stock has been returned.', sale, creditNote });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
 // PUT /api/sales/:id: correct sale fields with stock-aware recalculation when produce/tonnage changes.
 const updateSale = async (req, res, next) => {
   try {
@@ -328,6 +446,10 @@ const updateSale = async (req, res, next) => {
     if (deniesBranchAccess(req.user, sale.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    if (sale.voidedAt) {
+      return res.status(400).json({ message: 'Cannot edit a voided sale' });
+    }
+    await assertPeriodOpen({ branch: sale.branch, dates: [sale.date, req.body.date] });
 
     const updatableFields = [
       'produceName',
@@ -499,7 +621,8 @@ export {
   getAgentDashboard,
   updateSale,
   deleteSale,
-  restoreSale
+  restoreSale,
+  voidSale
 };
 
 

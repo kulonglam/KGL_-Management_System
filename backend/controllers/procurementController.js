@@ -7,8 +7,10 @@ import {
   resolveSellingPriceDetails,
   canManagerAccessBranch
 } from '../services/procurementService.js';
+import { findOrCreateSupplier } from '../services/supplierService.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
+import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import {
   assertProcurementKeepsStockNonNegative,
   calculateInventoryByFilter,
@@ -17,6 +19,8 @@ import {
 import { withStockLock, withStockLocks } from '../services/stockLockService.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
+import { emitDomainEvent } from '../services/webhookService.js';
+import { assertPeriodOpen } from '../services/periodLockService.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -43,8 +47,7 @@ const getAllProcurement = async (req, res, next) => {
   try {
     const filter = {};
 
-    // If user is manager, filter by branch
-    if (req.user.role === 'manager') {
+    if (req.user.role !== 'director') {
       filter.branch = req.user.branch;
     }
 
@@ -52,6 +55,7 @@ const getAllProcurement = async (req, res, next) => {
       filter,
       buildSearchFilter(req.query.search, ['produceName', 'produceType', 'dealerName', 'sourceType', 'branch'])
     );
+    Object.assign(filter, removedRecordFilter(req.query.deleted));
     if (req.query.produceType && req.query.produceType !== 'all') {
       filter.produceType = req.query.produceType;
     }
@@ -110,8 +114,10 @@ const createProcurement = async (req, res, next) => {
       tonnageKg,
       costUgx,
       dealerName,
-      dealerContact
+      dealerContact,
+      supplierId
     } = req.body;
+    await assertPeriodOpen({ branch: req.user.branch, dates: [dateReceived] });
 
     const priceResolution = await resolveSellingPriceDetails({
       branch: req.user.branch,
@@ -120,6 +126,14 @@ const createProcurement = async (req, res, next) => {
     });
     const produceName = priceResolution.produceName;
     const produceType = priceResolution.produceType;
+    const supplier = await findOrCreateSupplier({
+      branch: req.user.branch,
+      name: dealerName,
+      contact: dealerContact,
+      sourceType,
+      recordedBy: req.user._id,
+      supplierId
+    });
 
     const procurement = await withStockLock(
       {
@@ -136,8 +150,9 @@ const createProcurement = async (req, res, next) => {
           timeReceived,
           tonnageKg,
           costUgx,
-          dealerName,
-          dealerContact,
+          dealerName: supplier.name,
+          dealerContact: supplier.contact,
+          supplier: supplier._id,
           branch: req.user.branch,
           sellingPrice: priceResolution.priceUgx,
           recordedBy: req.user._id
@@ -162,6 +177,15 @@ const createProcurement = async (req, res, next) => {
       branch: req.user.branch,
       metadata: transactionAuditMetadata(procurement)
     });
+    emitDomainEvent('procurement.created', {
+      procurementId: String(procurement._id),
+      branch: procurement.branch,
+      produceName: procurement.produceName,
+      produceType: procurement.produceType,
+      tonnageKg: procurement.tonnageKg,
+      costUgx: procurement.costUgx,
+      supplierId: procurement.supplier ? String(procurement.supplier) : null
+    }).catch(() => {});
 
     res.status(201).json(procurement);
   } catch (error) {
@@ -202,6 +226,10 @@ const updateProcurement = async (req, res, next) => {
     if (!canManagerAccessBranch(req.user, procurement.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    await assertPeriodOpen({
+      branch: procurement.branch,
+      dates: [procurement.dateReceived, req.body.dateReceived]
+    });
 
     const currentProduceName = procurement.produceName || procurement.name || '';
     const currentProduceType = procurement.produceType || procurement.type || '';
@@ -350,6 +378,7 @@ const deleteProcurement = async (req, res, next) => {
     if (!canManagerAccessBranch(req.user, procurement.branch)) {
       return res.status(403).json({ message: 'Access denied to this branch data' });
     }
+    await assertPeriodOpen({ branch: procurement.branch, dates: [procurement.dateReceived] });
 
     await withStockLock(
       {
@@ -370,7 +399,8 @@ const deleteProcurement = async (req, res, next) => {
           nextTonnageKg: 0
         });
 
-        await procurement.deleteOne();
+        procurement.deletedAt = new Date();
+        await procurement.save();
 
         const afterSnapshot = await calculateInventoryByFilter({ branch: procurement.branch });
         await syncStockLevelNotifications({
@@ -396,7 +426,62 @@ const deleteProcurement = async (req, res, next) => {
       metadata: transactionAuditMetadata(procurement)
     });
 
-    res.json({ message: 'Procurement record deleted successfully' });
+    res.json({ message: 'Procurement record removed. You can restore it from removed records.' });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const restoreProcurement = async (req, res, next) => {
+  try {
+    const procurement = await Procurement.findOne({
+      _id: req.params.id,
+      deletedAt: removedOnly()
+    });
+
+    if (!procurement) {
+      return res.status(404).json({ message: 'Removed procurement record not found' });
+    }
+
+    if (!canManagerAccessBranch(req.user, procurement.branch)) {
+      return res.status(403).json({ message: 'Access denied to this branch data' });
+    }
+    await assertPeriodOpen({ branch: procurement.branch, dates: [procurement.dateReceived] });
+
+    await withStockLock(
+      {
+        branch: procurement.branch,
+        produceName: procurement.produceName,
+        produceType: procurement.produceType
+      },
+      async () => {
+        procurement.deletedAt = null;
+        await procurement.save();
+        const afterSnapshot = await calculateInventoryByFilter({ branch: procurement.branch });
+        await syncStockLevelNotifications({
+          branch: procurement.branch,
+          produceName: procurement.produceName,
+          produceType: procurement.produceType,
+          remainingStock: getBucketTonnage(
+            afterSnapshot,
+            procurement.produceName,
+            procurement.produceType,
+            procurement.branch
+          )
+        });
+      }
+    );
+
+    await recordAudit({
+      actor: req.user,
+      action: 'update',
+      entityType: 'procurement',
+      entityId: procurement._id,
+      branch: procurement.branch,
+      metadata: { ...transactionAuditMetadata(procurement), restored: true }
+    });
+
+    res.json(normalizeProcurementPayload(procurement.toObject()));
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -407,7 +492,8 @@ export {
   createProcurement,
   getProcurementById,
   updateProcurement,
-  deleteProcurement
+  deleteProcurement,
+  restoreProcurement
 };
 
 

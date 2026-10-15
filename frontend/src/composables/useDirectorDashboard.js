@@ -9,6 +9,7 @@ import {
   buildDirectorReportHtml
 } from '../utils/reports/directorReportExport.js';
 import { formatDisplayRange } from '../utils/dateFormat.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 import { buildBranchFilterOptions } from '../utils/directorAccess.js';
 import {
   buildTonalPalette,
@@ -105,7 +106,7 @@ export function useDirectorDashboard() {
     branch: 'all',
     specificDate: ''
   });
-  const todayIsoDate = new Date().toISOString().split('T')[0];
+  const todayIsoDate = businessTodayIso();
   const branchOptions = ref(buildBranchFilterOptions());
   const branchTotals = ref({});
   const grandTotal = reactive(createEmptyGrandTotal());

@@ -8,6 +8,7 @@ import {
   normalizeSourceType
 } from '../utils/produceNormalization.js';
 import { trackStockMovement } from '../services/stockBalanceService.js';
+import { excludeRemovedRecords } from '../utils/softDelete.js';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 // Define procurement schema.
@@ -58,9 +59,11 @@ const procurementSchema = new mongoose.Schema(
       set: normalizeLocalPhone,
       match: LOCAL_PHONE_PATTERN
     },
+    supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
     branch: createBranchSchemaField(),
     sellingPrice: { type: Number, required: true, min: 10000 },
-    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    deletedAt: { type: Date, default: null }
   },
   {
     timestamps: true
@@ -70,6 +73,9 @@ const procurementSchema = new mongoose.Schema(
 procurementSchema.index({ branch: 1, createdAt: -1 });
 procurementSchema.index({ branch: 1, dateReceived: -1 });
 procurementSchema.index({ branch: 1, produceType: 1, sourceType: 1 });
-trackStockMovement(procurementSchema, 1);
+procurementSchema.index({ supplier: 1, createdAt: -1 });
+procurementSchema.index({ deletedAt: 1, branch: 1, createdAt: -1 });
+excludeRemovedRecords(procurementSchema);
+trackStockMovement(procurementSchema, 1, 'procurement');
 
 export default mongoose.model('Procurement', procurementSchema);

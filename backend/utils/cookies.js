@@ -5,6 +5,9 @@ const REFRESH_COOKIE_PATH = '/api';
 const LEGACY_REFRESH_COOKIE_PATH = '/api/auth';
 const REMEMBERED_USERNAME_COOKIE = 'kgl_username';
 const REMEMBERED_USERNAME_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const OIDC_STATE_COOKIE = 'kgl_oidc_state';
+const OIDC_STATE_COOKIE_PATH = '/api';
+const OIDC_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 const parseCookieValue = (cookieHeader, name) => {
   if (!cookieHeader) return '';
@@ -131,7 +134,32 @@ const readRememberedUsername = (req) => {
   return isSafeRememberedUsername(value) ? value : '';
 };
 
+// The IdP returns via a cross-site top-level GET, which SameSite=Lax cookies survive.
+const oidcStateCookie = (state, maxAgeMs) =>
+  [
+    `${OIDC_STATE_COOKIE}=${encodeURIComponent(state)}`,
+    `Path=${OIDC_STATE_COOKIE_PATH}`,
+    `Max-Age=${Math.max(Math.floor(maxAgeMs / 1000), 0)}`,
+    'SameSite=Lax',
+    'HttpOnly',
+    ...(process.env.COOKIE_SECURE === 'true' || isProduction() ? ['Secure'] : [])
+  ].join('; ');
+
+const setOidcStateCookie = (res, state) => {
+  writeSetCookie(res, oidcStateCookie(state, OIDC_STATE_MAX_AGE_MS));
+};
+
+const clearOidcStateCookie = (res) => {
+  writeSetCookie(res, oidcStateCookie('', 0));
+};
+
+const readOidcStateCookie = (req) => parseCookieValue(req.headers?.cookie, OIDC_STATE_COOKIE).trim();
+
 export {
+  OIDC_STATE_MAX_AGE_MS,
+  clearOidcStateCookie,
+  readOidcStateCookie,
+  setOidcStateCookie,
   clearRefreshCookie,
   clearRememberedUsernameCookie,
   readRefreshCookie,

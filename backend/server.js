@@ -5,10 +5,7 @@ import connectDB from './config/database.js';
 import { validateEnv } from './config/env.js';
 import createApp from './app.js';
 import { ensureDefaultBranches } from './services/branchService.js';
-import {
-  startOverdueCreditNotifier,
-  stopOverdueCreditNotifier
-} from './services/overdueCreditNotifier.js';
+import { startJobInfrastructure, stopJobInfrastructure } from './services/jobQueueService.js';
 import logger from './utils/logger.js';
 
 dotenv.config();
@@ -23,9 +20,13 @@ const startServer = async () => {
   await ensureDefaultBranches();
 
   const app = createApp();
-  const overdueTimer = startOverdueCreditNotifier();
+  const jobs = await startJobInfrastructure();
   const server = app.listen(PORT, () => {
-    logger.info('server.started', { port: PORT, env: process.env.NODE_ENV || 'development' });
+    logger.info('server.started', {
+      port: PORT,
+      env: process.env.NODE_ENV || 'development',
+      jobBackend: jobs.mode
+    });
   });
 
   server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS || 30000);
@@ -37,7 +38,7 @@ const startServer = async () => {
 
     server.close(async () => {
       try {
-        stopOverdueCreditNotifier(overdueTimer);
+        await stopJobInfrastructure();
         await mongoose.disconnect();
         logger.info('server.shutdown.complete', { signal });
         process.exit(0);

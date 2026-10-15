@@ -69,6 +69,33 @@
           />
           <div v-if="errors.buyerName" class="invalid-feedback">{{ errors.buyerName }}</div>
         </div>
+        <div class="col-md-6">
+          <label class="form-label" for="sales-payment-method">Payment method</label>
+          <select
+            id="sales-payment-method"
+            :class="['form-select', { 'is-invalid': errors.paymentMethod }]"
+            v-model="form.paymentMethod"
+            required
+          >
+            <option value="cash">Cash</option>
+            <option value="momo">Mobile money</option>
+            <option value="bank">Bank</option>
+          </select>
+          <div v-if="errors.paymentMethod" class="invalid-feedback">{{ errors.paymentMethod }}</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="sales-tender-amount">Amount tendered (UGX)</label>
+          <input
+            id="sales-tender-amount"
+            type="number"
+            :class="['form-control', { 'is-invalid': errors.tenderAmountUgx }]"
+            v-model="form.tenderAmountUgx"
+            min="0"
+            :placeholder="form.amountPaidUgx || 'Same as amount paid'"
+          />
+          <div v-if="errors.tenderAmountUgx" class="invalid-feedback">{{ errors.tenderAmountUgx }}</div>
+          <small class="field-note">Must be at least the amount paid. Leave blank to match amount paid.</small>
+        </div>
       </div>
     </fieldset>
 

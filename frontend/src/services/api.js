@@ -169,6 +169,9 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   getRememberedUsername: () => api.get('/auth/remembered'),
+  oidcStatus: () => api.get('/auth/oidc/status'),
+  // Full-page navigation so the API can set its state cookie and redirect to the IdP.
+  oidcLoginUrl: () => `${API_URL}/auth/oidc/login?redirect=1`,
   verifyMfa: (data) => api.post('/auth/login/mfa', data),
   refresh: () => api.post('/auth/refresh'),
   resetPassword: (data) => api.post('/auth/password-reset', data),
@@ -187,11 +190,29 @@ export const authAPI = {
   issueUserRecoveryCodes: (id) => api.post(`/auth/users/${id}/recovery-codes`)
 };
 
+export const platformAPI = {
+  status: () => api.get('/platform/status'),
+  listWebhooks: () => api.get('/platform/webhooks'),
+  createWebhook: (data) => api.post('/platform/webhooks', data),
+  updateWebhook: (id, data) => api.put(`/platform/webhooks/${id}`, data),
+  deleteWebhook: (id) => api.delete(`/platform/webhooks/${id}`),
+  listDeliveries: (params = {}) => api.get('/platform/webhook-deliveries', { params }),
+  redeliver: (id) => api.post(`/platform/webhook-deliveries/${id}/redeliver`),
+  testEmit: (data) => api.post('/platform/webhooks/test-emit', data),
+  enqueueJob: (data) => api.post('/platform/jobs/enqueue', data),
+  previewWeeklyReport: () => api.get('/platform/reports/weekly/preview'),
+  runWeeklyReport: () => api.post('/platform/reports/weekly/run'),
+  listApiKeys: () => api.get('/platform/api-keys'),
+  createApiKey: (data) => api.post('/platform/api-keys', data),
+  revokeApiKey: (id) => api.post(`/platform/api-keys/${id}/revoke`)
+};
+
 export const procurementAPI = {
   getAll: (params = {}) => api.get('/procurement', { params }),
   create: (data) => api.post('/procurement', data),
   update: (id, data) => api.put(`/procurement/${id}`, data),
-  delete: (id) => api.delete(`/procurement/${id}`)
+  delete: (id) => api.delete(`/procurement/${id}`),
+  restore: (id) => api.post(`/procurement/${id}/restore`)
 };
 
 export const salesAPI = {
@@ -202,7 +223,8 @@ export const salesAPI = {
   getDashboard: (params = {}) => api.get('/sales/dashboard', { params }),
   getAgentDashboard: () => api.get('/sales/agent-dashboard'),
   delete: (id) => api.delete(`/sales/${id}`),
-  restore: (id) => api.post(`/sales/${id}/restore`)
+  restore: (id) => api.post(`/sales/${id}/restore`),
+  void: (id, data) => api.post(`/sales/${id}/void`, data)
 };
 
 export const creditSalesAPI = {
@@ -210,17 +232,98 @@ export const creditSalesAPI = {
   create: (data) => api.post('/credit-sales', data),
   update: (id, data) => api.put(`/credit-sales/${id}`, data),
   repay: (id, data) => api.post(`/credit-sales/${id}/repay`, data),
-  delete: (id) => api.delete(`/credit-sales/${id}`)
+  delete: (id) => api.delete(`/credit-sales/${id}`),
+  restore: (id) => api.post(`/credit-sales/${id}/restore`),
+  void: (id, data) => api.post(`/credit-sales/${id}/void`, data),
+  requestWriteOff: (id, data) => api.post(`/credit-sales/${id}/write-off`, data)
 };
 
 export const inventoryAPI = {
   get: () => api.get('/inventory')
 };
 
+export const financeAPI = {
+  getTaxConfig: () => api.get('/finance/tax-config'),
+  updateTaxConfig: (data) => api.put('/finance/tax-config', data),
+  listInvoices: (params = {}) => api.get('/finance/invoices', { params }),
+  getInvoice: (id) => api.get(`/finance/invoices/${id}`),
+  getInvoiceDocument: (id) =>
+    api.get(`/finance/invoices/${id}/document`, { responseType: 'text', transformResponse: [(d) => d] }),
+  getInvoicePdf: (id) =>
+    api.get(`/finance/invoices/${id}/document`, { params: { format: 'pdf' }, responseType: 'blob' }),
+  issueInvoiceFromSale: (saleId) => api.post(`/finance/invoices/from-sale/${saleId}`),
+  listCashUps: (params = {}) => api.get('/finance/cash-up', { params }),
+  openCashUp: (data) => api.post('/finance/cash-up/open', data),
+  closeCashUp: (id, data) => api.post(`/finance/cash-up/${id}/close`, data),
+  glExport: (params = {}) =>
+    api.get('/finance/gl-export', {
+      params,
+      responseType: String(params.format || '').toLowerCase() === 'csv' ? 'text' : 'json',
+      transformResponse:
+        String(params.format || '').toLowerCase() === 'csv' ? [(data) => data] : undefined
+    }),
+  glMappings: () => api.get('/finance/gl-mappings'),
+  getRetention: () => api.get('/finance/retention'),
+  updateRetention: (data) => api.put('/finance/retention', data),
+  runRetention: () => api.post('/finance/retention/run'),
+  downloadAuditPack: (params = {}) =>
+    api.get('/finance/retention/audit-pack', { params, responseType: 'blob' }),
+  listWriteOffs: (params = {}) => api.get('/finance/write-offs', { params }),
+  approveWriteOff: (id, data = {}) => api.post(`/finance/write-offs/${id}/approve`, data),
+  rejectWriteOff: (id, data = {}) => api.post(`/finance/write-offs/${id}/reject`, data),
+  listPeriodLocks: () => api.get('/finance/period-locks'),
+  setPeriodLock: (data) => api.put('/finance/period-locks', data),
+  getStatement: (buyerId, params = {}) => api.get(`/finance/statements/${buyerId}`, { params }),
+  getStatementPdf: (buyerId, params = {}) =>
+    api.get(`/finance/statements/${buyerId}`, { params: { ...params, format: 'pdf' }, responseType: 'blob' }),
+  emailStatement: (buyerId, data = {}) => api.post(`/finance/statements/${buyerId}/email`, data),
+  exportBuyerData: (buyerId) => api.get(`/finance/personal-data/trusted-buyers/${buyerId}`),
+  exportUserData: (userId) => api.get(`/finance/personal-data/users/${userId}`)
+};
+
+export const inventoryOpsAPI = {
+  listMovements: (params = {}) => api.get('/inventory/movements', { params }),
+  listTransfers: (params = {}) => api.get('/inventory/transfers', { params }),
+  createTransfer: (data) => api.post('/inventory/transfers', data),
+  shipTransfer: (id) => api.post(`/inventory/transfers/${id}/ship`),
+  receiveTransfer: (id) => api.post(`/inventory/transfers/${id}/receive`),
+  cancelTransfer: (id) => api.post(`/inventory/transfers/${id}/cancel`),
+  listAdjustments: (params = {}) => api.get('/inventory/adjustments', { params }),
+  createAdjustment: (data) => api.post('/inventory/adjustments', data),
+  approveAdjustment: (id) => api.post(`/inventory/adjustments/${id}/approve`),
+  rejectAdjustment: (id) => api.post(`/inventory/adjustments/${id}/reject`),
+  listStocktakes: (params = {}) => api.get('/inventory/stocktakes', { params }),
+  getStocktake: (id) => api.get(`/inventory/stocktakes/${id}`),
+  getStocktakeCountSheet: (id, params = {}) =>
+    api.get(`/inventory/stocktakes/${id}/count-sheet`, {
+      params,
+      responseType: 'text',
+      transformResponse: [(data) => data]
+    }),
+  createStocktake: (data = {}) => api.post('/inventory/stocktakes', data),
+  updateStocktake: (id, data) => api.put(`/inventory/stocktakes/${id}`, data),
+  postStocktake: (id) => api.post(`/inventory/stocktakes/${id}/post`)
+};
+
 export const notificationsAPI = {
   getAll: (params = {}) => api.get('/notifications', { params }),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllRead: () => api.put('/notifications/read-all')
+};
+
+export const messagesAPI = {
+  getAll: (params = {}) => api.get('/messages', { params }),
+  unreadCount: () => api.get('/messages/unread-count'),
+  markAsRead: (id) => api.put(`/messages/${id}/read`),
+  markAllRead: () => api.put('/messages/read-all')
+};
+
+export const suppliersAPI = {
+  getAll: (params = {}) => api.get('/suppliers', { params }),
+  create: (data) => api.post('/suppliers', data),
+  update: (id, data) => api.put(`/suppliers/${id}`, data),
+  delete: (id) => api.delete(`/suppliers/${id}`),
+  restore: (id) => api.post(`/suppliers/${id}/restore`)
 };
 
 export const trustedBuyersAPI = {

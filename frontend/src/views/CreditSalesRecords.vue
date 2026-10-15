@@ -27,6 +27,10 @@
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Credit Sales Records</h5>
         <div class="d-flex flex-wrap align-items-center gap-2">
+          <label v-if="canRepay" class="form-check mb-0 small">
+            <input v-model="showRemoved" class="form-check-input" type="checkbox" />
+            Show removed
+          </label>
           <RecordExportActions title="Credit sales records" filename="credit_sales" :columns="exportColumns" :rows="creditSales" />
         <button
           class="btn btn-outline-primary btn-sm"
@@ -125,6 +129,9 @@
                   >
                     {{ statusLabel(item) }}
                   </span>
+                  <span v-if="item.writeOff?.status === 'pending'" class="badge text-bg-info ms-1">
+                    Write-off pending
+                  </span>
                 </td>
                 <td data-label="Produce">{{ item.produceName }} ({{ item.produceType }})</td>
                 <td data-label="Sales Agent">{{ item.salesAgentName || '-' }}</td>
@@ -133,29 +140,62 @@
                 <td v-if="canRepay" data-label="Actions" class="text-end">
                   <div class="record-row-actions justify-content-end">
                     <button
-                      v-if="getBalance(item) > 0"
+                      v-if="showRemoved && !item.voidedAt"
                       type="button"
-                      class="btn btn-sm btn-outline-primary"
-                      @click="startRepay(item)"
+                      class="btn btn-sm btn-outline-success"
+                      @click="restoreCreditSale(item)"
                     >
-                      Repay
+                      Restore
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-secondary"
-                      @click="startEdit(item)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-danger"
-                      :disabled="hasRepayments(item)"
-                      :title="hasRepayments(item) ? 'Cannot delete credit sales with repayments' : ''"
-                      @click="openDeleteDialog(item)"
-                    >
-                      Delete
-                    </button>
+                    <template v-else-if="showRemoved && item.voidedAt">
+                      <span class="badge text-bg-secondary">Voided</span>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" @click="receiptSale = item">
+                        Receipt
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button
+                        v-if="getBalance(item) > 0"
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        @click="startRepay(item)"
+                      >
+                        Repay
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        @click="startEdit(item)"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-warning"
+                        :disabled="hasRepayments(item)"
+                        :title="hasRepayments(item) ? 'Cannot void credit sales with repayments' : ''"
+                        @click="openVoidDialog(item)"
+                      >
+                        Void
+                      </button>
+                      <button
+                        v-if="canRequestWriteOff(item)"
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        @click="openWriteOffDialog(item)"
+                      >
+                        Write off
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        :disabled="hasRepayments(item)"
+                        :title="hasRepayments(item) ? 'Cannot delete credit sales with repayments' : ''"
+                        @click="openDeleteDialog(item)"
+                      >
+                        Remove
+                      </button>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -405,13 +445,94 @@
 
     <ConfirmDialog
       :show="deleteDialog.show"
-      title="Delete Credit Sale"
-      :message="`Delete credit sale record for ${deleteDialog.buyerName}? This cannot be undone.`"
-      confirm-text="Delete"
+      title="Remove Credit Sale"
+      :message="`Remove credit sale record for ${deleteDialog.buyerName}? You can restore it later.`"
+      confirm-text="Remove"
       :busy="deleteDialog.processing"
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteCreditSale"
     />
+
+    <div v-if="voidDialog.show" class="modal-mask" @click.self="closeVoidDialog">
+      <div class="modal-card" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <h5 class="mb-0">Void credit sale</h5>
+          <button type="button" class="btn-close" :disabled="voidDialog.processing" @click="closeVoidDialog"></button>
+        </div>
+        <div class="modal-body">
+          <p>Void credit sale for {{ voidDialog.buyerName }}? Stock will be returned. This cannot be restored.</p>
+          <label class="form-label" for="void-credit-reason">Reason</label>
+          <textarea
+            id="void-credit-reason"
+            v-model.trim="voidDialog.reason"
+            class="form-control"
+            rows="3"
+            minlength="5"
+          ></textarea>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" :disabled="voidDialog.processing" @click="closeVoidDialog">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-warning"
+              :disabled="voidDialog.processing || voidDialog.reason.length < 5"
+              @click="confirmVoidCreditSale"
+            >
+              Void sale
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="writeOffDialog.show" class="modal-mask" @click.self="closeWriteOffDialog">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="write-off-title">
+        <div class="modal-header">
+          <h5 id="write-off-title" class="mb-0">Request write-off</h5>
+          <button
+            type="button"
+            class="btn-close"
+            :disabled="writeOffDialog.processing"
+            @click="closeWriteOffDialog"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            Request a write-off of {{ formatCurrency(writeOffDialog.balanceUgx) }} UGX for
+            {{ writeOffDialog.buyerName }}? A director must approve before the balance is cleared.
+          </p>
+          <label class="form-label" for="write-off-reason">Reason</label>
+          <textarea
+            id="write-off-reason"
+            v-model.trim="writeOffDialog.reason"
+            class="form-control"
+            rows="3"
+            minlength="5"
+          ></textarea>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="writeOffDialog.processing"
+              @click="closeWriteOffDialog"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              :disabled="writeOffDialog.processing || writeOffDialog.reason.length < 5"
+              @click="confirmWriteOffRequest"
+            >
+              Request write-off
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ReceiptDialog :sale="receiptSale" sale-type="Credit sale" @close="receiptSale = null" />
   </div>
 </template>
 
@@ -423,6 +544,7 @@
 
 import { creditSalesAPI } from '../services/api';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import ReceiptDialog from '../components/common/ReceiptDialog.vue';
 import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
@@ -433,6 +555,7 @@ import { asListPayload } from '../utils/listPayload.js';
 import { getCreditSaleBalance, validateRepaymentAmount } from '../utils/creditSalesValidation.js';
 import { formatDisplayDate } from '../utils/dateFormat.js';
 import { toDateInput } from '../utils/dateInput.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 
 export default {
@@ -440,12 +563,14 @@ export default {
   components: {
     ConfirmDialog,
     InsightStrip,
+    ReceiptDialog,
     RecordExportActions,
     TablePagination
   },
   data() {
     return {
       user: {},
+      receiptSale: null,
       creditSales: [],
       listTotal: 0,
       listTotalPages: 1,
@@ -461,7 +586,7 @@ export default {
       repayId: null,
       repayForm: {
         amountUgx: '',
-        paidAt: new Date().toISOString().split('T')[0]
+        paidAt: businessTodayIso()
       },
       repayLoading: false,
       repayOpSeq: 0,
@@ -487,6 +612,22 @@ export default {
         show: false,
         creditSaleId: '',
         buyerName: '',
+        processing: false
+      },
+      showRemoved: false,
+      voidDialog: {
+        show: false,
+        creditSaleId: '',
+        buyerName: '',
+        reason: '',
+        processing: false
+      },
+      writeOffDialog: {
+        show: false,
+        creditSaleId: '',
+        buyerName: '',
+        balanceUgx: 0,
+        reason: '',
         processing: false
       }
     };
@@ -610,6 +751,9 @@ export default {
     },
     sortBy() {
       this.scheduleCreditReload();
+    },
+    showRemoved() {
+      this.scheduleCreditReload();
     }
   },
   methods: {
@@ -623,7 +767,8 @@ export default {
           limit: this.pageSize,
           search: this.searchQuery,
           status: this.statusFilter,
-          sort: this.sortBy
+          sort: this.sortBy,
+          deleted: this.showRemoved ? 'true' : undefined
         });
         const payload = asListPayload(response.data);
         this.creditSales = payload.items.map((item) => ({
@@ -748,6 +893,41 @@ export default {
         this.deleteDialog.processing = false;
       }
     },
+    async restoreCreditSale(item) {
+      this.loadError = '';
+      try {
+        await creditSalesAPI.restore(item._id);
+        await this.loadCreditSales();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to restore credit sale record.';
+      }
+    },
+    openVoidDialog(item) {
+      this.voidDialog = {
+        show: true,
+        creditSaleId: item._id,
+        buyerName: item.buyerName || 'selected buyer',
+        reason: '',
+        processing: false
+      };
+    },
+    closeVoidDialog() {
+      if (this.voidDialog.processing) return;
+      this.voidDialog.show = false;
+    },
+    async confirmVoidCreditSale() {
+      if (!this.voidDialog.creditSaleId || this.voidDialog.reason.length < 5) return;
+      this.voidDialog.processing = true;
+      try {
+        await creditSalesAPI.void(this.voidDialog.creditSaleId, { reason: this.voidDialog.reason });
+        this.voidDialog.show = false;
+        await this.loadCreditSales();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to void credit sale record.';
+      } finally {
+        this.voidDialog.processing = false;
+      }
+    },
     startRepay(item) {
       this.cancelEdit();
       this.repayOpSeq += 1;
@@ -755,7 +935,7 @@ export default {
       this.repayId = item._id;
       this.repayForm = {
         amountUgx: '',
-        paidAt: new Date().toISOString().split('T')[0]
+        paidAt: businessTodayIso()
       };
       this.repayError = '';
       this.repaySuccess = '';
@@ -766,7 +946,7 @@ export default {
       this.repayLoading = false;
       this.repayForm = {
         amountUgx: '',
-        paidAt: new Date().toISOString().split('T')[0]
+        paidAt: businessTodayIso()
       };
       this.repayError = '';
       this.repaySuccess = '';
@@ -813,17 +993,51 @@ export default {
     },
     isOverdue(item) {
       if (!item || this.getBalance(item) <= 0) return false;
-      const due = new Date(item.dueDate);
-      if (Number.isNaN(due.getTime())) return false;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return due < today;
+      const dueKey = toDateInput(item.dueDate);
+      return Boolean(dueKey) && dueKey < businessTodayIso();
+    },
+    canRequestWriteOff(item) {
+      return this.getBalance(item) > 0 && !item.voidedAt && item.writeOff?.status !== 'pending';
+    },
+    openWriteOffDialog(item) {
+      this.writeOffDialog = {
+        show: true,
+        creditSaleId: item._id,
+        buyerName: item.buyerName || 'selected buyer',
+        balanceUgx: this.getBalance(item),
+        reason: '',
+        processing: false
+      };
+    },
+    closeWriteOffDialog() {
+      if (this.writeOffDialog.processing) return;
+      this.writeOffDialog.show = false;
+    },
+    async confirmWriteOffRequest() {
+      if (!this.writeOffDialog.creditSaleId || this.writeOffDialog.reason.length < 5) return;
+      this.writeOffDialog.processing = true;
+      try {
+        await creditSalesAPI.requestWriteOff(this.writeOffDialog.creditSaleId, {
+          reason: this.writeOffDialog.reason
+        });
+        this.writeOffDialog.show = false;
+        await this.loadCreditSales();
+      } catch (error) {
+        this.loadError = error.response?.data?.message || 'Failed to request write-off.';
+      } finally {
+        this.writeOffDialog.processing = false;
+      }
+    },
+    isWrittenOff(item) {
+      return item?.writeOff?.status === 'approved' && Number(item.writtenOffUgx) > 0;
     },
     statusLabel(item) {
+      if (this.isWrittenOff(item)) return 'Written off';
       if (this.getBalance(item) === 0) return 'Paid';
       return this.isOverdue(item) ? 'Overdue' : 'Outstanding';
     },
     statusBadgeClass(item) {
+      if (this.isWrittenOff(item)) return 'bg-dark';
       if (this.getBalance(item) === 0) return 'bg-success';
       return this.isOverdue(item) ? 'bg-danger' : 'bg-warning text-dark';
     },

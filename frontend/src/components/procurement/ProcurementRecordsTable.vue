@@ -3,6 +3,15 @@
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
       <h5 class="mb-0">All Procurement</h5>
       <div class="d-flex flex-wrap align-items-center gap-2">
+        <label class="form-check mb-0 small">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            :checked="showRemoved"
+            @change="$emit('update:showRemoved', $event.target.checked)"
+          />
+          Show removed
+        </label>
         <RecordExportActions title="Procurement records" filename="procurement_records" :columns="exportColumns" :rows="procurements" />
         <router-link to="/dashboard/procurement" class="btn btn-primary btn-sm">
           Record Procurement
@@ -123,21 +132,32 @@
               <td data-label="Actions" class="text-end text-nowrap actions-cell">
                 <div class="record-row-actions justify-content-end">
                   <button
+                    v-if="showRemoved"
                     type="button"
-                    class="btn btn-sm btn-outline-primary"
+                    class="btn btn-sm btn-outline-success"
                     :disabled="loading"
-                    @click="$emit('edit', item)"
+                    @click="$emit('restore', item._id)"
                   >
-                    Edit
+                    Restore
                   </button>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-danger"
-                    :disabled="loading"
-                    @click="$emit('delete', item._id)"
-                  >
-                    Delete
-                  </button>
+                  <template v-else>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary"
+                      :disabled="loading"
+                      @click="$emit('edit', item)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      :disabled="loading"
+                      @click="$emit('delete', item._id)"
+                    >
+                      Remove
+                    </button>
+                  </template>
                 </div>
               </td>
             </tr>
@@ -189,10 +209,14 @@ const props = defineProps({
   totalItems: {
     type: Number,
     default: null
+  },
+  showRemoved: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['refresh', 'edit', 'delete', 'query']);
+const emit = defineEmits(['refresh', 'edit', 'delete', 'restore', 'query', 'update:showRemoved']);
 
 const currentPage = ref(1);
 const pageSize = ref(20);

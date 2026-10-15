@@ -1,16 +1,42 @@
 // Coordinates request handling: reads HTTP input, invokes domain services, and returns response payloads.
 
 import TrustedBuyer from '../models/TrustedBuyer.js';
+import CreditSale from '../models/CreditSale.js';
+import { roundUgx } from '../utils/money.js';
 import {
   normalizeText,
   normalizeNationalId,
   findDuplicateTrustedBuyer
 } from '../services/trustedBuyerService.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
-import { removedRecordFilter } from '../utils/softDelete.js';
+import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 import { forwardControllerError } from '../utils/httpError.js';
+import { appendNationalIdSearch } from '../utils/fieldEncryption.js';
+
+const normalizeEmail = (value) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase();
+
+// Aggregations bypass the soft-delete find hook, so removed/voided credits are excluded explicitly.
+const attachOutstandingBalances = async (buyers) => {
+  if (buyers.length === 0) return buyers;
+  const totals = await CreditSale.aggregate([
+    {
+      $match: {
+        trustedBuyer: { $in: buyers.map((buyer) => buyer._id) },
+        deletedAt: null,
+        voidedAt: null,
+        balanceUgx: { $gt: 0 }
+      }
+    },
+    { $group: { _id: '$trustedBuyer', outstandingUgx: { $sum: '$balanceUgx' } } }
+  ]);
+  const byBuyer = new Map(totals.map((row) => [String(row._id), roundUgx(row.outstandingUgx)]));
+  return buyers.map((buyer) => ({ ...buyer, outstandingUgx: byBuyer.get(String(buyer._id)) || 0 }));
+};
 
 // GET /api/trusted-buyers: list trusted buyers visible to requester scope with optional pagination.
 const getTrustedBuyers = async (req, res, next) => {
@@ -20,7 +46,13 @@ const getTrustedBuyers = async (req, res, next) => {
       filter.branch = req.user.branch;
     }
 
-    Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'nationalId', 'location', 'contact']));
+    Object.assign(
+      filter,
+      appendNationalIdSearch(
+        buildSearchFilter(req.query.search, ['name', 'location', 'contact']),
+        req.query.search
+      )
+    );
     Object.assign(filter, removedRecordFilter(req.query.deleted));
 
     const pagination = parsePagination(req.query);
@@ -32,7 +64,7 @@ const getTrustedBuyers = async (req, res, next) => {
     const buyersQuery = TrustedBuyer.find(filter).sort(sort).lean();
     applyListLimit(buyersQuery, pagination);
 
-    const buyers = await buyersQuery;
+    const buyers = await attachOutstandingBalances(await buyersQuery);
     if (!pagination.enabled) {
       return res.json(buyers);
     }
@@ -74,13 +106,21 @@ const createTrustedBuyer = async (req, res, next) => {
       return res.status(400).json({ message: 'Trusted buyer already exists for this branch' });
     }
 
+    const creditLimitRaw = req.body.creditLimitUgx;
+    const creditLimitUgx =
+      creditLimitRaw === undefined || creditLimitRaw === null || creditLimitRaw === ''
+        ? null
+        : Number(creditLimitRaw);
+
     const buyer = await TrustedBuyer.create({
       name: sanitizedName,
       nationalId: normalizedNationalId,
       location: sanitizedLocation,
       contact: sanitizedContact,
+      email: normalizeEmail(req.body.email),
       branch: req.user.branch,
-      recordedBy: req.user._id
+      recordedBy: req.user._id,
+      creditLimitUgx: Number.isFinite(creditLimitUgx) ? creditLimitUgx : null
     });
 
     res.status(201).json(buyer);
@@ -114,6 +154,14 @@ const updateTrustedBuyer = async (req, res, next) => {
     if (name !== undefined) buyer.name = normalizeText(name);
     if (location !== undefined) buyer.location = normalizeText(location);
     if (contact !== undefined) buyer.contact = normalizeText(contact);
+    if (req.body.email !== undefined) buyer.email = normalizeEmail(req.body.email);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'creditLimitUgx')) {
+      const creditLimitRaw = req.body.creditLimitUgx;
+      buyer.creditLimitUgx =
+        creditLimitRaw === undefined || creditLimitRaw === null || creditLimitRaw === ''
+          ? null
+          : Number(creditLimitRaw);
+    }
 
     const updated = await buyer.save();
     res.json(updated);
@@ -141,7 +189,7 @@ const deleteTrustedBuyer = async (req, res, next) => {
 };
 const restoreTrustedBuyer = async (req, res, next) => {
   try {
-    const buyer = await TrustedBuyer.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    const buyer = await TrustedBuyer.findOne({ _id: req.params.id, deletedAt: removedOnly() });
     if (!buyer) {
       return res.status(404).json({ message: 'Removed trusted buyer not found' });
     }

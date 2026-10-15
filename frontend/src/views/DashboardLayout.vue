@@ -291,6 +291,8 @@ export default {
       lastSidebarFocusedElement: null,
       managerSectionOpen: {
         operations: true,
+        inventoryOps: false,
+        finance: false,
         records: false,
         administration: false
       }
@@ -323,6 +325,10 @@ export default {
         items.push(
           { path: '/dashboard/director', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/branches', icon: 'bi bi-diagram-3', label: 'Branches' },
+          { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
+          { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
+          { path: '/dashboard/platform', icon: 'bi bi-plug', label: 'Platform' },
+          { path: '/dashboard/inbox', icon: 'bi bi-inbox', label: 'Inbox' },
           { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
@@ -330,6 +336,8 @@ export default {
         items.push(
           { path: '/dashboard/manager', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
+          { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
+          { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/sales', icon: 'bi bi-grid', label: 'Cash Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
@@ -354,6 +362,8 @@ export default {
             icon: 'bi bi-person-check',
             label: 'Trusted Buyers'
           },
+          { path: '/dashboard/suppliers', icon: 'bi bi-truck', label: 'Suppliers' },
+          { path: '/dashboard/inbox', icon: 'bi bi-inbox', label: 'Inbox' },
           { path: '/dashboard/users', icon: 'bi bi-people', label: 'Users' },
           { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
@@ -362,6 +372,8 @@ export default {
         items.push(
           { path: '/dashboard/sales-agent', icon: 'bi bi-grid', label: 'Dashboard' },
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
+          { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
+          { path: '/dashboard/inbox', icon: 'bi bi-inbox', label: 'Inbox' },
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Cash Sales' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
@@ -401,6 +413,16 @@ export default {
           ])
         },
         {
+          key: 'inventoryOps',
+          label: 'Stock Ops',
+          items: pick(['/dashboard/inventory-ops'])
+        },
+        {
+          key: 'finance',
+          label: 'Finance',
+          items: pick(['/dashboard/finance'])
+        },
+        {
           key: 'records',
           label: 'Records',
           items: pick([
@@ -415,6 +437,8 @@ export default {
           items: pick([
             '/dashboard/price-management',
             '/dashboard/trusted-buyers',
+            '/dashboard/suppliers',
+            '/dashboard/inbox',
             '/dashboard/users',
             '/dashboard/audit-logs',
             '/dashboard/profile'

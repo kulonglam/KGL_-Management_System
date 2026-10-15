@@ -1,6 +1,8 @@
 // Validates required environment configuration so the server fails fast on invalid setup.
 
 import { getJwtClaimOptions, parseAllowedOrigins, shouldEnableSwagger } from './security.js';
+import { isValidTimeZone } from '../utils/businessTime.js';
+import { parseNinKey } from '../utils/fieldEncryption.js';
 
 const WEAK_SECRET_HINTS = [
   // Block common placeholder/default secrets that are unsafe for JWT signing.
@@ -62,6 +64,38 @@ const validateEnv = () => {
       assertCondition(swaggerPassword.length >= 12,
         'SWAGGER_PASSWORD must be at least 12 characters when Swagger is enabled in production');
     }
+  }
+
+  const oidcIssuer = String(process.env.OIDC_ISSUER || '').trim();
+  const oidcClientId = String(process.env.OIDC_CLIENT_ID || '').trim();
+  const oidcClientSecret = String(process.env.OIDC_CLIENT_SECRET || '').trim();
+  const oidcRedirect = String(process.env.OIDC_REDIRECT_URI || '').trim();
+  const oidcAny = Boolean(oidcIssuer || oidcClientId || oidcClientSecret || oidcRedirect);
+  if (oidcAny) {
+    assertCondition(
+      Boolean(oidcIssuer && oidcClientId && oidcClientSecret && oidcRedirect),
+      'OIDC_ISSUER, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, and OIDC_REDIRECT_URI must all be set together'
+    );
+    for (const name of ['OIDC_ISSUER', 'OIDC_REDIRECT_URI', 'OIDC_FRONTEND_REDIRECT']) {
+      const value = String(process.env[name] || '').trim();
+      if (!value) continue;
+      assertCondition(URL.canParse(value), `${name} must be an absolute URL`);
+    }
+  }
+
+  const businessTz = String(process.env.BUSINESS_TIMEZONE || '').trim();
+  if (businessTz) {
+    assertCondition(isValidTimeZone(businessTz), 'BUSINESS_TIMEZONE must be a valid IANA time zone');
+  }
+
+  const ninKey = String(process.env.NIN_ENCRYPTION_KEY || '').trim();
+  if (ninKey) {
+    assertCondition(
+      parseNinKey(ninKey) !== null,
+      'NIN_ENCRYPTION_KEY must be 32 bytes as 64 hex characters or base64'
+    );
+  } else if (nodeEnv === 'production') {
+    assertCondition(false, 'NIN_ENCRYPTION_KEY is required in production');
   }
 };
 

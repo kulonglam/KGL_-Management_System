@@ -1,7 +1,21 @@
 /** Unit tests for credit-sales balance and repayment validation helper functions. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getCreditSaleBalance, validateRepaymentAmount } from '../src/utils/creditSalesValidation.js';
+import {
+  getCreditLimitStatus,
+  getCreditSaleBalance,
+  validateRepaymentAmount
+} from '../src/utils/creditSalesValidation.js';
+
+test('getCreditLimitStatus warns at 90% and flags projected amounts over the limit', () => {
+  const base = { creditLimitUgx: 1000000, outstandingUgx: 500000 };
+  assert.equal(getCreditLimitStatus({ ...base, amountDueUgx: 300000 }).level, 'ok');
+  assert.equal(getCreditLimitStatus({ ...base, amountDueUgx: 400000 }).level, 'near');
+  assert.equal(getCreditLimitStatus({ ...base, amountDueUgx: 500000 }).level, 'near');
+  assert.equal(getCreditLimitStatus({ ...base, amountDueUgx: 500001 }).level, 'over');
+  assert.equal(getCreditLimitStatus({ creditLimitUgx: null, outstandingUgx: 0, amountDueUgx: 1 }).level, 'none');
+  assert.equal(getCreditLimitStatus({ creditLimitUgx: null, outstandingUgx: 10, amountDueUgx: 1 }).level, 'blocked');
+});
 
 test('getCreditSaleBalance uses explicit balance when provided', () => {
   const balance = getCreditSaleBalance({

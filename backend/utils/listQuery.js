@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { startOfUtcDay } from './dateFormat.js';
+import { businessToday } from './businessTime.js';
 
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -20,7 +20,8 @@ const buildSearchFilter = (search, fields = []) => {
   };
 };
 
-const startOfToday = () => startOfUtcDay(new Date());
+// Business-timezone "today" as the UTC-midnight value used by calendar-date fields.
+const startOfToday = () => businessToday();
 
 const resolveSort = (sortKey, sortMap = {}, fallback = { createdAt: -1 }) => {
   if (sortKey && sortMap[sortKey]) {

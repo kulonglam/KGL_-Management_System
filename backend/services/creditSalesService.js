@@ -140,7 +140,13 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
     .lean();
 
   const outstandingBalance = calculateOutstandingBalance(openCredits);
-  if (outstandingBalance > 0) {
+  const creditLimitUgx =
+    trustedBuyer.creditLimitUgx === undefined || trustedBuyer.creditLimitUgx === null
+      ? null
+      : Number(trustedBuyer.creditLimitUgx);
+
+  // Legacy rule when no limit is configured: only one open credit at a time.
+  if (creditLimitUgx === null && outstandingBalance > 0) {
     throw createServiceError(400, buildOutstandingBalanceMessage(outstandingBalance));
   }
 
@@ -177,6 +183,15 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
       }
 
       const amountDueUgx = roundUgx(item.sellingPrice * tonnage);
+      if (creditLimitUgx !== null) {
+        const projected = roundUgx(outstandingBalance + amountDueUgx);
+        if (projected > creditLimitUgx) {
+          throw createServiceError(
+            409,
+            `Credit limit exceeded. Outstanding ${roundUgx(outstandingBalance).toLocaleString('en-UG')} UGX + new ${amountDueUgx.toLocaleString('en-UG')} UGX exceeds limit of ${creditLimitUgx.toLocaleString('en-UG')} UGX.`
+          );
+        }
+      }
       const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
         const creditSale = await CreditSale.create({
@@ -214,7 +229,7 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
 // Apply paid/unpaid status transition while preserving repayment-history consistency.
 const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid }) => {
   const creditSale = await CreditSale.findById(creditSaleId).select(
-    'branch amountDueUgx amountPaidUgx balanceUgx payments'
+    'branch amountDueUgx amountPaidUgx balanceUgx payments voidedAt'
   );
 
   if (!creditSale) {
@@ -223,6 +238,10 @@ const applyCreditPaymentStatusUpdate = async ({ actorUser, creditSaleId, isPaid 
 
   if (deniesBranchAccess(actorUser, creditSale.branch)) {
     throw createServiceError(403, 'Access denied to this branch data');
+  }
+
+  if (creditSale.voidedAt) {
+    throw createServiceError(400, 'Cannot change payment status on a voided credit sale');
   }
 
   if (!isPaid) {
@@ -306,6 +325,10 @@ const repayCreditSaleRecord = async ({ actorUser, creditSaleId, payload }) => {
   const creditSale = await CreditSale.findById(creditSaleId);
   if (!creditSale) {
     throw createServiceError(404, 'Credit sale not found');
+  }
+
+  if (creditSale.voidedAt) {
+    throw createServiceError(400, 'Cannot repay a voided credit sale');
   }
 
   if (deniesBranchAccess(actorUser, creditSale.branch)) {

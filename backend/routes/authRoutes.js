@@ -4,6 +4,9 @@ import express from 'express';
 import {
   login,
   logout,
+  oidcStatus,
+  oidcLoginStart,
+  oidcLoginCallback,
   getRememberedUsername,
   register,
   getMe,
@@ -50,6 +53,9 @@ router.use(noStore);
 
 // POST /api/auth/login: authenticate credentials and return signed session details.
 router.get('/remembered', getRememberedUsername);
+router.get('/oidc/status', oidcStatus);
+router.get('/oidc/login', authLimiter, oidcLoginStart);
+router.get('/oidc/callback', authLimiter, oidcLoginCallback);
 router.post('/login', authLimiter, loginValidation, validateRequest, login);
 router.post('/login/mfa', authLimiter, mfaLoginValidation, validateRequest, verifyMfaLogin);
 router.post('/refresh', authLimiter, refreshSession);
@@ -78,11 +84,11 @@ router.post('/mfa/setup', protect, writeLimiter, setupMfa);
 router.post('/mfa/enable', protect, writeLimiter, mfaCodeValidation, validateRequest, enableMfa);
 router.post('/mfa/disable', protect, writeLimiter, mfaDisableValidation, validateRequest, disableMfa);
 
-// GET /api/auth/users: list branch users for manager administration screens.
+// GET /api/auth/users: list branch users (managers) or all users (directors, read-only for DSAR exports).
 router.get(
   '/users',
   protect,
-  authorize('manager'),
+  authorize('manager', 'director'),
   paginationValidation,
   validateRequest,
   getUsers

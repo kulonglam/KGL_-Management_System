@@ -10,7 +10,8 @@ import {
   getAgentDashboard,
   updateSale,
   deleteSale,
-  restoreSale
+  restoreSale,
+  voidSale
 } from '../controllers/salesController.js';
 import { protect, authorize, authorizeDirector } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
@@ -19,7 +20,8 @@ import {
   paginationValidation,
   saleCreateValidation,
   saleUpdateValidation,
-  mongoIdParamValidation
+  mongoIdParamValidation,
+  voidReasonValidation
 } from '../validators/requestValidators.js';
 
 // GET /api/sales: list branch sales visible to manager/sales agent roles.
@@ -64,6 +66,16 @@ router.post(
   mongoIdParamValidation,
   validateRequest,
   restoreSale
+);
+
+router.post(
+  '/:id/void',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  voidReasonValidation,
+  validateRequest,
+  voidSale
 );
 
 // DELETE /api/sales/:id: remove one sale record so it can be restored (manager only).

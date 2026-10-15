@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { queueMessage } from './messageService.js';
 import { startOfToday, trustedQuery } from '../utils/listQuery.js';
 import logger from '../utils/logger.js';
+import { emitDomainEvent } from './webhookService.js';
 
 const NOTICE_COOLDOWN_MS = Number(process.env.OVERDUE_NOTICE_COOLDOWN_MS || 24 * 60 * 60 * 1000);
 const SCAN_LIMIT = Number(process.env.OVERDUE_SCAN_LIMIT || 100);
@@ -67,6 +68,13 @@ const notifyOverdueCreditSales = async () => {
     ]);
 
     await CreditSale.updateOne({ _id: item._id }, { $set: { lastOverdueNoticeAt: new Date() } });
+    emitDomainEvent('credit.overdue', {
+      creditSaleId: String(item._id),
+      branch: item.branch,
+      buyerName: item.buyerName,
+      balanceUgx: balance,
+      dueDate: item.dueDate
+    }).catch(() => {});
     notified += 1;
   }
 
@@ -74,26 +82,4 @@ const notifyOverdueCreditSales = async () => {
   return { notified };
 };
 
-const startOverdueCreditNotifier = () => {
-  if (process.env.NODE_ENV === 'test') {
-    return null;
-  }
-  const intervalMs = Number(process.env.OVERDUE_SCAN_INTERVAL_MS || 15 * 60 * 1000);
-  const run = () => {
-    notifyOverdueCreditSales().catch((error) => {
-      logger.warn('credit.overdue.scan_failed', { message: error.message });
-    });
-  };
-  run();
-  const timer = setInterval(run, intervalMs);
-  timer.unref?.();
-  return timer;
-};
-
-const stopOverdueCreditNotifier = (timer) => {
-  if (timer) {
-    clearInterval(timer);
-  }
-};
-
-export { notifyOverdueCreditSales, startOverdueCreditNotifier, stopOverdueCreditNotifier };
+export { notifyOverdueCreditSales };

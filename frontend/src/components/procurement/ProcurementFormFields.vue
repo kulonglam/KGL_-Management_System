@@ -156,6 +156,21 @@
         <span>Dealer Information</span>
       </legend>
       <div class="row g-3">
+        <div class="col-md-12">
+          <label class="form-label" for="procurement-supplier">Supplier</label>
+          <select
+            id="procurement-supplier"
+            class="form-select"
+            :value="form.supplierId || ''"
+            @change="onSupplierSelected"
+          >
+            <option value="">Enter dealer details / create on save</option>
+            <option v-for="supplier in suppliers" :key="supplier._id" :value="supplier._id">
+              {{ supplier.name }} ({{ supplier.contact }})
+            </option>
+          </select>
+          <small class="field-note">Pick a saved supplier or type dealer details below.</small>
+        </div>
         <div class="col-md-6">
           <label class="form-label" for="procurement-dealer-name">Dealer Name</label>
           <input
@@ -201,13 +216,17 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { suppliersAPI } from '../../services/api';
+import { asListPayload } from '../../utils/listPayload.js';
 import {
   LOCAL_PHONE_HINT,
   LOCAL_PHONE_PATTERN_HTML,
   LOCAL_PHONE_PLACEHOLDER,
   normalizeLocalPhone
 } from '../../utils/phoneNumber.js';
+
+const suppliers = ref([]);
 
 // Trim and collapse repeated whitespace for free-text fields.
 const normalizeTextValue = (value) => value.replace(/\s+/g, ' ').trim();
@@ -257,6 +276,27 @@ defineProps({
   hasTypeDefaultPrice: {
     type: Boolean,
     default: false
+  }
+});
+
+const onSupplierSelected = (event) => {
+  const supplierId = event.target.value || '';
+  form.value.supplierId = supplierId;
+  const selected = suppliers.value.find((entry) => entry._id === supplierId);
+  if (!selected) return;
+  form.value.dealerName = selected.name;
+  form.value.dealerContact = selected.contact;
+  if (selected.sourceType) {
+    form.value.sourceType = selected.sourceType;
+  }
+};
+
+onMounted(async () => {
+  try {
+    const response = await suppliersAPI.getAll({ active: 'true', page: 1, limit: 100 });
+    suppliers.value = asListPayload(response.data).items;
+  } catch {
+    suppliers.value = [];
   }
 });
 

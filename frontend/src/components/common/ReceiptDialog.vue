@@ -6,8 +6,29 @@
         <button type="button" class="btn-close" aria-label="Close receipt" @click="$emit('close')"></button>
       </div>
       <div class="modal-body">
-        <div ref="receiptRef" class="receipt-sheet">
+        <div ref="receiptRef" class="receipt-sheet" style="position: relative; overflow: hidden">
+          <div
+            v-if="isVoided"
+            aria-hidden="true"
+            style="
+              position: absolute;
+              inset: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              pointer-events: none;
+              font: 700 5rem/1 Arial, sans-serif;
+              letter-spacing: 0.2em;
+              color: rgba(220, 53, 69, 0.22);
+              transform: rotate(-30deg);
+            "
+          >
+            VOID
+          </div>
           <h4>Karibu Groceries LTD</h4>
+          <p v-if="isVoided" style="color: #b02a37; font-weight: 700">
+            VOIDED {{ formatDate(sale.voidedAt) }}<span v-if="sale.voidReason"> - {{ sale.voidReason }}</span>
+          </p>
           <p>{{ sale.branch }} · {{ saleType }}</p>
           <hr />
           <p><strong>Produce:</strong> {{ sale.produceName }} ({{ sale.produceType }})</p>
@@ -39,6 +60,11 @@ export default {
     saleType: { type: String, default: 'Cash sale' }
   },
   emits: ['close'],
+  computed: {
+    isVoided() {
+      return Boolean(this.sale?.voidedAt);
+    }
+  },
   methods: {
     formatDate: formatDisplayDate,
     printReceipt() {

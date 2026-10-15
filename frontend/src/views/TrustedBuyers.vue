@@ -223,6 +223,21 @@
               <small class="field-note">Use the 07XXXXXXXX format only.</small>
             </div>
             <div class="col-md-6">
+              <label class="form-label" for="trusted-buyer-email">Email (optional)</label>
+              <input
+                id="trusted-buyer-email"
+                type="email"
+                :class="['form-control', { 'is-invalid': fieldErrors.email }]"
+                v-model.trim="form.email"
+                autocomplete="email"
+                maxlength="254"
+                placeholder="buyer@example.com"
+                @input="clearFieldError('email')"
+              />
+              <div v-if="fieldErrors.email" class="invalid-feedback">{{ fieldErrors.email }}</div>
+              <small class="field-note">Used to email customer statements.</small>
+            </div>
+            <div class="col-md-6">
               <label class="form-label" for="trusted-buyer-branch">Branch</label>
               <input
                 id="trusted-buyer-branch"
@@ -231,6 +246,22 @@
                 :value="user.branch"
                 disabled
               />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="trusted-buyer-credit-limit">Credit limit (UGX)</label>
+              <input
+                id="trusted-buyer-credit-limit"
+                type="number"
+                min="0"
+                step="1"
+                class="form-control"
+                v-model="form.creditLimitUgx"
+                placeholder="Leave blank for one-open-credit rule"
+              />
+              <small class="field-note">
+                Set a limit to allow multiple open credits up to that amount. Blank keeps the legacy
+                one-open-credit rule.
+              </small>
             </div>
           </div>
 
@@ -286,6 +317,8 @@ import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default {
   name: 'TrustedBuyers',
   components: {
@@ -315,7 +348,9 @@ export default {
         name: '',
         nationalId: '',
         location: '',
-        contact: ''
+        contact: '',
+        email: '',
+        creditLimitUgx: ''
       },
       loading: false,
       error: '',
@@ -454,20 +489,27 @@ export default {
       this.fieldErrors = {};
 
       // Normalize and uppercase fields before schema validation and API submission.
+      const limitRaw = String(this.form.creditLimitUgx ?? '').trim();
       const payload = {
         name: this.normalizeText(this.form.name),
         nationalId: String(this.form.nationalId || '')
           .trim()
           .toUpperCase(),
         location: this.normalizeText(this.form.location),
-        contact: normalizeLocalPhone(this.form.contact)
+        contact: normalizeLocalPhone(this.form.contact),
+        email: String(this.form.email || '').trim().toLowerCase(),
+        creditLimitUgx: limitRaw === '' ? null : Number(limitRaw)
       };
 
       this.form.contact = payload.contact;
 
       const validation = validateValues(payload, trustedBuyerValidationSchema);
-      if (!validation.valid) {
-        this.fieldErrors = validation.errors;
+      const errors = validation.valid ? {} : { ...validation.errors };
+      if (payload.email && !EMAIL_PATTERN.test(payload.email)) {
+        errors.email = 'Enter a valid email address or leave it blank.';
+      }
+      if (Object.keys(errors).length > 0) {
+        this.fieldErrors = errors;
         this.error = 'Please fix highlighted fields and try again.';
         return;
       }
@@ -500,7 +542,12 @@ export default {
         name: item.name,
         nationalId: item.nationalId,
         location: item.location,
-        contact: normalizeLocalPhone(item.contact) || item.contact
+        contact: normalizeLocalPhone(item.contact) || item.contact,
+        email: item.email || '',
+        creditLimitUgx:
+          item.creditLimitUgx === null || item.creditLimitUgx === undefined
+            ? ''
+            : String(item.creditLimitUgx)
       };
       this.fieldErrors = {};
       this.error = '';
@@ -552,7 +599,9 @@ export default {
         name: '',
         nationalId: '',
         location: '',
-        contact: ''
+        contact: '',
+        email: '',
+        creditLimitUgx: ''
       };
     },
     toggleForm() {

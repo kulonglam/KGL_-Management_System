@@ -1,6 +1,7 @@
 //  Builds director dashboard exports in CSV/Excel/print-friendly HTML formats.
  
 import { formatDisplayTimestamp } from '../dateFormat.js';
+import { businessTodayIso } from '../businessTime.js';
 import { formatUgx, toNumber } from '../numberFormat.js';
 import {
   buildReportBrandingHtml,
@@ -103,7 +104,7 @@ const getDirectorTrendSection = (state, formatted) => ({
 export const buildDirectorFileName = (state, extension) => {
   const period = sanitizeFileSegment(state.selectedPeriodLabel);
   const branch = sanitizeFileSegment(state.selectedBranchLabel);
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = businessTodayIso();
   return `director_report_${period}_${branch}_${stamp}.${extension}`;
 };
 

@@ -11,6 +11,7 @@ import {
 import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayRange } from '../utils/dateFormat.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 import { buildTonalPalette, dashboardChartColors } from '../utils/charts/dashboardChartTheme.js';
 
 const PERIOD_OPTIONS = [
@@ -101,7 +102,7 @@ export function useManagerDashboard() {
     period: 'weekly',
     specificDate: ''
   });
-  const todayIsoDate = new Date().toISOString().split('T')[0];
+  const todayIsoDate = businessTodayIso();
   const reportRange = reactive(createEmptyRange());
   const inventory = ref([]);
   const stats = reactive(createEmptyStats());

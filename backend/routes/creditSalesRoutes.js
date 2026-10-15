@@ -9,7 +9,10 @@ import {
   updateCreditSale,
   updatePaymentStatus,
   deleteCreditSale,
-  repayCreditSale
+  repayCreditSale,
+  restoreCreditSale,
+  voidCreditSale,
+  requestCreditWriteOff
 } from '../controllers/creditSalesController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
@@ -20,7 +23,8 @@ import {
   creditSaleUpdateValidation,
   creditPaymentStatusValidation,
   creditRepaymentValidation,
-  mongoIdParamValidation
+  mongoIdParamValidation,
+  voidReasonValidation
 } from '../validators/requestValidators.js';
 
 // GET /api/credit-sales: list branch credit sales visible to manager/sales agent roles.
@@ -56,6 +60,33 @@ router.post('/:id/repay', protect, authorize('manager'),
   creditRepaymentValidation,
   validateRequest,
   repayCreditSale
+);
+router.post(
+  '/:id/restore',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  restoreCreditSale
+);
+router.post(
+  '/:id/write-off',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  voidReasonValidation,
+  validateRequest,
+  requestCreditWriteOff
+);
+router.post(
+  '/:id/void',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  voidReasonValidation,
+  validateRequest,
+  voidCreditSale
 );
 // DELETE /api/credit-sales/:id: delete one credit sale when business rules allow it.
 router.delete('/:id', protect, authorize('manager'),

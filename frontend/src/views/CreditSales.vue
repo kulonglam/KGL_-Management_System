@@ -30,6 +30,16 @@
             @buyer-change="handleBuyerSelect"
           />
 
+          <div
+            v-if="creditLimitMessage"
+            class="alert py-2 small"
+            :class="creditLimitAlertClass"
+            role="status"
+            aria-live="polite"
+          >
+            {{ creditLimitMessage }}
+          </div>
+
           <CreditProduceSection
             v-model:form="form"
             :inventory="inventory"
@@ -128,6 +138,9 @@
             </div>
           </div>
 
+          <div v-if="creditLimitMessage" class="alert py-2 small" :class="creditLimitAlertClass" role="status">
+            {{ creditLimitMessage }}
+          </div>
           <p class="review-summary-note">
             Confirm only after checking the trusted buyer, due date, tonnage, and computed
             balance.
@@ -183,6 +196,8 @@ import { formatDisplayDate } from '../utils/dateFormat.js';
 import { formatUgx } from '../utils/numberFormat';
 import { creditSaleValidationSchema } from '../utils/formSchemas.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
+import { getCreditLimitStatus } from '../utils/creditSalesValidation.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 
 // Authenticated user context for agent/branch-specific fields.
 const user = ref({});
@@ -211,6 +226,36 @@ useAutoClearFieldErrors(form, clearFieldError);
 
 // Managers can navigate and maintain trusted buyers list.
 const canManageBuyers = computed(() => user.value.role === 'manager');
+
+const selectedBuyer = computed(
+  () => trustedBuyers.value.find((entry) => entry._id === form.value.trustedBuyerId) || null
+);
+const creditLimitStatus = computed(() =>
+  selectedBuyer.value
+    ? getCreditLimitStatus({
+        creditLimitUgx: selectedBuyer.value.creditLimitUgx,
+        outstandingUgx: selectedBuyer.value.outstandingUgx,
+        amountDueUgx: form.value.amountDueUgx
+      })
+    : null
+);
+const creditLimitMessage = computed(() => {
+  const status = creditLimitStatus.value;
+  if (!status) return '';
+  if (status.level === 'blocked') {
+    return `This buyer has no credit limit and still owes ${formatUgx(status.outstanding)}. Clear the balance or ask a manager to set a limit.`;
+  }
+  if (status.level === 'over') {
+    return `Over credit limit: owes ${formatUgx(status.outstanding)}, this sale makes ${formatUgx(status.projected)} against a limit of ${formatUgx(status.limit)}.`;
+  }
+  if (status.level === 'near') {
+    return `Near credit limit: this sale brings the buyer to ${Math.round(status.ratio * 100)}% of ${formatUgx(status.limit)}.`;
+  }
+  return '';
+});
+const creditLimitAlertClass = computed(() =>
+  ['over', 'blocked'].includes(creditLimitStatus.value?.level) ? 'alert-danger' : 'alert-warning'
+);
 const { captureTriggerFocus } = useModalFocusTrap({
   isOpen: showReviewModal,
   modalRef: reviewModalRef,
@@ -232,7 +277,7 @@ function createInitialForm() {
     tonnageKg: '',
     amountDueUgx: '',
     dueDate: '',
-    dateOfDispatch: new Date().toISOString().split('T')[0]
+    dateOfDispatch: businessTodayIso()
   };
 }
 

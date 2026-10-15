@@ -66,17 +66,19 @@
       :procurements="procurements"
       :loading="loadingList"
       :total-items="listTotal"
+      v-model:show-removed="showRemoved"
       @refresh="loadProcurements"
       @query="handleListQuery"
       @edit="startEdit"
       @delete="openDeleteDialog"
+      @restore="restoreProcurement"
     />
 
     <ConfirmDialog
       :show="deleteDialog.show"
-      title="Delete Procurement"
-      message="Delete this procurement record? This action cannot be undone."
-      confirm-text="Delete"
+      title="Remove Procurement"
+      message="Remove this procurement record? You can restore it later if stock allows."
+      confirm-text="Remove"
       :busy="deleteDialog.processing"
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteProcurement"
@@ -153,6 +155,8 @@ const resetForm = () => {
 };
 
 // Fetch procurement records for the active branch.
+const showRemoved = ref(false);
+
 const loadProcurements = async () => {
   loadingList.value = true;
   try {
@@ -161,7 +165,8 @@ const loadProcurements = async () => {
       limit: listQuery.value.limit,
       search: listQuery.value.search,
       produceType: listQuery.value.produceType,
-      sort: listQuery.value.sort
+      sort: listQuery.value.sort,
+      deleted: showRemoved.value ? 'true' : undefined
     });
     const payload = asListPayload(response.data);
     procurements.value = Array.isArray(payload.items) ? payload.items : [];
@@ -191,6 +196,7 @@ const startEdit = (item) => {
     produceName: item.produceName || '',
     produceType: item.produceType || '',
     sourceType: item.sourceType || '',
+    supplierId: item.supplier || '',
     dateReceived: toDateInput(item.dateReceived),
     timeReceived: item.timeReceived || '',
     tonnageKg: item.tonnageKg || '',
@@ -253,7 +259,7 @@ const confirmDeleteProcurement = async () => {
   resetFeedback();
   try {
     await procurementAPI.delete(deleteDialog.value.procurementId);
-    setSuccess('Procurement record deleted.');
+    setSuccess('Procurement record removed.');
     // If the deleted row is currently open in edit mode, close and reset that editor state.
     if (editingId.value === deleteDialog.value.procurementId) {
       cancelEdit();
@@ -266,6 +272,21 @@ const confirmDeleteProcurement = async () => {
     deleteDialog.value.show = false;
   }
 };
+
+const restoreProcurement = async (id) => {
+  resetFeedback();
+  try {
+    await procurementAPI.restore(id);
+    setSuccess('Procurement record restored.');
+    await loadProcurements();
+  } catch (restoreError) {
+    setError(restoreError.response?.data?.message || 'Failed to restore procurement');
+  }
+};
+
+watch(showRemoved, () => {
+  loadProcurements();
+});
 
 onMounted(async () => {
   user.value = authStore.user || {};

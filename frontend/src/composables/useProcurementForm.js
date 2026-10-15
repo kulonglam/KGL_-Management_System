@@ -4,6 +4,7 @@
 import { ref } from 'vue';
 import { priceAPI } from '../services/api';
 import { normalizeProduceName, normalizeProduceNameKey, normalizeWhitespace } from '../utils/produceName.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 const buildPriceKey = (produceName, produceType) =>
   `${normalizeWhitespace(produceType)}::${normalizeProduceNameKey(produceName) || '__type_default__'}`;
 
@@ -12,11 +13,12 @@ const createInitialProcurementForm = () => ({
   produceName: '',
   produceType: '',
   sourceType: '',
-  dateReceived: new Date().toISOString().split('T')[0],
+  dateReceived: businessTodayIso(),
   timeReceived: new Date().toTimeString().slice(0, 5),
   tonnageKg: '',
   costUgx: '',
   sellingPrice: '',
+  supplierId: '',
   dealerName: '',
   dealerContact: ''
 });

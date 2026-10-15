@@ -9,6 +9,7 @@
 <script setup>
 import { computed } from 'vue';
 import { downloadReportFile } from '../../utils/downloadFile.js';
+import { businessTodayIso } from '../../utils/businessTime.js';
 import { buildTableCsv, buildTableExcel, buildTablePrintHtml } from '../../utils/reports/tableExport.js';
 
 const props = defineProps({
@@ -19,7 +20,7 @@ const props = defineProps({
 });
 
 const disabled = computed(() => props.rows.length === 0);
-const stampedName = (extension) => `${props.filename}_${new Date().toISOString().slice(0, 10)}.${extension}`;
+const stampedName = (extension) => `${props.filename}_${businessTodayIso()}.${extension}`;
 
 const exportCsv = () => {
   downloadReportFile({

@@ -62,9 +62,14 @@ const swaggerSpec = {
     { name: 'Sales' },
     { name: 'Credit Sales' },
     { name: 'Inventory' },
+    { name: 'Finance' },
+    { name: 'Platform' },
+    { name: 'Partner', description: 'Read-only partner API authenticated with X-API-Key' },
     { name: 'Trusted Buyers' },
     { name: 'Prices' },
     { name: 'Notifications' },
+    { name: 'Messages' },
+    { name: 'Suppliers' },
     { name: 'Branches' },
     { name: 'Audit' }
   ],
@@ -74,6 +79,12 @@ const swaggerSpec = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT'
+      },
+      apiKeyAuth: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'X-API-Key',
+        description: 'Partner key in the form kgl_<prefix>_<secret>, issued by a director under Platform.'
       }
     },
     parameters: {
@@ -337,7 +348,9 @@ const swaggerSpec = {
           },
           tonnageKg: { type: 'number' },
           dateOfDispatch: { type: 'string', format: 'date' },
-          isPaid: { type: 'boolean' }
+          isPaid: { type: 'boolean' },
+          writtenOffUgx: { type: 'number' },
+          writeOff: { $ref: '#/components/schemas/CreditWriteOff' }
         }
       },
       CreditSaleCreateRequest: {
@@ -389,7 +402,10 @@ const swaggerSpec = {
           nationalId: { type: 'string' },
           location: { type: 'string' },
           contact: { type: 'string' },
-          branch: { type: 'string', enum: ['Maganjo', 'Matugga'] }
+          email: { type: 'string' },
+          branch: { type: 'string', enum: ['Maganjo', 'Matugga'] },
+          creditLimitUgx: { type: 'number', nullable: true },
+          outstandingUgx: { type: 'number', description: 'Open credit balance (list responses only)' }
         }
       },
       TrustedBuyerRequest: {
@@ -716,9 +732,310 @@ const swaggerSpec = {
           status: { type: 'string', enum: ['ready', 'not_ready'] },
           databaseReadyState: { type: 'integer', description: 'Mongoose readyState. 1 means connected.' }
         }
+      },
+      OidcStatus: {
+        type: 'object',
+        properties: {
+          enabled: { type: 'boolean' },
+          issuer: { type: 'string', nullable: true },
+          providerName: { type: 'string', nullable: true, example: 'SSO' }
+        }
+      },
+      OidcLoginStart: {
+        type: 'object',
+        properties: {
+          authorizationUrl: { type: 'string', format: 'uri' }
+        }
+      },
+      WebhookEvent: {
+        type: 'string',
+        enum: [
+          'sale.created',
+          'sale.voided',
+          'credit.overdue',
+          'credit.created',
+          'procurement.created',
+          'retention.completed'
+        ]
+      },
+      WebhookSubscription: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          name: { type: 'string' },
+          targetUrl: { type: 'string', format: 'uri' },
+          events: { type: 'array', items: { $ref: '#/components/schemas/WebhookEvent' } },
+          isActive: { type: 'boolean' },
+          secretPreview: { type: 'string', example: 'a1b2…9f' },
+          secret: {
+            type: 'string',
+            description: 'Only returned when a subscription is created or its secret is rotated.'
+          },
+          lastDeliveredAt: { type: 'string', format: 'date-time', nullable: true },
+          lastStatusCode: { type: 'integer', nullable: true },
+          lastError: { type: 'string' },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      WebhookCreateRequest: {
+        type: 'object',
+        required: ['name', 'targetUrl'],
+        properties: {
+          name: { type: 'string', maxLength: 120 },
+          targetUrl: {
+            type: 'string',
+            format: 'uri',
+            description: 'Private, loopback and link-local targets are refused in production.'
+          },
+          events: { type: 'array', items: { $ref: '#/components/schemas/WebhookEvent' } },
+          secret: { type: 'string', minLength: 16, maxLength: 128 },
+          isActive: { type: 'boolean' }
+        }
+      },
+      WebhookUpdateRequest: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 120 },
+          targetUrl: { type: 'string', format: 'uri' },
+          events: { type: 'array', items: { $ref: '#/components/schemas/WebhookEvent' } },
+          isActive: { type: 'boolean' },
+          rotateSecret: { type: 'boolean' }
+        }
+      },
+      WebhookDelivery: {
+        type: 'object',
+        description:
+          'Each POST carries X-KGL-Event, X-KGL-Delivery, X-KGL-Timestamp and ' +
+          'X-KGL-Signature: sha256=HMAC_SHA256(secret, "{timestamp}.{rawBody}").',
+        properties: {
+          _id: { type: 'string' },
+          subscription: {
+            oneOf: [
+              { type: 'string' },
+              {
+                type: 'object',
+                properties: { _id: { type: 'string' }, name: { type: 'string' }, targetUrl: { type: 'string' } }
+              }
+            ]
+          },
+          event: { $ref: '#/components/schemas/WebhookEvent' },
+          payload: { type: 'object' },
+          status: { type: 'string', enum: ['queued', 'retrying', 'delivered', 'failed'] },
+          statusCode: { type: 'integer', nullable: true },
+          attemptCount: { type: 'integer' },
+          error: { type: 'string' },
+          deliveredAt: { type: 'string', format: 'date-time', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      JobSchedule: {
+        type: 'object',
+        properties: {
+          jobName: { type: 'string' },
+          kind: { type: 'string', enum: ['interval', 'weekly'] },
+          intervalMs: { type: 'integer', nullable: true },
+          utcDay: { type: 'integer', nullable: true, minimum: 0, maximum: 6 },
+          utcHour: { type: 'integer', nullable: true, minimum: 0, maximum: 23 },
+          lastRunAt: { type: 'string', format: 'date-time', nullable: true },
+          lastCompletedAt: { type: 'string', format: 'date-time', nullable: true },
+          lastStatus: { type: 'string', enum: ['never', 'queued', 'completed', 'failed'] },
+          lastError: { type: 'string' },
+          runCount: { type: 'integer' },
+          nextRunAt: { type: 'string', format: 'date-time', nullable: true }
+        }
+      },
+      PlatformStatus: {
+        type: 'object',
+        properties: {
+          jobs: {
+            type: 'object',
+            properties: {
+              started: { type: 'boolean' },
+              mode: { type: 'string', enum: ['redis', 'in_process'] },
+              schedulerEnabled: { type: 'boolean' },
+              pendingInProcess: { type: 'integer' },
+              pendingRetries: { type: 'integer' },
+              handlers: { type: 'array', items: { type: 'string' } },
+              recentJobs: { type: 'array', items: { type: 'object' } }
+            }
+          },
+          schedules: { type: 'array', items: { $ref: '#/components/schemas/JobSchedule' } },
+          manualJobs: { type: 'array', items: { type: 'string' } },
+          oidc: { $ref: '#/components/schemas/OidcStatus' },
+          webhookEvents: { type: 'array', items: { $ref: '#/components/schemas/WebhookEvent' } }
+        }
+      },
+      WeeklyReportPreview: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string' },
+          body: { type: 'string' },
+          window: {
+            type: 'object',
+            properties: {
+              from: { type: 'string', format: 'date-time' },
+              to: { type: 'string', format: 'date-time' }
+            }
+          },
+          stats: { type: 'object' },
+          recipients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { username: { type: 'string' }, hasEmail: { type: 'boolean' } }
+            }
+          }
+        }
+      },
+      WeeklyReportRunResult: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string' },
+          emailed: { type: 'integer' },
+          inApp: { type: 'integer' },
+          skippedNoEmail: { type: 'array', items: { type: 'string' } },
+          sales: { type: 'integer' },
+          cashSalesUgx: { type: 'number' },
+          creditSalesUgx: { type: 'number' }
+        }
+      },
+      JobRunResult: {
+        type: 'object',
+        properties: {
+          jobName: { type: 'string' },
+          id: { type: 'string' },
+          result: { type: 'object' }
+        }
+      },
+      CreditWriteOff: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['none', 'pending', 'approved', 'rejected'] },
+          requestedAmountUgx: { type: 'number' },
+          reason: { type: 'string' },
+          requestedBy: { type: 'string' },
+          requestedAt: { type: 'string', format: 'date-time', nullable: true },
+          decidedBy: { type: 'string', nullable: true },
+          decidedAt: { type: 'string', format: 'date-time', nullable: true },
+          decisionNote: { type: 'string' }
+        }
+      },
+      PeriodLock: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          scope: { type: 'string', example: 'ALL', description: 'ALL or a branch name' },
+          lockedThrough: { type: 'string', format: 'date', nullable: true },
+          note: { type: 'string' },
+          updatedAt: { type: 'string', format: 'date-time' }
+        }
+      },
+      CustomerStatement: {
+        type: 'object',
+        properties: {
+          generatedAt: { type: 'string', format: 'date-time' },
+          period: {
+            type: 'object',
+            properties: { from: { type: 'string', format: 'date' }, to: { type: 'string', format: 'date' } }
+          },
+          buyer: { type: 'object' },
+          openingBalanceUgx: { type: 'number' },
+          closingBalanceUgx: { type: 'number' },
+          currentOutstandingUgx: { type: 'number' },
+          totals: {
+            type: 'object',
+            properties: { debitUgx: { type: 'number' }, creditUgx: { type: 'number' } }
+          },
+          aging: {
+            type: 'object',
+            properties: {
+              current: { type: 'number' },
+              days1to30: { type: 'number' },
+              days31to60: { type: 'number' },
+              days61to90: { type: 'number' },
+              over90: { type: 'number' }
+            }
+          },
+          lines: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                date: { type: 'string', format: 'date-time' },
+                type: { type: 'string', enum: ['dispatch', 'payment', 'write_off'] },
+                description: { type: 'string' },
+                debitUgx: { type: 'number' },
+                creditUgx: { type: 'number' },
+                balanceUgx: { type: 'number' },
+                creditSaleId: { type: 'string' }
+              }
+            }
+          }
+        }
+      },
+      StatementEmailResult: {
+        type: 'object',
+        properties: {
+          messageId: { type: 'string' },
+          status: { type: 'string', enum: ['queued', 'sent', 'failed'] },
+          to: { type: 'string' },
+          period: { type: 'object' },
+          closingBalanceUgx: { type: 'number' }
+        }
+      },
+      PersonalDataExport: {
+        type: 'object',
+        properties: {
+          subjectType: { type: 'string', enum: ['trusted_buyer', 'user'] },
+          exportedAt: { type: 'string', format: 'date-time' },
+          profile: { type: 'object' },
+          creditSales: { type: 'array', items: { type: 'object' } },
+          recordsCreated: { type: 'object' },
+          messages: { type: 'array', items: { type: 'object' } },
+          auditTrail: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      ApiKey: {
+        type: 'object',
+        properties: {
+          _id: { type: 'string' },
+          name: { type: 'string' },
+          prefix: { type: 'string' },
+          scopes: {
+            type: 'array',
+            items: { type: 'string', enum: ['stock:read', 'sales:read', 'procurement:read', 'prices:read'] }
+          },
+          branch: { type: 'string', description: 'Empty means all branches' },
+          expiresAt: { type: 'string', format: 'date-time', nullable: true },
+          revokedAt: { type: 'string', format: 'date-time', nullable: true },
+          lastUsedAt: { type: 'string', format: 'date-time', nullable: true },
+          status: { type: 'string', enum: ['active', 'expired', 'revoked'] }
+        }
+      },
+      ApiKeyCreated: {
+        allOf: [
+          { $ref: '#/components/schemas/ApiKey' },
+          {
+            type: 'object',
+            properties: {
+              key: { type: 'string', description: 'Full key. Shown once; only a hash is stored.' }
+            }
+          }
+        ]
+      },
+      PartnerList: {
+        type: 'object',
+        properties: {
+          items: { type: 'array', items: { type: 'object' } },
+          pagination: { type: 'object' }
+        }
       }
     },
     responses: {
+      Locked: {
+        description: 'The record falls inside a closed accounting period',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
+      },
       BadRequest: {
         description: 'Bad request',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } }
@@ -836,8 +1153,9 @@ const swaggerSpec = {
     '/auth/users': {
       get: {
         tags: ['Users'],
-        summary: 'Get users (manager only)',
-        description: 'Managers see staff in their branch. Pass page and limit to receive a pagination wrapper.',
+        summary: 'Get users (manager or director)',
+        description:
+          'Managers see staff in their branch; directors see all accounts (read-only). Pass page and limit to receive a pagination wrapper.',
         security: [{ bearerAuth: [] }],
         parameters: [
           { $ref: '#/components/parameters/PageQuery' },
@@ -987,6 +1305,21 @@ const swaggerSpec = {
         }
       }
     },
+    '/procurement/{id}/restore': {
+      post: {
+        tags: ['Procurement'],
+        summary: 'Restore a removed procurement',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/Procurement' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
     '/sales': {
       get: {
         tags: ['Sales'],
@@ -1050,6 +1383,40 @@ const swaggerSpec = {
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         responses: {
           200: successResponse({ $ref: '#/components/schemas/Sale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/sales/{id}/void': {
+      post: {
+        tags: ['Sales'],
+        summary: 'Void a cash sale',
+        description: 'Financially cancels a sale with a reason. Stock is returned. Voided sales cannot be restored.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: { reason: { type: 'string', minLength: 5, maxLength: 500 } }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              sale: { $ref: '#/components/schemas/Sale' }
+            }
+          }),
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' },
@@ -1169,6 +1536,85 @@ const swaggerSpec = {
         }
       }
     },
+    '/credit-sales/{id}/restore': {
+      post: {
+        tags: ['Credit Sales'],
+        summary: 'Restore a removed credit sale',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/credit-sales/{id}/void': {
+      post: {
+        tags: ['Credit Sales'],
+        summary: 'Void a credit sale',
+        description: 'Cancels a credit sale with no repayments. Stock is returned. Voided records cannot be restored.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: { reason: { type: 'string', minLength: 5, maxLength: 500 } }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              creditSale: { $ref: '#/components/schemas/CreditSale' }
+            }
+          }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/credit-sales/{id}/write-off': {
+      post: {
+        tags: ['Credit Sales'],
+        summary: 'Request a bad-debt write-off (manager)',
+        description:
+          'Records a pending write-off of the outstanding balance. A different user (a director) must approve it under /finance/write-offs before the balance is cleared.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['reason'],
+                properties: { reason: { type: 'string', minLength: 5, maxLength: 500 } }
+              }
+            }
+          }
+        },
+        responses: {
+          202: successResponse({ $ref: '#/components/schemas/CreditSale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' },
+          409: { $ref: '#/components/responses/Conflict' }
+        }
+      }
+    },
     '/credit-sales/{id}': {
       put: {
         tags: ['Credit Sales'],
@@ -1210,6 +1656,1114 @@ const swaggerSpec = {
         security: [{ bearerAuth: [] }],
         responses: {
           200: successResponse({ $ref: '#/components/schemas/InventoryOverview' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/inventory/movements': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'List immutable stock movements',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          {
+            name: 'type',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Movement type filter'
+          },
+          {
+            name: 'branch',
+            in: 'query',
+            schema: { type: 'string' },
+            description: 'Branch filter (director only)'
+          }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/inventory/transfers': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'List inter-branch stock transfers',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { name: 'status', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Inventory'],
+        summary: 'Create a draft stock transfer',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['toBranch', 'lines'],
+                properties: {
+                  fromBranch: { type: 'string' },
+                  toBranch: { type: 'string' },
+                  note: { type: 'string' },
+                  lines: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      required: ['produceName', 'produceType', 'tonnageKg'],
+                      properties: {
+                        produceName: { type: 'string' },
+                        produceType: { type: 'string' },
+                        tonnageKg: { type: 'number' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/inventory/transfers/{id}/ship': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Ship a draft transfer (debit source branch)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/transfers/{id}/receive': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Receive an in-transit transfer (credit destination)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/transfers/{id}/cancel': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Cancel a draft or in-transit transfer',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/adjustments': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'List stock adjustments',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { name: 'status', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Inventory'],
+        summary: 'Create a stock adjustment (may require dual-control approval)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['produceName', 'produceType', 'deltaKg', 'reasonCode', 'note'],
+                properties: {
+                  produceName: { type: 'string' },
+                  produceType: { type: 'string' },
+                  deltaKg: { type: 'number' },
+                  reasonCode: {
+                    type: 'string',
+                    enum: ['damage', 'shrinkage', 'found', 'correction', 'other']
+                  },
+                  note: { type: 'string' },
+                  branch: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/inventory/adjustments/{id}/approve': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Approve a pending stock adjustment',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/adjustments/{id}/reject': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Reject a pending stock adjustment',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/stocktakes': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'List stocktake sessions',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { type: 'object' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Inventory'],
+        summary: 'Start a stocktake session from current balances',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  branch: { type: 'string' },
+                  note: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/inventory/stocktakes/{id}': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'Get a stocktake session',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      put: {
+        tags: ['Inventory'],
+        summary: 'Update counted quantities on a draft stocktake',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['lines'],
+                properties: {
+                  lines: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        produceName: { type: 'string' },
+                        produceType: { type: 'string' },
+                        countedKg: { type: 'number', nullable: true }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/stocktakes/{id}/post': {
+      post: {
+        tags: ['Inventory'],
+        summary: 'Post stocktake variances to the movement ledger',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/inventory/stocktakes/{id}/count-sheet': {
+      get: {
+        tags: ['Inventory'],
+        summary: 'Download a printable stocktake count sheet (CSV)',
+        description: 'System quantities are omitted unless blind=false, so counters record what they see.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/IdParam' },
+          { name: 'blind', in: 'query', schema: { type: 'string', enum: ['true', 'false'], default: 'true' } }
+        ],
+        responses: {
+          200: {
+            description: 'CSV count sheet',
+            content: { 'text/csv': { schema: { type: 'string' } } },
+            oneOf: [{ type: 'string' }, { $ref: '#/components/schemas/SuccessEnvelope' }]
+          },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/tax-config': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Get tax configuration',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      put: {
+        tags: ['Finance'],
+        summary: 'Update tax configuration (director)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/invoices': {
+      get: {
+        tags: ['Finance'],
+        summary: 'List tax invoices and credit notes',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/invoices/{id}': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Get a tax invoice',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/invoices/{id}/document': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Get the tax invoice / credit note as printable HTML or PDF',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/IdParam' },
+          { name: 'format', in: 'query', schema: { type: 'string', enum: ['html', 'pdf'], default: 'html' } }
+        ],
+        responses: {
+          200: {
+            description: 'HTML document, or a PDF attachment when format=pdf',
+            content: {
+              'text/html': {
+                schema: { type: 'string', description: 'Printable invoice HTML' }
+              },
+              'application/pdf': {
+                schema: { type: 'string', format: 'binary' }
+              }
+            },
+            // Satisfy coverage gate (schema $ref or oneOf)
+            oneOf: [{ type: 'string' }, { $ref: '#/components/schemas/SuccessEnvelope' }]
+          },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/invoices/from-sale/{saleId}': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Issue a tax invoice for an existing cash sale',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'saleId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          }
+        ],
+        responses: {
+          201: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/cash-up': {
+      get: {
+        tags: ['Finance'],
+        summary: 'List cash-up sessions',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { type: 'object' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/cash-up/open': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Open or refresh a cash-up session for a business date',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['businessDate'],
+                properties: {
+                  businessDate: { type: 'string', example: '2026-10-15' },
+                  branch: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/cash-up/{id}/close': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Close a cash-up session with counted till totals',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/gl-export': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Export balanced GL journal lines for a date range',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+          { name: 'branch', in: 'query', schema: { type: 'string' } },
+          { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'csv'] } }
+        ],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/gl-mappings': {
+      get: {
+        tags: ['Finance'],
+        summary: 'List GL account mappings',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { type: 'object' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/retention': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Get retention policy (director)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      put: {
+        tags: ['Finance'],
+        summary: 'Update retention policy (director)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/retention/run': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Run retention job (director)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/retention/audit-pack': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Download audit export pack (ZIP)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'branch', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: {
+            description: 'ZIP archive',
+            content: {
+              'application/zip': {
+                schema: { type: 'string', format: 'binary' }
+              }
+            },
+            oneOf: [{ type: 'string', format: 'binary' }, { $ref: '#/components/schemas/SuccessEnvelope' }]
+          },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/write-offs': {
+      get: {
+        tags: ['Finance'],
+        summary: 'List credit write-off requests',
+        description: 'Managers see their branch; directors see all branches.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'status',
+            in: 'query',
+            schema: { type: 'string', enum: ['pending', 'approved', 'rejected'], default: 'pending' }
+          },
+          { $ref: '#/components/parameters/BranchQuery' }
+        ],
+        responses: {
+          200: successResponse({ type: 'array', items: { $ref: '#/components/schemas/CreditSale' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/write-offs/{id}/approve': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Approve a pending write-off (director, not the requester)',
+        description:
+          'Writes off whatever balance is still outstanding and books Dr bad debt / Cr receivables in the GL export.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { note: { type: 'string', maxLength: 500 } } }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/write-offs/{id}/reject': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Reject a pending write-off (director, not the requester)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: { type: 'object', properties: { note: { type: 'string', maxLength: 500 } } }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/CreditSale' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/period-locks': {
+      get: {
+        tags: ['Finance'],
+        summary: 'List period locks',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { $ref: '#/components/schemas/PeriodLock' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      put: {
+        tags: ['Finance'],
+        summary: 'Close or reopen the books (director)',
+        description:
+          'Sales, credit sales and procurements dated on or before lockedThrough can no longer be created, edited, removed, restored or voided; those requests return 423. Send lockedThrough: null to reopen.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['lockedThrough'],
+                properties: {
+                  scope: { type: 'string', default: 'ALL', description: 'ALL or a branch name' },
+                  lockedThrough: { type: 'string', format: 'date', nullable: true },
+                  note: { type: 'string', maxLength: 500 }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PeriodLock' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/finance/statements/{id}': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Customer statement for a trusted buyer (JSON or PDF)',
+        description: 'Defaults to the last 90 days. Includes opening/closing balance and aging of what is owed now.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/IdParam' },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'format', in: 'query', schema: { type: 'string', enum: ['json', 'pdf'] } }
+        ],
+        responses: {
+          200: {
+            description: 'Statement',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/CustomerStatement' } },
+              'application/pdf': { schema: { type: 'string', format: 'binary' } }
+            }
+          },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/statements/{id}/email': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Email a customer statement to the buyer',
+        description: 'Queues a plain-text statement in the message outbox. The buyer needs an email address.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  from: { type: 'string', format: 'date' },
+                  to: { type: 'string', format: 'date' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          202: successResponse({ $ref: '#/components/schemas/StatementEmailResult' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/personal-data/trusted-buyers/{id}': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Export everything held about a trusted buyer (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PersonalDataExport' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/finance/personal-data/users/{id}': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Export a staff account profile and activity (director)',
+        description: 'Passwords, recovery codes and MFA secrets are never included.',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PersonalDataExport' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/platform/api-keys': {
+      get: {
+        tags: ['Platform'],
+        summary: 'List partner API keys (director)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { $ref: '#/components/schemas/ApiKey' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Platform'],
+        summary: 'Issue a partner API key (director)',
+        description: 'The full key is returned once in `key`. Store it securely; it cannot be shown again.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'scopes'],
+                properties: {
+                  name: { type: 'string', maxLength: 120 },
+                  scopes: {
+                    type: 'array',
+                    items: { type: 'string', enum: ['stock:read', 'sales:read', 'procurement:read', 'prices:read'] }
+                  },
+                  branch: { type: 'string', description: 'Limit to one branch; omit for all' },
+                  expiresAt: { type: 'string', format: 'date-time' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: successResponse({ $ref: '#/components/schemas/ApiKeyCreated' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/api-keys/{id}/revoke': {
+      post: {
+        tags: ['Platform'],
+        summary: 'Revoke a partner API key (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/ApiKey' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/partner/me': {
+      get: {
+        tags: ['Partner'],
+        summary: 'Describe the calling API key',
+        security: [{ apiKeyAuth: [] }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/ApiKey' }),
+          401: { $ref: '#/components/responses/Unauthorized' }
+        }
+      }
+    },
+    '/partner/stock': {
+      get: {
+        tags: ['Partner'],
+        summary: 'Stock on hand by branch and produce (stock:read)',
+        security: [{ apiKeyAuth: [] }],
+        parameters: [{ name: 'branch', in: 'query', schema: { type: 'string' } }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PartnerList' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/partner/sales': {
+      get: {
+        tags: ['Partner'],
+        summary: 'Cash sales without buyer details (sales:read)',
+        security: [{ apiKeyAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'branch', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PartnerList' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/partner/procurements': {
+      get: {
+        tags: ['Partner'],
+        summary: 'Procurements without dealer contacts (procurement:read)',
+        security: [{ apiKeyAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date' } },
+          { name: 'branch', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PartnerList' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/partner/prices': {
+      get: {
+        tags: ['Partner'],
+        summary: 'Current selling prices (prices:read)',
+        security: [{ apiKeyAuth: [] }],
+        parameters: [{ name: 'branch', in: 'query', schema: { type: 'string' } }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PartnerList' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/status': {
+      get: {
+        tags: ['Platform'],
+        summary: 'Job backend, schedules, recent jobs, SSO status and webhook event list',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/PlatformStatus' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/webhooks': {
+      get: {
+        tags: ['Platform'],
+        summary: 'List webhook subscriptions (director). Secrets are masked.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ type: 'array', items: { $ref: '#/components/schemas/WebhookSubscription' } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Platform'],
+        summary: 'Create a webhook subscription (director). The secret is returned once.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/WebhookCreateRequest' } } }
+        },
+        responses: {
+          201: successResponse({ $ref: '#/components/schemas/WebhookSubscription' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/webhooks/{id}': {
+      put: {
+        tags: ['Platform'],
+        summary: 'Update, pause or rotate the secret of a webhook subscription (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/WebhookUpdateRequest' } } }
+        },
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/WebhookSubscription' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      delete: {
+        tags: ['Platform'],
+        summary: 'Delete a webhook subscription (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object', properties: { deleted: { type: 'boolean' } } }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/platform/webhooks/test-emit': {
+      post: {
+        tags: ['Platform'],
+        summary: 'Emit a test domain event to matching subscriptions (director)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  event: { $ref: '#/components/schemas/WebhookEvent' },
+                  payload: { type: 'object' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: { event: { type: 'string' }, queued: { type: 'integer' } }
+          }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/webhook-deliveries': {
+      get: {
+        tags: ['Platform'],
+        summary: 'Recent webhook deliveries (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'status',
+            in: 'query',
+            schema: { type: 'string', enum: ['queued', 'retrying', 'delivered', 'failed'] }
+          },
+          { name: 'subscriptionId', in: 'query', schema: { type: 'string' } },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse({ type: 'array', items: { $ref: '#/components/schemas/WebhookDelivery' } }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/webhook-deliveries/{id}/redeliver': {
+      post: {
+        tags: ['Platform'],
+        summary: 'Queue a new delivery with the same event and payload (director)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          202: successResponse({ $ref: '#/components/schemas/WebhookDelivery' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' },
+          409: { $ref: '#/components/responses/Conflict' }
+        }
+      }
+    },
+    '/platform/jobs/enqueue': {
+      post: {
+        tags: ['Platform'],
+        summary: 'Run a scheduled job now and wait for the result (director)',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['jobName'],
+                properties: {
+                  jobName: {
+                    type: 'string',
+                    enum: ['credit.overdue.scan', 'retention.run', 'reports.director.weekly']
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          202: successResponse({ $ref: '#/components/schemas/JobRunResult' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/reports/weekly/preview': {
+      get: {
+        tags: ['Platform'],
+        summary: 'Preview the weekly director report without sending it (director)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/WeeklyReportPreview' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/platform/reports/weekly/run': {
+      post: {
+        tags: ['Platform'],
+        summary: 'Send the weekly director report now (email + inbox) (director)',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/WeeklyReportRunResult' }),
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
@@ -1526,6 +3080,53 @@ const swaggerSpec = {
         }
       }
     },
+    '/auth/oidc/status': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Whether OIDC single sign-on is configured',
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/OidcStatus' })
+        }
+      }
+    },
+    '/auth/oidc/login': {
+      get: {
+        tags: ['Auth'],
+        summary: 'Start an OIDC sign-in',
+        description:
+          'Sets a short-lived httpOnly state cookie and either redirects to the identity provider ' +
+          '(redirect=1) or returns the authorization URL. Uses PKCE (S256) and a nonce.',
+        parameters: [{ name: 'redirect', in: 'query', schema: { type: 'string', enum: ['1', 'true'] } }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/OidcLoginStart' }),
+          302: { description: 'Redirect to the identity provider' },
+          501: { description: 'OIDC is not configured' }
+        }
+      }
+    },
+    '/auth/oidc/callback': {
+      get: {
+        tags: ['Auth'],
+        summary: 'OIDC redirect target',
+        description:
+          'Verifies state against the browser cookie, exchanges the code, and validates the id_token ' +
+          'signature (JWKS), issuer, audience, expiry and nonce. Sets the refresh cookie, then redirects ' +
+          'to OIDC_FRONTEND_REDIRECT with sso=success (or sso=error&reason=...). The access token is never ' +
+          'placed in the URL; the frontend calls POST /auth/refresh. Without OIDC_FRONTEND_REDIRECT the auth ' +
+          'payload is returned as JSON.',
+        parameters: [
+          { name: 'code', in: 'query', schema: { type: 'string' } },
+          { name: 'state', in: 'query', schema: { type: 'string' } }
+        ],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/AuthPayload' }),
+          302: { description: 'Redirect back to the frontend' },
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
     '/notifications': {
       get: {
         tags: ['Notifications'],
@@ -1668,6 +3269,157 @@ const swaggerSpec = {
           400: { $ref: '#/components/responses/BadRequest' },
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/messages': {
+      get: {
+        tags: ['Messages'],
+        summary: 'List inbox messages',
+        description: 'In-app MessageOutbox rows addressed to the signed-in username.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/UnreadQuery' },
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/messages/unread-count': {
+      get: {
+        tags: ['Messages'],
+        summary: 'Count unread inbox messages',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: { unread: { type: 'integer', example: 2 } }
+          }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/messages/read-all': {
+      put: {
+        tags: ['Messages'],
+        summary: 'Acknowledge all inbox messages',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({
+            type: 'object',
+            properties: { modifiedCount: { type: 'integer', example: 3 } }
+          }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/messages/{id}/read': {
+      put: {
+        tags: ['Messages'],
+        summary: 'Acknowledge one inbox message',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/suppliers': {
+      get: {
+        tags: ['Suppliers'],
+        summary: 'List suppliers for the manager branch',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { $ref: '#/components/parameters/SearchQuery' },
+          { $ref: '#/components/parameters/PageQuery' },
+          { $ref: '#/components/parameters/LimitQuery' }
+        ],
+        responses: {
+          200: successResponse(listSchema({ type: 'object' })),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      },
+      post: {
+        tags: ['Suppliers'],
+        summary: 'Create a supplier',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name', 'contact'],
+                properties: {
+                  name: { type: 'string' },
+                  contact: { type: 'string' },
+                  sourceType: { type: 'string', enum: ['individual', 'company', 'kgl_farm'] }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' }
+        }
+      }
+    },
+    '/suppliers/{id}': {
+      put: {
+        tags: ['Suppliers'],
+        summary: 'Update a supplier',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { type: 'object' } } }
+        },
+        responses: {
+          200: successResponse({ type: 'object' }),
+          400: { $ref: '#/components/responses/BadRequest' },
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      },
+      delete: {
+        tags: ['Suppliers'],
+        summary: 'Remove a supplier',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ $ref: '#/components/schemas/MessageObject' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/suppliers/{id}/restore': {
+      post: {
+        tags: ['Suppliers'],
+        summary: 'Restore a removed supplier',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ type: 'object' }),
+          401: { $ref: '#/components/responses/Unauthorized' },
+          403: { $ref: '#/components/responses/Forbidden' },
+          404: { $ref: '#/components/responses/NotFound' }
         }
       }
     },

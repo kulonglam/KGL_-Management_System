@@ -93,6 +93,10 @@ const salesValidationSchema = {
     v.minLength(2, minLengthMessage('Buyer Name', 2)),
     v.pattern(ALPHANUMERIC_TEXT, alphaNumericMessage('Buyer Name'))
   ],
+  paymentMethod: [
+    v.required(requiredMessage('Payment method')),
+    v.oneOf(['cash', 'momo', 'bank'], invalidValueMessage('Payment method'))
+  ],
   date: [v.required(requiredMessage('Date')), v.isoDate(validDateMessage('Date'))],
   time: [v.required(requiredMessage('Time')), v.timeHHmm(validTimeMessage('Time'))]
 };

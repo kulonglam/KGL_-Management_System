@@ -6,7 +6,11 @@ const auditLogSchema = new mongoose.Schema(
     actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     actorName: { type: String, default: '' },
     actorRole: { type: String, default: '' },
-    action: { type: String, required: true, enum: ['create', 'update', 'delete', 'login', 'repay', 'auth'] },
+    action: {
+      type: String,
+      required: true,
+      enum: ['create', 'update', 'delete', 'login', 'repay', 'auth', 'void', 'write_off', 'export']
+    },
     entityType: { type: String, required: true },
     entityId: { type: String, default: '' },
     branch: { type: String, default: '' },

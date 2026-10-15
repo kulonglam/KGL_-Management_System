@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import StockBalance from '../models/StockBalance.js';
+import StockMovement from '../models/StockMovement.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 
 const canonicalBucket = ({ branch, produceName, produceType } = {}) => {
@@ -16,6 +17,100 @@ const bucketKey = (bucket) => `${bucket.branch}::${bucket.produceName}::${bucket
 
 const sameBucket = (left, right) =>
   Boolean(left?.branch && left?.produceName && left?.produceType) && bucketKey(left) === bucketKey(right);
+
+const writeDocumentLedger = async ({ kind, direction, before, after, documentId, session }) => {
+  const refType = kind;
+  const entries = [];
+
+  if (!before) {
+    if (!after.deletedAt && after.tonnageKg > 0) {
+      entries.push({
+        type: direction > 0 ? 'procurement_in' : kind === 'credit' ? 'credit_out' : 'sale_out',
+        branch: after.branch,
+        produceName: after.produceName,
+        produceType: after.produceType,
+        qtyKg: direction * after.tonnageKg,
+        refType,
+        refId: documentId
+      });
+    }
+  } else if (!before.deletedAt && after.deletedAt && before.tonnageKg > 0) {
+    entries.push({
+      type: direction > 0 ? 'procurement_out' : 'void_in',
+      branch: before.branch,
+      produceName: before.produceName,
+      produceType: before.produceType,
+      qtyKg: -direction * before.tonnageKg,
+      refType,
+      refId: documentId
+    });
+  } else if (before.deletedAt && !after.deletedAt && after.tonnageKg > 0) {
+    entries.push({
+      type: direction > 0 ? 'procurement_in' : kind === 'credit' ? 'credit_out' : 'sale_out',
+      branch: after.branch,
+      produceName: after.produceName,
+      produceType: after.produceType,
+      qtyKg: direction * after.tonnageKg,
+      refType,
+      refId: documentId
+    });
+  } else if (!after.deletedAt && sameBucket(before, after)) {
+    const delta = direction * (after.tonnageKg - before.tonnageKg);
+    if (delta !== 0) {
+      entries.push({
+        type:
+          direction > 0
+            ? delta > 0
+              ? 'procurement_in'
+              : 'procurement_out'
+            : kind === 'credit'
+              ? 'credit_out'
+              : 'sale_out',
+        branch: after.branch,
+        produceName: after.produceName,
+        produceType: after.produceType,
+        qtyKg: delta,
+        refType,
+        refId: documentId,
+        note: 'Document tonnage correction'
+      });
+    }
+  } else if (!after.deletedAt) {
+    if (before.tonnageKg > 0) {
+      entries.push({
+        type: direction > 0 ? 'procurement_out' : 'void_in',
+        branch: before.branch,
+        produceName: before.produceName,
+        produceType: before.produceType,
+        qtyKg: -direction * before.tonnageKg,
+        refType,
+        refId: documentId,
+        note: 'Bucket move (source)'
+      });
+    }
+    if (after.tonnageKg > 0) {
+      entries.push({
+        type: direction > 0 ? 'procurement_in' : kind === 'credit' ? 'credit_out' : 'sale_out',
+        branch: after.branch,
+        produceName: after.produceName,
+        produceType: after.produceType,
+        qtyKg: direction * after.tonnageKg,
+        refType,
+        refId: documentId,
+        note: 'Bucket move (target)'
+      });
+    }
+  }
+
+  for (const entry of entries) {
+    if (!entry.qtyKg) continue;
+    if (session) {
+      await StockMovement.create([entry], { session });
+    } else {
+      await StockMovement.create(entry);
+    }
+  }
+};
 
 const adjustOnHand = async ({ branch, produceName, produceType, deltaKg = 0, sellingPrice, session }) => {
   const { branch: storedBranch, produceName: name, produceType: type } = canonicalBucket({
@@ -48,7 +143,8 @@ const currentStock = (doc) => ({
 });
 
 // Keep one balance row per produce bucket. Procurement adds weight. Sales remove it.
-const trackStockMovement = (schema, direction) => {
+// kind: 'procurement' | 'sale' | 'credit' — used for the immutable movement ledger.
+const trackStockMovement = (schema, direction, kind = 'sale') => {
   schema.post('init', function rememberLoadedStock() {
     this.$locals.stockBefore = currentStock(this);
   });
@@ -95,6 +191,22 @@ const trackStockMovement = (schema, direction) => {
       }
     }
 
+    try {
+      await writeDocumentLedger({
+        kind,
+        direction,
+        before,
+        after,
+        documentId: this._id,
+        session
+      });
+    } catch (error) {
+      // Ledger write must not block stock ops in degraded environments; balances already applied.
+      if (process.env.NODE_ENV !== 'test') {
+        console.warn('stock.ledger.write_failed', error.message);
+      }
+    }
+
     this.$locals.stockBefore = after;
   });
 
@@ -108,6 +220,18 @@ const trackStockMovement = (schema, direction) => {
       deltaKg: -direction * Number(this.tonnageKg || 0),
       session
     });
+    try {
+      await writeDocumentLedger({
+        kind,
+        direction,
+        before: currentStock(this),
+        after: { ...currentStock(this), deletedAt: new Date(), tonnageKg: 0 },
+        documentId: this._id,
+        session
+      });
+    } catch {
+      /* ignore ledger failure on hard delete path */
+    }
   });
 };
 
@@ -179,11 +303,27 @@ const reconcileStockBalances = () => {
   return run;
 };
 
+// Document hooks keep procurement/sale balances; ops ledger types are applied only via StockMovement.
+const OPS_LEDGER_TYPES = ['transfer_out', 'transfer_in', 'adjustment', 'stocktake'];
+
 const collectExpectedBalances = async () => {
-  const [procurements, sales, creditSales] = await Promise.all([
+  const [procurements, sales, creditSales, opsLedger] = await Promise.all([
     groupedMovements('Procurement', true),
     groupedMovements('Sale', false),
-    groupedMovements('CreditSale', false)
+    groupedMovements('CreditSale', false),
+    StockMovement.aggregate([
+      { $match: { type: { $in: OPS_LEDGER_TYPES } } },
+      {
+        $group: {
+          _id: {
+            produceName: { $ifNull: ['$produceName', ''] },
+            produceType: { $ifNull: ['$produceType', ''] },
+            branch: '$branch'
+          },
+          tonnageKg: { $sum: '$qtyKg' }
+        }
+      }
+    ])
   ]);
   const buckets = new Map();
   const apply = (row, sign, keepPrice) => {
@@ -203,6 +343,8 @@ const collectExpectedBalances = async () => {
   procurements.forEach((row) => apply(row, 1, true));
   sales.forEach((row) => apply(row, -1, false));
   creditSales.forEach((row) => apply(row, -1, false));
+  // qtyKg on ops movements is already signed (outbound negative).
+  opsLedger.forEach((row) => apply(row, 1, false));
   return [...buckets.values()];
 };
 

@@ -28,10 +28,13 @@ import { isProduction } from '../config/security.js';
 import { rejectDocumentedPassword } from '../config/seedPolicy.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
-import { removedRecordFilter } from '../utils/softDelete.js';
+import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort, trustedQuery } from '../utils/listQuery.js';
 import { getJwtAlgorithms, getJwtClaimOptions } from '../config/security.js';
 import {
+  clearOidcStateCookie,
+  readOidcStateCookie,
+  setOidcStateCookie,
   clearRefreshCookie,
   clearRememberedUsernameCookie,
   readRefreshCookie,
@@ -41,6 +44,11 @@ import {
 } from '../utils/cookies.js';
 import { buildOtpAuthUri, generateTotpSecret, verifyTotpCode } from '../utils/totp.js';
 import { recordAudit } from '../services/auditService.js';
+import {
+  getOidcStatus,
+  beginOidcLogin,
+  completeOidcLogin
+} from '../services/oidcService.js';
 
 const MAX_LOGIN_ATTEMPTS = Number(process.env.AUTH_MAX_LOGIN_ATTEMPTS || 5);
 const LOGIN_LOCK_WINDOW_MS = Number(process.env.AUTH_LOCK_WINDOW_MS || 15 * 60 * 1000);
@@ -168,7 +176,13 @@ const login = async (req, res) => {
         .json({ message: GENERIC_LOGIN_FAILURE.message });
     }
 
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (user?.authSource === 'oidc') {
+      return res.status(400).json({
+        message: 'This account uses SSO. Continue with Sign in with SSO.'
+      });
+    }
+
+    if (user && user.password && (await bcrypt.compare(password, user.password))) {
       if (user.loginAttempts || user.lockUntil) {
         user.loginAttempts = 0;
         user.lockUntil = null;
@@ -680,7 +694,7 @@ const verifyMfaLogin = async (req, res) => {
 
 const restoreUser = async (req, res, next) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, deletedAt: { $ne: null } });
+    const user = await User.findOne({ _id: req.params.id, deletedAt: removedOnly() });
     if (!user) {
       return res.status(404).json({ message: 'Removed user not found' });
     }
@@ -696,9 +710,81 @@ const restoreUser = async (req, res, next) => {
   }
 };
 
+const oidcStatus = async (_req, res, next) => {
+  try {
+    res.json(getOidcStatus());
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const oidcLoginStart = async (req, res, next) => {
+  try {
+    const { authorizationUrl, state } = await beginOidcLogin();
+    setOidcStateCookie(res, state);
+    if (['1', 'true'].includes(String(req.query.redirect || '').toLowerCase())) {
+      return res.redirect(authorizationUrl);
+    }
+    res.json({ authorizationUrl });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
+const buildOidcFrontendUrl = (params) => {
+  const frontendRedirect = String(process.env.OIDC_FRONTEND_REDIRECT || '').trim();
+  if (!frontendRedirect) return null;
+  const url = new URL(frontendRedirect);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  return url.toString();
+};
+
+// The access token is never placed in the redirect URL; the browser exchanges the
+// refresh cookie set here via POST /auth/refresh after landing on the frontend.
+const oidcLoginCallback = async (req, res, next) => {
+  const browserState = readOidcStateCookie(req);
+  clearOidcStateCookie(res);
+  try {
+    if (req.query.error) {
+      const error = new Error(
+        String(req.query.error_description || req.query.error || 'SSO sign-in was cancelled').slice(0, 200)
+      );
+      error.statusCode = 401;
+      throw error;
+    }
+    const { code, state } = req.query;
+    const { user } = await completeOidcLogin({ code, state, browserState });
+    await ensureLegacyDirectorTotalsAccess(user);
+    setRefreshCookie(res, generateRefreshToken(user._id, Number(user.refreshTokenVersion || 0)));
+    await recordAudit({
+      actor: user,
+      action: 'login',
+      entityType: 'user',
+      entityId: user._id,
+      branch: user.branch || '',
+      metadata: { via: 'oidc' }
+    });
+
+    const successUrl = buildOidcFrontendUrl({ sso: 'success' });
+    if (successUrl) return res.redirect(successUrl);
+    return res.json(toUserPayload(user, true));
+  } catch (error) {
+    const statusCode = Number(error.statusCode || 500);
+    const failureUrl = buildOidcFrontendUrl({
+      sso: 'error',
+      reason: statusCode < 500 ? String(error.message).slice(0, 200) : 'Single sign-on failed. Try again.'
+    });
+    if (failureUrl) return res.redirect(failureUrl);
+    return forwardControllerError(error, res, next);
+  }
+};
+
 export {
   login,
   logout,
+  oidcStatus,
+  oidcLoginStart,
+  oidcLoginCallback,
   getRememberedUsername,
   getMe,
   updateMe,

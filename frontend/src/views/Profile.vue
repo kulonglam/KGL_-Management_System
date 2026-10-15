@@ -164,6 +164,28 @@
         </div>
       </div>
     </div>
+
+    <div class="card profile-card mt-4">
+      <div class="card-header">
+        <h5 class="mb-0">Display time zone</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          Timestamps (audit logs, inbox, price history) are shown in this zone on this device. Business days, such as
+          "today" on forms and cash-up, always follow {{ businessZone }}.
+        </p>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6">
+            <label class="form-label" for="display-timezone">Time zone</label>
+            <select id="display-timezone" v-model="displayZone" class="form-select" @change="saveDisplayZone">
+              <option v-for="zone in timeZoneOptions" :key="zone" :value="zone">
+                {{ zone }}{{ zone === businessZone ? ' (business default)' : '' }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -175,6 +197,12 @@ import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { getHomeRouteForUser } from '../utils/directorAccess.js';
 import { validatePasswordStrength } from '../utils/passwordPolicy.js';
+import {
+  DISPLAY_TIMEZONE_OPTIONS,
+  businessTimeZone,
+  getDisplayTimeZone,
+  setDisplayTimeZone
+} from '../utils/businessTime.js';
 
 // Cap uploaded profile image size to 1 MB.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
@@ -184,7 +212,12 @@ const ALLOWED_PROFILE_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'im
 export default {
   name: 'Profile',
   data() {
+    const businessZone = businessTimeZone();
+    const displayZone = getDisplayTimeZone();
     return {
+      businessZone,
+      displayZone,
+      timeZoneOptions: [...new Set([businessZone, displayZone, ...DISPLAY_TIMEZONE_OPTIONS])],
       loading: false,
       saving: false,
       error: '',
@@ -211,6 +244,10 @@ export default {
     await this.loadProfile();
   },
   methods: {
+    saveDisplayZone() {
+      this.displayZone = setDisplayTimeZone(this.displayZone === this.businessZone ? '' : this.displayZone);
+      this.success = `Timestamps will show in ${this.displayZone}.`;
+    },
     // Load current user profile from backend and hydrate local form state.
     async loadProfile() {
       this.loading = true;

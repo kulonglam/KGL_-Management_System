@@ -375,7 +375,9 @@ describe('Forms Validation E2E', () => {
       name: 'Buyer 3',
       nationalId: 'CF120000000000',
       location: 'Kampala 2',
-      contact: '0700000003'
+      contact: '0700000003',
+      email: '',
+      creditLimitUgx: null
     });
   });
 

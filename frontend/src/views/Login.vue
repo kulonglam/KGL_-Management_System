@@ -186,6 +186,22 @@
               }}
             </button>
           </form>
+
+          <template v-if="sso.enabled && !mfaRequired && !mfaEnrollmentRequired && !passwordChangeRequired">
+            <div class="d-flex align-items-center my-4 text-muted small">
+              <hr class="flex-grow-1" />
+              <span class="px-2">or</span>
+              <hr class="flex-grow-1" />
+            </div>
+            <button
+              type="button"
+              class="btn btn-outline-dark w-100 py-2 fw-bold"
+              :disabled="loading"
+              @click="startSso"
+            >
+              <i class="bi bi-shield-lock me-2"></i>Sign in with {{ sso.providerName || 'SSO' }}
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -226,11 +242,19 @@ export default {
       mfaCode: '',
       mfaSecret: '',
       newPassword: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      sso: { enabled: false, providerName: '' }
     };
   },
   async created() {
     localStorage.removeItem('rememberedUsername');
+    this.loadSsoStatus();
+    const query = this.$route?.query || {};
+    const ssoResult = String(query.sso || '');
+    if (ssoResult) {
+      await this.finishSso(ssoResult, String(query.reason || ''));
+      return;
+    }
     try {
       const response = await authAPI.getRememberedUsername();
       const username = String(response?.data?.username || '').trim();
@@ -252,6 +276,41 @@ export default {
     },
     setupRequest() {
       return { headers: { Authorization: `Bearer ${this.setupToken}` } };
+    },
+    async loadSsoStatus() {
+      try {
+        const response = await authAPI.oidcStatus();
+        this.sso = {
+          enabled: Boolean(response?.data?.enabled),
+          providerName: response?.data?.providerName || ''
+        };
+      } catch {
+        this.sso = { enabled: false, providerName: '' };
+      }
+    },
+    startSso() {
+      this.loading = true;
+      window.location.assign(authAPI.oidcLoginUrl());
+    },
+    // The SSO callback only sets the refresh cookie; exchange it for an access token here.
+    async finishSso(result, reason) {
+      this.$router.replace({ path: this.$route.path, query: {} });
+      if (result !== 'success') {
+        this.error = reason || 'Single sign-on failed. Try again.';
+        return;
+      }
+      this.loading = true;
+      try {
+        const authStore = useAuthStore(pinia);
+        const restored = await authStore.restoreSession();
+        if (!restored) {
+          this.error = 'Single sign-on finished but the session could not be started. Try again.';
+          return;
+        }
+        this.$router.push(getHomeRouteForUser(authStore.user));
+      } finally {
+        this.loading = false;
+      }
     },
     async handleLogin() {
       this.loading = true;

@@ -16,12 +16,17 @@ const SalesRecords = () => import('../views/SalesRecords.vue');
 const CreditSales = () => import('../views/CreditSales.vue');
 const CreditSalesRecords = () => import('../views/CreditSalesRecords.vue');
 const Inventory = () => import('../views/Inventory.vue');
+const InventoryOps = () => import('../views/InventoryOps.vue');
+const FinanceOps = () => import('../views/FinanceOps.vue');
+const Platform = () => import('../views/Platform.vue');
 const Users = () => import('../views/Users.vue');
 const TrustedBuyers = () => import('../views/TrustedBuyers.vue');
+const Suppliers = () => import('../views/Suppliers.vue');
 const PriceManagement = () => import('../views/PriceManagement.vue');
 const Profile = () => import('../views/Profile.vue');
 const Branches = () => import('../views/Branches.vue');
 const AuditLogs = () => import('../views/AuditLogs.vue');
+const Inbox = () => import('../views/Inbox.vue');
 const NotFound = () => import('../views/NotFound.vue');
 
 // Route table grouped under dashboard layout with per-route role metadata.
@@ -102,6 +107,24 @@ const routes = [
         meta: { roles: ['manager', 'sales_agent'] }
       },
       {
+        path: 'inventory-ops',
+        name: 'InventoryOps',
+        component: InventoryOps,
+        meta: { roles: ['director', 'manager', 'sales_agent'] }
+      },
+      {
+        path: 'finance',
+        name: 'FinanceOps',
+        component: FinanceOps,
+        meta: { roles: ['director', 'manager'] }
+      },
+      {
+        path: 'platform',
+        name: 'Platform',
+        component: Platform,
+        meta: { roles: ['director'] }
+      },
+      {
         path: 'users',
         name: 'Users',
         component: Users,
@@ -111,6 +134,12 @@ const routes = [
         path: 'trusted-buyers',
         name: 'TrustedBuyers',
         component: TrustedBuyers,
+        meta: { role: 'manager' }
+      },
+      {
+        path: 'suppliers',
+        name: 'Suppliers',
+        component: Suppliers,
         meta: { role: 'manager' }
       },
       {
@@ -130,6 +159,12 @@ const routes = [
         name: 'AuditLogs',
         component: AuditLogs,
         meta: { roles: ['director', 'manager'] }
+      },
+      {
+        path: 'inbox',
+        name: 'Inbox',
+        component: Inbox,
+        meta: { roles: ['director', 'manager', 'sales_agent'] }
       },
       {
         path: 'profile',

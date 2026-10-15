@@ -8,7 +8,8 @@ import {
   createProcurement,
   getProcurementById,
   updateProcurement,
-  deleteProcurement
+  deleteProcurement,
+  restoreProcurement
 } from '../controllers/procurementController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
@@ -28,6 +29,16 @@ router.post('/', protect, authorize('manager'),
   procurementCreateValidation,
   validateRequest,
   createProcurement
+);
+
+router.post(
+  '/:id/restore',
+  protect,
+  authorize('manager'),
+  writeLimiter,
+  mongoIdParamValidation,
+  validateRequest,
+  restoreProcurement
 );
 
 // GET /api/procurement/:id: return one procurement record by id.

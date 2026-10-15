@@ -3,6 +3,8 @@
 import { body, param, query } from 'express-validator';
 import { LOCAL_PHONE_PATTERN, normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { isRegisteredBranch } from '../config/branches.js';
+import { WEBHOOK_EVENTS } from '../models/WebhookSubscription.js';
+import { API_KEY_SCOPES } from '../models/ApiKey.js';
 
 // Configure produce types.
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
@@ -231,6 +233,7 @@ const procurementCreateValidation = [
     .withMessage('costUgx is required')
     .isFloat({ min: procurementRules.costUgx.min })
     .withMessage(`costUgx must be at least ${procurementRules.costUgx.min}`),
+  body('supplierId').optional({ values: 'falsy' }).isMongoId().withMessage('supplierId must be a valid id'),
   body('dealerName')
     .trim()
     .notEmpty()
@@ -332,7 +335,16 @@ const saleCreateValidation = [
     .notEmpty()
     .withMessage('time is required')
     .matches(TIME_PATTERN)
-    .withMessage('time must be in HH:mm format')
+    .withMessage('time must be in HH:mm format'),
+  body('paymentMethod')
+    .optional()
+    .trim()
+    .isIn(['cash', 'momo', 'bank'])
+    .withMessage('paymentMethod must be cash, momo, or bank'),
+  body('tenderAmountUgx')
+    .optional({ values: 'null' })
+    .isFloat({ min: 0 })
+    .withMessage('tenderAmountUgx must be a non-negative number')
 ];
 
 // Configure sale update validation (manager correction fields).
@@ -438,6 +450,15 @@ const creditRepaymentValidation = [
   body('paidAt').optional().isISO8601().withMessage('paidAt must be a valid date')
 ];
 
+const trustedBuyerEmailRule = () =>
+  body('email')
+    .optional({ values: 'null' })
+    .trim()
+    .custom((value) => value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+    .withMessage('email must be a valid email address')
+    .isLength({ max: 254 })
+    .withMessage('email must be at most 254 characters');
+
 // Configure trusted buyer create validation.
 const trustedBuyerCreateValidation = [
   body('name')
@@ -469,7 +490,17 @@ const trustedBuyerCreateValidation = [
     .notEmpty()
     .withMessage('contact is required')
     .matches(PHONE_PATTERN)
-    .withMessage('contact must use the 07XXXXXXXX format')
+    .withMessage('contact must use the 07XXXXXXXX format'),
+  trustedBuyerEmailRule(),
+  body('creditLimitUgx')
+    .optional({ values: 'null' })
+    .custom((value) => value === null || value === '' || Number.isFinite(Number(value)))
+    .withMessage('creditLimitUgx must be a number or null')
+    .customSanitizer((value) =>
+      value === null || value === '' || value === undefined ? null : Number(value)
+    )
+    .custom((value) => value === null || value >= 0)
+    .withMessage('creditLimitUgx must be at least 0')
 ];
 
 // Configure trusted buyer update validation.
@@ -500,7 +531,249 @@ const trustedBuyerUpdateValidation = [
     .trim()
     .customSanitizer(normalizeLocalPhone)
     .matches(PHONE_PATTERN)
-    .withMessage('contact must use the 07XXXXXXXX format')
+    .withMessage('contact must use the 07XXXXXXXX format'),
+  trustedBuyerEmailRule(),
+  body('creditLimitUgx')
+    .optional({ values: 'null' })
+    .custom((value) => value === null || value === '' || Number.isFinite(Number(value)))
+    .withMessage('creditLimitUgx must be a number or null')
+    .customSanitizer((value) =>
+      value === null || value === '' || value === undefined ? null : Number(value)
+    )
+    .custom((value) => value === null || value >= 0)
+    .withMessage('creditLimitUgx must be at least 0')
+];
+
+const supplierCreateValidation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('name is required')
+    .isLength({ min: VALIDATION_LIMITS.textMinLength })
+    .withMessage(`name must be at least ${VALIDATION_LIMITS.textMinLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('name must be alphanumeric'),
+  body('contact')
+    .trim()
+    .customSanitizer(normalizeLocalPhone)
+    .notEmpty()
+    .withMessage('contact is required')
+    .matches(PHONE_PATTERN)
+    .withMessage('contact must use the 07XXXXXXXX format'),
+  body('sourceType')
+    .optional()
+    .trim()
+    .isIn(SOURCE_TYPES)
+    .withMessage('Invalid source type')
+];
+
+const supplierUpdateValidation = [
+  ...mongoIdParamValidation,
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: VALIDATION_LIMITS.textMinLength })
+    .withMessage(`name must be at least ${VALIDATION_LIMITS.textMinLength} characters`)
+    .matches(ALPHANUMERIC_TEXT)
+    .withMessage('name must be alphanumeric'),
+  body('contact')
+    .optional()
+    .trim()
+    .customSanitizer(normalizeLocalPhone)
+    .matches(PHONE_PATTERN)
+    .withMessage('contact must use the 07XXXXXXXX format'),
+  body('sourceType').optional().trim().isIn(SOURCE_TYPES).withMessage('Invalid source type'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean').toBoolean()
+];
+
+const voidReasonValidation = [
+  ...mongoIdParamValidation,
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('reason is required')
+    .isLength({ min: 5, max: 500 })
+    .withMessage('reason must be between 5 and 500 characters')
+];
+
+const transferCreateValidation = [
+  body('fromBranch').optional().trim().notEmpty().withMessage('fromBranch is required'),
+  body('toBranch').trim().notEmpty().withMessage('toBranch is required'),
+  body('note').optional().trim().isLength({ max: 500 }),
+  body('lines').isArray({ min: 1 }).withMessage('lines must include at least one item'),
+  body('lines.*.produceName').trim().notEmpty().withMessage('produceName is required'),
+  body('lines.*.produceType').trim().isIn(PRODUCE_TYPES).withMessage('Invalid produceType'),
+  body('lines.*.tonnageKg').isFloat({ min: 1 }).withMessage('tonnageKg must be at least 1')
+];
+
+const adjustmentCreateValidation = [
+  body('produceName').trim().notEmpty().withMessage('produceName is required'),
+  body('produceType').trim().isIn(PRODUCE_TYPES).withMessage('Invalid produceType'),
+  body('deltaKg')
+    .notEmpty()
+    .withMessage('deltaKg is required')
+    .isFloat()
+    .withMessage('deltaKg must be a number')
+    .custom((value) => Number(value) !== 0)
+    .withMessage('deltaKg must be non-zero'),
+  body('reasonCode')
+    .trim()
+    .isIn(['damage', 'shrinkage', 'found', 'correction', 'other'])
+    .withMessage('Invalid reasonCode'),
+  body('note').trim().notEmpty().withMessage('note is required').isLength({ max: 500 }),
+  body('branch').optional().trim().notEmpty()
+];
+
+const stocktakeUpdateValidation = [
+  ...mongoIdParamValidation,
+  body('lines').isArray({ min: 1 }).withMessage('lines is required'),
+  body('lines.*.produceName').trim().notEmpty(),
+  body('lines.*.produceType').trim().isIn(PRODUCE_TYPES),
+  body('lines.*.countedKg')
+    .optional({ values: 'null' })
+    .custom((value) => value === null || value === '' || Number(value) >= 0)
+    .withMessage('countedKg must be null or >= 0')
+];
+
+const taxConfigUpdateValidation = [
+  body('companyName').optional().trim().isLength({ min: 2, max: 200 }),
+  body('tin').optional().trim().isLength({ max: 40 }),
+  body('invoicePreamble').optional().trim().isLength({ max: 500 }),
+  body('vatRatePercent').optional().isFloat({ min: 0, max: 100 })
+];
+
+const cashUpOpenValidation = [
+  body('businessDate')
+    .optional()
+    .trim()
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage('businessDate must be YYYY-MM-DD'),
+  body('branch').optional().trim().notEmpty()
+];
+
+const cashUpCloseValidation = [
+  ...mongoIdParamValidation,
+  body('countedTotals').optional().isObject(),
+  body('countedTotals.cashUgx').optional().isFloat({ min: 0 }),
+  body('countedTotals.momoUgx').optional().isFloat({ min: 0 }),
+  body('countedTotals.bankUgx').optional().isFloat({ min: 0 }),
+  body('cashUgx').optional().isFloat({ min: 0 }),
+  body('momoUgx').optional().isFloat({ min: 0 }),
+  body('bankUgx').optional().isFloat({ min: 0 }),
+  body('varianceNote').optional().trim().isLength({ max: 500 })
+];
+
+const retentionUpdateValidation = [
+  body('auditLogDays').optional().isInt({ min: 30 }),
+  body('messageOutboxDays').optional().isInt({ min: 30 }),
+  body('stockNotificationDays').optional().isInt({ min: 30 }),
+  body('anonymizeBuyerAfterDays').optional().isInt({ min: 30 })
+];
+
+const glExportQueryValidation = [
+  query('from').notEmpty().withMessage('from is required').isISO8601(),
+  query('to').notEmpty().withMessage('to is required').isISO8601(),
+  query('branch').optional().trim().notEmpty(),
+  query('format').optional().trim().isIn(['json', 'csv'])
+];
+
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+const writeOffDecisionValidation = [
+  ...mongoIdParamValidation,
+  body('note').optional().trim().isLength({ max: 500 }).withMessage('note must be at most 500 characters')
+];
+
+const periodLockValidation = [
+  body('scope').optional().trim().notEmpty().isLength({ max: 60 }),
+  body('lockedThrough')
+    .custom((value) => value === null || ISO_DATE_ONLY.test(String(value)))
+    .withMessage('lockedThrough must be YYYY-MM-DD, or null to reopen'),
+  body('note').optional().trim().isLength({ max: 500 })
+];
+
+const statementQueryValidation = [
+  ...mongoIdParamValidation,
+  query('from').optional().matches(ISO_DATE_ONLY).withMessage('from must be YYYY-MM-DD'),
+  query('to').optional().matches(ISO_DATE_ONLY).withMessage('to must be YYYY-MM-DD'),
+  query('format').optional().isIn(['json', 'pdf'])
+];
+
+const statementEmailValidation = [
+  ...mongoIdParamValidation,
+  body('from').optional().matches(ISO_DATE_ONLY).withMessage('from must be YYYY-MM-DD'),
+  body('to').optional().matches(ISO_DATE_ONLY).withMessage('to must be YYYY-MM-DD')
+];
+
+const apiKeyCreateValidation = [
+  body('name').trim().notEmpty().withMessage('name is required').isLength({ max: 120 }),
+  body('scopes')
+    .isArray({ min: 1, max: API_KEY_SCOPES.length })
+    .withMessage('scopes must be a non-empty array')
+    .custom((scopes) => scopes.every((scope) => API_KEY_SCOPES.includes(scope)))
+    .withMessage(`scopes must be one of: ${API_KEY_SCOPES.join(', ')}`),
+  body('branch').optional({ values: 'null' }).trim().isLength({ max: 60 }),
+  body('expiresAt').optional({ values: 'falsy' }).isISO8601().withMessage('expiresAt must be an ISO date')
+];
+
+const WEBHOOK_URL_OPTIONS = {
+  require_protocol: true,
+  protocols: ['http', 'https'],
+  require_tld: false
+};
+
+const webhookEventsRule = () =>
+  body('events')
+    .optional()
+    .isArray({ min: 1, max: WEBHOOK_EVENTS.length })
+    .withMessage('events must be a non-empty array')
+    .custom((events) => events.every((event) => WEBHOOK_EVENTS.includes(event)))
+    .withMessage(`events must be one of: ${WEBHOOK_EVENTS.join(', ')}`);
+
+const webhookCreateValidation = [
+  body('name').trim().notEmpty().withMessage('name is required').isLength({ max: 120 }),
+  body('targetUrl')
+    .trim()
+    .notEmpty()
+    .withMessage('targetUrl is required')
+    .isLength({ max: 500 })
+    .isURL(WEBHOOK_URL_OPTIONS)
+    .withMessage('targetUrl must be a valid http(s) URL'),
+  webhookEventsRule(),
+  body('secret').optional().trim().isLength({ min: 16, max: 128 }),
+  body('isActive').optional().isBoolean().toBoolean()
+];
+
+const webhookUpdateValidation = [
+  ...mongoIdParamValidation,
+  body('name').optional().trim().isLength({ min: 1, max: 120 }),
+  body('targetUrl')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .isURL(WEBHOOK_URL_OPTIONS)
+    .withMessage('targetUrl must be a valid http(s) URL'),
+  webhookEventsRule(),
+  body('isActive').optional().isBoolean().toBoolean(),
+  body('rotateSecret').optional().isBoolean().toBoolean()
+];
+
+const webhookDeliveryListValidation = [
+  query('status').optional().isIn(['queued', 'retrying', 'delivered', 'failed']),
+  query('subscriptionId').optional().isMongoId(),
+  query('limit').optional().isInt({ min: 1, max: 200 }).toInt()
+];
+
+const webhookTestEmitValidation = [
+  body('event')
+    .optional()
+    .isIn(WEBHOOK_EVENTS)
+    .withMessage(`event must be one of: ${WEBHOOK_EVENTS.join(', ')}`),
+  body('payload').optional().isObject()
+];
+
+const platformJobEnqueueValidation = [
+  body('jobName').trim().notEmpty().withMessage('jobName is required')
 ];
 
 // Configure price create validation.
@@ -585,6 +858,27 @@ export {
   creditRepaymentValidation,
   trustedBuyerCreateValidation,
   trustedBuyerUpdateValidation,
+  supplierCreateValidation,
+  supplierUpdateValidation,
+  voidReasonValidation,
+  transferCreateValidation,
+  adjustmentCreateValidation,
+  stocktakeUpdateValidation,
+  taxConfigUpdateValidation,
+  cashUpOpenValidation,
+  cashUpCloseValidation,
+  retentionUpdateValidation,
+  glExportQueryValidation,
+  writeOffDecisionValidation,
+  periodLockValidation,
+  statementQueryValidation,
+  statementEmailValidation,
+  apiKeyCreateValidation,
+  webhookCreateValidation,
+  webhookUpdateValidation,
+  webhookDeliveryListValidation,
+  webhookTestEmitValidation,
+  platformJobEnqueueValidation,
   priceCreateValidation,
   priceUpdateValidation,
   passwordResetValidation,

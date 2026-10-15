@@ -92,6 +92,7 @@
                 <th>Produce Type</th>
                 <th class="text-end">Tonnage (kg)</th>
                 <th class="text-end">Amount Paid (UGX)</th>
+                <th>Tender</th>
                 <th>Buyer</th>
                 <th>Sales Agent</th>
                 <th>Date/Time</th>
@@ -108,6 +109,7 @@
                 <td data-label="Amount Paid (UGX)" class="text-end">
                   {{ formatAmount(item.amountPaidUgx) }}
                 </td>
+                <td data-label="Tender">{{ item.paymentMethod || 'cash' }}</td>
                 <td data-label="Buyer">{{ item.buyerName }}</td>
                 <td data-label="Sales Agent">{{ item.salesAgentName || '-' }}</td>
                 <td data-label="Date/Time">{{ formatDateTime(item.date, item.time) }}</td>
@@ -122,21 +124,35 @@
                       Edit
                     </button>
                     <button
-                      v-if="showRemoved"
+                      v-if="showRemoved && !item.voidedAt"
                       type="button"
                       class="btn btn-sm btn-outline-success"
                       @click="restoreSale(item)"
                     >
                       Restore
                     </button>
-                    <button
-                      v-else
-                      type="button"
-                      class="btn btn-sm btn-outline-danger"
-                      @click="openDeleteDialog(item)"
-                    >
-                      Remove
-                    </button>
+                    <template v-else-if="showRemoved && item.voidedAt">
+                      <span class="badge text-bg-secondary">Voided</span>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" @click="receiptSale = item">
+                        Receipt
+                      </button>
+                    </template>
+                    <template v-else>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-warning"
+                        @click="openVoidDialog(item)"
+                      >
+                        Void
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        @click="openDeleteDialog(item)"
+                      >
+                        Remove
+                      </button>
+                    </template>
                   </div>
                 </td>
               </tr>
@@ -294,12 +310,49 @@
       @cancel="closeDeleteDialog"
       @confirm="confirmDeleteSale"
     />
+
+    <div v-if="voidDialog.show" class="modal-mask" @click.self="closeVoidDialog">
+      <div class="modal-card" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <h5 class="mb-0">Void cash sale</h5>
+          <button type="button" class="btn-close" :disabled="voidDialog.processing" @click="closeVoidDialog"></button>
+        </div>
+        <div class="modal-body">
+          <p>Void sale for {{ voidDialog.saleLabel }}? Stock will be returned. This cannot be restored.</p>
+          <label class="form-label" for="void-sale-reason">Reason</label>
+          <textarea
+            id="void-sale-reason"
+            v-model.trim="voidDialog.reason"
+            class="form-control"
+            rows="3"
+            minlength="5"
+            required
+          ></textarea>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" :disabled="voidDialog.processing" @click="closeVoidDialog">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-warning"
+              :disabled="voidDialog.processing || voidDialog.reason.length < 5"
+              @click="confirmVoidSale"
+            >
+              Void sale
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ReceiptDialog :sale="receiptSale" sale-type="Cash sale" @close="receiptSale = null" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import ConfirmDialog from '../components/common/ConfirmDialog.vue';
+import ReceiptDialog from '../components/common/ReceiptDialog.vue';
 import RecordExportActions from '../components/common/RecordExportActions.vue';
 import InsightStrip from '../components/common/InsightStrip.vue';
 import TablePagination from '../components/common/TablePagination.vue';
@@ -328,11 +381,13 @@ const searchQuery = ref('');
 const selectedProduceType = ref('all');
 const sortBy = ref('newest');
 const showRemoved = ref(false);
+const receiptSale = ref(null);
 const exportColumns = [
   { label: 'Produce', value: (row) => row.produceName },
   { label: 'Type', value: (row) => row.produceType },
   { label: 'Tonnage (kg)', value: (row) => row.tonnageKg },
   { label: 'Amount paid (UGX)', value: (row) => row.amountPaidUgx },
+  { label: 'Payment method', value: (row) => row.paymentMethod || 'cash' },
   { label: 'Buyer', value: (row) => row.buyerName },
   { label: 'Sales agent', value: (row) => row.salesAgentName },
   { label: 'Date', value: (row) => row.date },
@@ -358,6 +413,13 @@ const deleteDialog = ref({
   show: false,
   saleId: '',
   saleLabel: '',
+  processing: false
+});
+const voidDialog = ref({
+  show: false,
+  saleId: '',
+  saleLabel: '',
+  reason: '',
   processing: false
 });
 
@@ -608,6 +670,35 @@ const confirmDeleteSale = async () => {
     loadError.value = error.response?.data?.message || 'Failed to delete sale record.';
   } finally {
     deleteDialog.value.processing = false;
+  }
+};
+
+const openVoidDialog = (item) => {
+  voidDialog.value = {
+    show: true,
+    saleId: item._id,
+    saleLabel: item.buyerName || 'selected buyer',
+    reason: '',
+    processing: false
+  };
+};
+
+const closeVoidDialog = () => {
+  if (voidDialog.value.processing) return;
+  voidDialog.value.show = false;
+};
+
+const confirmVoidSale = async () => {
+  if (!voidDialog.value.saleId || voidDialog.value.reason.length < 5) return;
+  voidDialog.value.processing = true;
+  try {
+    await salesAPI.void(voidDialog.value.saleId, { reason: voidDialog.value.reason });
+    voidDialog.value.show = false;
+    await loadSalesRecords();
+  } catch (error) {
+    loadError.value = error.response?.data?.message || 'Failed to void sale record.';
+  } finally {
+    voidDialog.value.processing = false;
   }
 };
 

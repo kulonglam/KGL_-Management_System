@@ -11,9 +11,25 @@ import Procurement from './models/Procurement.js';
 import Sale from './models/Sale.js';
 import CreditSale from './models/CreditSale.js';
 import TrustedBuyer from './models/TrustedBuyer.js';
+import Supplier from './models/Supplier.js';
 import StockNotification from './models/StockNotification.js';
 import StockLock from './models/StockLock.js';
 import StockBalance from './models/StockBalance.js';
+import MessageOutbox from './models/MessageOutbox.js';
+import StockMovement from './models/StockMovement.js';
+import StockTransfer from './models/StockTransfer.js';
+import StockAdjustment from './models/StockAdjustment.js';
+import StocktakeSession from './models/StocktakeSession.js';
+import TaxConfig from './models/TaxConfig.js';
+import TaxInvoice from './models/TaxInvoice.js';
+import InvoiceSequence from './models/InvoiceSequence.js';
+import CashUpSession from './models/CashUpSession.js';
+import RetentionPolicy from './models/RetentionPolicy.js';
+import GlAccountMapping from './models/GlAccountMapping.js';
+import WebhookSubscription from './models/WebhookSubscription.js';
+import WebhookDelivery from './models/WebhookDelivery.js';
+import JobSchedule from './models/JobSchedule.js';
+import OidcLoginState from './models/OidcLoginState.js';
 import { rebuildStockBalances } from './services/stockBalanceService.js';
 import AuditLog from './models/AuditLog.js';
 import PriceHistory from './models/PriceHistory.js';
@@ -550,10 +566,25 @@ const clearCollections = async () => {
   await Promise.all([
     StockLock.deleteMany({}),
     StockNotification.deleteMany({}),
+    MessageOutbox.deleteMany({}),
+    StockTransfer.deleteMany({}),
+    StockAdjustment.deleteMany({}),
+    StocktakeSession.deleteMany({}),
+    TaxInvoice.deleteMany({}),
+    InvoiceSequence.deleteMany({}),
+    CashUpSession.deleteMany({}),
+    TaxConfig.deleteMany({}),
+    RetentionPolicy.deleteMany({}),
+    GlAccountMapping.deleteMany({}),
+    WebhookSubscription.deleteMany({}),
+    WebhookDelivery.deleteMany({}),
+    JobSchedule.deleteMany({}),
+    OidcLoginState.deleteMany({}),
     CreditSale.deleteMany({}),
     Sale.deleteMany({}),
     Procurement.deleteMany({}),
     TrustedBuyer.deleteMany({}),
+    Supplier.deleteMany({}),
     PriceSetting.deleteMany({}),
     User.deleteMany({}),
     StockBalance.deleteMany({})
@@ -563,6 +594,7 @@ const clearCollections = async () => {
   await allowAppendOnlyNativeWrite(async () => {
     await AuditLog.collection.deleteMany({});
     await PriceHistory.collection.deleteMany({});
+    await StockMovement.collection.deleteMany({});
   });
   console.log('Existing data cleared, including append-only audit and price history for this reseed');
 };
@@ -620,24 +652,52 @@ const seedTrustedBuyers = async (userByUsername) => {
   return new Map(buyers.map((buyer) => [buyer.nationalId, buyer]));
 };
 
-const buildProcurementRecords = (userByUsername) =>
-  procurementSeed.map((item) => ({
-    produceName: item.produceName,
-    produceType: item.produceType,
-    sourceType: item.sourceType,
-    dateReceived: parseSeedDate(item.dateReceived),
-    timeReceived: item.timeReceived,
-    tonnageKg: item.tonnageKg,
-    costUgx: item.costUgx,
-    dealerName: item.dealerName,
-    dealerContact: item.dealerContact,
-    branch: item.branch,
-    sellingPrice: item.sellingPrice,
-    recordedBy: getUserOrThrow(userByUsername, item.recordedByUsername)._id
-  }));
+const seedSuppliersFromProcurements = async (userByUsername) => {
+  const unique = new Map();
+  for (const item of procurementSeed) {
+    const key = `${item.branch}::${String(item.dealerName || '').trim()}::${item.dealerContact}`;
+    if (unique.has(key)) continue;
+    unique.set(key, {
+      name: String(item.dealerName || '').replace(/\s+/g, ' ').trim(),
+      contact: item.dealerContact,
+      sourceType: item.sourceType,
+      branch: item.branch,
+      recordedBy: getUserOrThrow(userByUsername, item.recordedByUsername)._id
+    });
+  }
+  const suppliers = await Supplier.insertMany([...unique.values()]);
+  console.log(`Suppliers seeded: ${suppliers.length}`);
+  return new Map(
+    suppliers.map((supplier) => [`${supplier.branch}::${supplier.name}::${supplier.contact}`, supplier])
+  );
+};
 
-const seedProcurements = async (userByUsername) => {
-  const procurements = await Procurement.insertMany(buildProcurementRecords(userByUsername));
+const buildProcurementRecords = (userByUsername, supplierByKey = null) =>
+  procurementSeed.map((item) => {
+    const dealerName = String(item.dealerName || '').replace(/\s+/g, ' ').trim();
+    const supplierKey = `${item.branch}::${dealerName}::${item.dealerContact}`;
+    const supplier = supplierByKey?.get?.(supplierKey) || null;
+    return {
+      produceName: item.produceName,
+      produceType: item.produceType,
+      sourceType: item.sourceType,
+      dateReceived: parseSeedDate(item.dateReceived),
+      timeReceived: item.timeReceived,
+      tonnageKg: item.tonnageKg,
+      costUgx: item.costUgx,
+      dealerName,
+      dealerContact: item.dealerContact,
+      supplier: supplier?._id || null,
+      branch: item.branch,
+      sellingPrice: item.sellingPrice,
+      recordedBy: getUserOrThrow(userByUsername, item.recordedByUsername)._id
+    };
+  });
+
+const seedProcurements = async (userByUsername, supplierByKey) => {
+  const procurements = await Procurement.insertMany(
+    buildProcurementRecords(userByUsername, supplierByKey)
+  );
   console.log(`Procurements seeded: ${procurements.length}`);
 };
 
@@ -744,7 +804,8 @@ const main = async () => {
   const userByUsername = await seedUsers();
   await seedPriceSettings();
   const buyerByNin = await seedTrustedBuyers(userByUsername);
-  await seedProcurements(userByUsername);
+  const supplierByKey = await seedSuppliersFromProcurements(userByUsername);
+  await seedProcurements(userByUsername, supplierByKey);
   await seedSales(userByUsername);
   await seedCreditSales(userByUsername, buyerByNin);
   await rebuildStockBalances();

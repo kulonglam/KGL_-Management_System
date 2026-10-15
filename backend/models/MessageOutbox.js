@@ -11,12 +11,14 @@ const messageOutboxSchema = new mongoose.Schema(
     branch: { type: String, default: '' },
     status: { type: String, enum: ['queued', 'sent', 'failed'], default: 'queued' },
     errorMessage: { type: String, default: '' },
-    sentAt: { type: Date, default: null }
+    sentAt: { type: Date, default: null },
+    readAt: { type: Date, default: null }
   },
   { timestamps: true }
 );
 
 messageOutboxSchema.index({ branch: 1, createdAt: -1 });
 messageOutboxSchema.index({ status: 1, createdAt: -1 });
+messageOutboxSchema.index({ channel: 1, to: 1, readAt: 1, createdAt: -1 });
 
 export default mongoose.model('MessageOutbox', messageOutboxSchema);

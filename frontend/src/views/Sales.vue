@@ -149,6 +149,7 @@ import ReceiptDialog from '../components/common/ReceiptDialog.vue';
 import FormAlerts from '../components/common/FormAlerts.vue';
 import SalesDetailsSection from '../components/sales/SalesDetailsSection.vue';
 import { salesValidationSchema } from '../utils/formSchemas.js';
+import { businessTodayIso } from '../utils/businessTime.js';
 
 // Authenticated user context for default branch/agent display.
 const user = ref({});
@@ -187,8 +188,10 @@ function createInitialForm() {
     produceType: '',
     tonnageKg: '',
     amountPaidUgx: '',
+    paymentMethod: 'cash',
+    tenderAmountUgx: '',
     buyerName: '',
-    date: new Date().toISOString().split('T')[0],
+    date: businessTodayIso(),
     time: new Date().toTimeString().slice(0, 5)
   };
 }
