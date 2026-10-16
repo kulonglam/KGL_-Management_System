@@ -22,6 +22,10 @@
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: https://kgl-frontend.onrender.com
+      - key: BUSINESS_TIMEZONE
+        value: Africa/Kampala
+      - key: NIN_ENCRYPTION_KEY
+        sync: false
       - key: BACKUP_UPLOAD_URL
         sync: false
       - key: BACKUP_UPLOAD_TOKEN
