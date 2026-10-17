@@ -21,8 +21,8 @@ const BRANCH_ROLE_LIMITS = {
   manager: { min: 1, max: 1 },
   sales_agent: { min: 2, max: 2 }
 };
-const STAFF_ROLES = ['manager', 'sales_agent'];
-const ACCOUNT_ROLES = ['director', 'manager', 'sales_agent'];
+const STAFF_ROLES = ['manager', 'sales_agent', 'storekeeper', 'auditor'];
+const ACCOUNT_ROLES = ['director', 'manager', 'sales_agent', 'storekeeper', 'auditor'];
 
 // Managers can only list their own branch staff. Other roles keep the requested role.
 const resolveUserListRoleFilter = (actorRole, requestedRole = 'all') => {

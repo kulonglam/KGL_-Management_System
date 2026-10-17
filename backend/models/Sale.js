@@ -41,7 +41,11 @@ const saleSchema = new mongoose.Schema(
     deletedAt: { type: Date, default: null },
     voidedAt: { type: Date, default: null },
     voidReason: { type: String, default: '' },
-    voidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+    voidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    clientSaleId: { type: String, maxlength: 80 },
+    currency: { type: String, default: 'UGX', uppercase: true, maxlength: 3 },
+    fxRateToUgx: { type: Number, default: 1, min: 0 },
+    foreignAmount: { type: Number, default: 0, min: 0 }
   },
   {
     timestamps: true
@@ -52,6 +56,10 @@ saleSchema.index({ branch: 1, createdAt: -1 });
 saleSchema.index({ branch: 1, date: -1 });
 saleSchema.index({ branch: 1, produceName: 1, produceType: 1 });
 saleSchema.index({ deletedAt: 1, branch: 1, createdAt: -1 });
+saleSchema.index(
+  { clientSaleId: 1 },
+  { unique: true, partialFilterExpression: { clientSaleId: { $type: 'string', $gt: '' } } }
+);
 excludeRemovedRecords(saleSchema);
 trackStockMovement(saleSchema, -1, 'sale');
 

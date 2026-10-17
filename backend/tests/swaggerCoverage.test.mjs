@@ -137,7 +137,31 @@ const required = [
   ['get', '/branches'],
   ['post', '/branches'],
   ['put', '/branches/{id}'],
-  ['get', '/audit-logs']
+  ['get', '/audit-logs'],
+  ['get', '/finance/aging'],
+  ['post', '/finance/gl-journal'],
+  ['get', '/finance/trial-balance'],
+  ['get', '/finance/bank-lines'],
+  ['post', '/finance/bank-lines'],
+  ['post', '/finance/bank-lines/{id}/match'],
+  ['get', '/procurement/orders'],
+  ['post', '/procurement/orders'],
+  ['post', '/procurement/orders/{id}/approve'],
+  ['post', '/procurement/orders/{id}/receive'],
+  ['get', '/procurement/orders/{id}/match'],
+  ['get', '/messages/outbox'],
+  ['post', '/messages/outbox/{id}/retry'],
+  ['post', '/messages/delivery-receipts'],
+  ['get', '/organization/entities'],
+  ['post', '/organization/entities'],
+  ['post', '/organization/entities/{id}/branches'],
+  ['get', '/organization/entities/{id}/consolidation'],
+  ['get', '/catalog/barcodes/{code}'],
+  ['post', '/catalog/barcodes'],
+  ['get', '/finance/exchange-rates'],
+  ['get', '/finance/exchange-rates/quote'],
+  ['post', '/finance/exchange-rates'],
+  ['get', '/platform/instances']
 ];
 
 test('the API spec documents every mounted route with a response schema', () => {

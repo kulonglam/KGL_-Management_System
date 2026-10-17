@@ -60,6 +60,9 @@ const procurementSchema = new mongoose.Schema(
       match: LOCAL_PHONE_PATTERN
     },
     supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier', default: null },
+    purchaseOrder: { type: mongoose.Schema.Types.ObjectId, ref: 'PurchaseOrder', default: null },
+    lotCode: { type: String, default: '', maxlength: 40 },
+    expiryDate: { type: Date, default: null },
     branch: createBranchSchemaField(),
     sellingPrice: { type: Number, required: true, min: 10000 },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

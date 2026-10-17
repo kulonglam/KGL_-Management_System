@@ -12,7 +12,11 @@ const messageOutboxSchema = new mongoose.Schema(
     status: { type: String, enum: ['queued', 'sent', 'failed'], default: 'queued' },
     errorMessage: { type: String, default: '' },
     sentAt: { type: Date, default: null },
-    readAt: { type: Date, default: null }
+    readAt: { type: Date, default: null },
+    providerMessageId: { type: String, default: '' },
+    deliveredAt: { type: Date, default: null },
+    attachmentName: { type: String, default: '' },
+    attachmentBase64: { type: String, default: '' }
   },
   { timestamps: true }
 );

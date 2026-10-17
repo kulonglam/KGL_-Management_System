@@ -67,6 +67,8 @@
                 <option value="all">All roles</option>
                 <option value="manager">Manager</option>
                 <option value="sales_agent">Sales Agent</option>
+                <option value="storekeeper">Storekeeper</option>
+                <option value="auditor">Auditor</option>
               </select>
             </div>
             <div class="data-toolbar-field">
@@ -176,6 +178,8 @@
                 <option value="">Select role</option>
                 <option value="manager">Manager</option>
                 <option value="sales_agent">Sales Agent</option>
+                <option value="storekeeper">Storekeeper</option>
+                <option value="auditor">Auditor</option>
               </select>
               <small class="text-muted">Users are created for your branch only.</small>
             </div>
@@ -570,6 +574,8 @@ export default {
     },
     formatRole(role) {
       if (role === 'sales_agent') return 'Sales Agent';
+      if (role === 'storekeeper') return 'Storekeeper';
+      if (role === 'auditor') return 'Auditor';
       if (role === 'manager') return 'Manager';
       if (role === 'director') return 'Director';
       return role;

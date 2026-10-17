@@ -12,7 +12,11 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     email: { type: String, default: '', maxlength: 200 },
     profileImage: { type: String, default: '' },
-    role: { type: String, enum: ['director', 'manager', 'sales_agent'], required: true },
+    role: {
+      type: String,
+      enum: ['director', 'manager', 'sales_agent', 'storekeeper', 'auditor'],
+      required: true
+    },
     branch: {
       ...createBranchSchemaField({ required: false }),
       required() {
@@ -34,6 +38,9 @@ const userSchema = new mongoose.Schema(
     mfaSecret: { type: String, default: '' },
     mfaPendingSecret: { type: String, default: '' },
     mustChangePassword: { type: Boolean, default: false },
+    notifyEmail: { type: Boolean, default: true },
+    notifySms: { type: Boolean, default: true },
+    notifyInApp: { type: Boolean, default: true },
     deletedAt: { type: Date, default: null }
   },
   {

@@ -52,34 +52,173 @@ const ensureDefaultMappings = async () => {
   return new Map(rows.map((row) => [row.eventType, row]));
 };
 
-const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refType, refId, memo }) => {
+const journalLineKey = ({ eventType, refType, refId, keySuffix, side, account }) =>
+  `${eventType}|${refType}|${String(refId)}|${keySuffix}|${side}|${account}`;
+
+const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refType, refId, memo, keySuffix }) => {
   const amount = roundUgx(amountUgx);
   if (!amount) return;
   if (!mapping) {
     throw createServiceError(400, `Missing GL mapping for ${eventType}`);
   }
+  const shared = { date, branch, eventType, refType, refId: String(refId), memo };
   lines.push({
-    date,
-    branch,
+    ...shared,
     account: mapping.debitAccount,
     debitUgx: Math.abs(amount),
     creditUgx: 0,
-    eventType,
-    refType,
-    refId: String(refId),
-    memo
+    lineKey: journalLineKey({ eventType, refType, refId, keySuffix, side: 'debit', account: mapping.debitAccount })
   });
   lines.push({
-    date,
-    branch,
+    ...shared,
     account: mapping.creditAccount,
     debitUgx: 0,
     creditUgx: Math.abs(amount),
-    eventType,
-    refType,
-    refId: String(refId),
-    memo
+    lineKey: journalLineKey({ eventType, refType, refId, keySuffix, side: 'credit', account: mapping.creditAccount })
   });
+};
+
+const linesForSale = (sale, mappings, tax) => {
+  const lines = [];
+  if (sale.deletedAt && !sale.voidedAt) return lines;
+  const method = sale.paymentMethod || 'cash';
+  const eventType = method === 'momo' ? 'momo_sale' : method === 'bank' ? 'bank_sale' : 'cash_sale';
+  const split = splitVatInclusive(sale.amountPaidUgx, tax.vatRatePercent);
+  const tenderMap = mappings.get(eventType);
+  pushBalanced(lines, {
+    date: sale.date,
+    branch: sale.branch,
+    eventType,
+    mapping: tenderMap,
+    amountUgx: split.netUgx,
+    refType: 'sale',
+    refId: sale._id,
+    memo: `Sale ${sale.produceName}`,
+    keySuffix: 'net'
+  });
+  if (split.vatUgx > 0 && tenderMap) {
+    const vatMap = mappings.get('vat_output');
+    lines.push({
+      date: sale.date,
+      branch: sale.branch,
+      account: tenderMap.debitAccount,
+      debitUgx: split.vatUgx,
+      creditUgx: 0,
+      eventType: 'vat_output',
+      refType: 'sale',
+      refId: String(sale._id),
+      memo: 'VAT portion of tender',
+      lineKey: journalLineKey({
+        eventType: 'vat_output',
+        refType: 'sale',
+        refId: sale._id,
+        keySuffix: 'vat',
+        side: 'debit',
+        account: tenderMap.debitAccount
+      })
+    });
+    lines.push({
+      date: sale.date,
+      branch: sale.branch,
+      account: vatMap.creditAccount,
+      debitUgx: 0,
+      creditUgx: split.vatUgx,
+      eventType: 'vat_output',
+      refType: 'sale',
+      refId: String(sale._id),
+      memo: 'Output VAT',
+      lineKey: journalLineKey({
+        eventType: 'vat_output',
+        refType: 'sale',
+        refId: sale._id,
+        keySuffix: 'vat',
+        side: 'credit',
+        account: vatMap.creditAccount
+      })
+    });
+  }
+  if (sale.voidedAt) {
+    pushBalanced(lines, {
+      date: sale.voidedAt,
+      branch: sale.branch,
+      eventType: 'sale_void',
+      mapping: mappings.get('sale_void'),
+      amountUgx: sale.amountPaidUgx,
+      refType: 'sale',
+      refId: sale._id,
+      memo: `Void ${sale.produceName}`,
+      keySuffix: 'void'
+    });
+  }
+  return lines;
+};
+
+const linesForCredit = (credit, mappings, tax, include = () => true) => {
+  const lines = [];
+  if (credit.voidedAt) return lines;
+  if (include(credit.dateOfDispatch)) {
+    const split = splitVatInclusive(credit.amountDueUgx, tax.vatRatePercent);
+    pushBalanced(lines, {
+      date: credit.dateOfDispatch,
+      branch: credit.branch,
+      eventType: 'credit_sale',
+      mapping: mappings.get('credit_sale'),
+      amountUgx: split.netUgx,
+      refType: 'creditSale',
+      refId: credit._id,
+      memo: `Credit sale ${credit.produceName || ''}`.trim(),
+      keySuffix: 'dispatch'
+    });
+  }
+  (credit.payments || []).forEach((payment, index) => {
+    const paidAt = payment.paidAt || credit.updatedAt || credit.dateOfDispatch;
+    if (!include(paidAt)) return;
+    pushBalanced(lines, {
+      date: paidAt,
+      branch: credit.branch,
+      eventType: 'credit_repayment',
+      mapping: mappings.get('credit_repayment'),
+      amountUgx: payment.amountUgx,
+      refType: 'creditSale',
+      refId: credit._id,
+      memo: 'Credit repayment',
+      keySuffix: `pay-${index}`
+    });
+  });
+  if (
+    credit.writeOff?.status === 'approved' &&
+    Number(credit.writtenOffUgx) > 0 &&
+    include(credit.writeOff.decidedAt)
+  ) {
+    pushBalanced(lines, {
+      date: credit.writeOff.decidedAt,
+      branch: credit.branch,
+      eventType: 'credit_writeoff',
+      mapping: mappings.get('credit_writeoff'),
+      amountUgx: credit.writtenOffUgx,
+      refType: 'creditSale',
+      refId: credit._id,
+      memo: `Write-off ${credit.buyerName || ''}`.trim(),
+      keySuffix: 'writeoff'
+    });
+  }
+  return lines;
+};
+
+const linesForProcurement = (row, mappings) => {
+  const lines = [];
+  pushBalanced(lines, {
+    date: row.dateReceived,
+    branch: row.branch,
+    eventType: 'procurement',
+    mapping: mappings.get('procurement'),
+    amountUgx: row.costUgx,
+    refType: 'procurement',
+    refId: row._id,
+    memo: `Procurement ${row.produceName}`,
+    keySuffix: 'cost'
+  });
+  return lines;
 };
 
 const buildGlExport = async ({ from, to, branch }) => {
@@ -123,131 +262,15 @@ const buildGlExport = async ({ from, to, branch }) => {
     Procurement.find(procurementFilter).lean()
   ]);
 
-  const lines = [];
-
-  for (const sale of sales) {
-    // Soft-deleted without void is excluded from books; voids keep recognition + reversal.
-    if (sale.deletedAt && !sale.voidedAt) continue;
-
-    const method = sale.paymentMethod || 'cash';
-    const eventType = method === 'momo' ? 'momo_sale' : method === 'bank' ? 'bank_sale' : 'cash_sale';
-    const split = splitVatInclusive(sale.amountPaidUgx, tax.vatRatePercent);
-    const tenderMap = mappings.get(eventType);
-
-    pushBalanced(lines, {
-      date: sale.date,
-      branch: sale.branch,
-      eventType,
-      mapping: tenderMap,
-      amountUgx: split.netUgx,
-      refType: 'sale',
-      refId: sale._id,
-      memo: `Sale ${sale.produceName}`
-    });
-    if (split.vatUgx > 0) {
-      const vatMap = mappings.get('vat_output');
-      lines.push({
-        date: sale.date,
-        branch: sale.branch,
-        account: tenderMap.debitAccount,
-        debitUgx: split.vatUgx,
-        creditUgx: 0,
-        eventType: 'vat_output',
-        refType: 'sale',
-        refId: String(sale._id),
-        memo: 'VAT portion of tender'
-      });
-      lines.push({
-        date: sale.date,
-        branch: sale.branch,
-        account: vatMap.creditAccount,
-        debitUgx: 0,
-        creditUgx: split.vatUgx,
-        eventType: 'vat_output',
-        refType: 'sale',
-        refId: String(sale._id),
-        memo: 'Output VAT'
-      });
-    }
-
-    if (sale.voidedAt) {
-      pushBalanced(lines, {
-        date: sale.voidedAt,
-        branch: sale.branch,
-        eventType: 'sale_void',
-        mapping: mappings.get('sale_void'),
-        amountUgx: sale.amountPaidUgx,
-        refType: 'sale',
-        refId: sale._id,
-        memo: `Void ${sale.produceName}`
-      });
-    }
-  }
-
   const isInWindow = (value) => {
     const date = value ? new Date(value) : null;
     return Boolean(date) && date >= fromDate && date <= toDate;
   };
-
-  for (const credit of creditSales) {
-    if (credit.voidedAt) continue;
-    if (isInWindow(credit.dateOfDispatch)) {
-      const split = splitVatInclusive(credit.amountDueUgx, tax.vatRatePercent);
-      pushBalanced(lines, {
-        date: credit.dateOfDispatch,
-        branch: credit.branch,
-        eventType: 'credit_sale',
-        mapping: mappings.get('credit_sale'),
-        amountUgx: split.netUgx,
-        refType: 'creditSale',
-        refId: credit._id,
-        memo: `Credit sale ${credit.produceName || ''}`.trim()
-      });
-    }
-    for (const payment of credit.payments || []) {
-      const paidAt = payment.paidAt || credit.updatedAt || credit.dateOfDispatch;
-      if (!isInWindow(paidAt)) continue;
-      pushBalanced(lines, {
-        date: paidAt,
-        branch: credit.branch,
-        eventType: 'credit_repayment',
-        mapping: mappings.get('credit_repayment'),
-        amountUgx: payment.amountUgx,
-        refType: 'creditSale',
-        refId: credit._id,
-        memo: 'Credit repayment'
-      });
-    }
-    if (
-      credit.writeOff?.status === 'approved' &&
-      Number(credit.writtenOffUgx) > 0 &&
-      isInWindow(credit.writeOff.decidedAt)
-    ) {
-      pushBalanced(lines, {
-        date: credit.writeOff.decidedAt,
-        branch: credit.branch,
-        eventType: 'credit_writeoff',
-        mapping: mappings.get('credit_writeoff'),
-        amountUgx: credit.writtenOffUgx,
-        refType: 'creditSale',
-        refId: credit._id,
-        memo: `Write-off ${credit.buyerName || ''}`.trim()
-      });
-    }
-  }
-
-  for (const row of procurements) {
-    pushBalanced(lines, {
-      date: row.dateReceived,
-      branch: row.branch,
-      eventType: 'procurement',
-      mapping: mappings.get('procurement'),
-      amountUgx: row.costUgx,
-      refType: 'procurement',
-      refId: row._id,
-      memo: `Procurement ${row.produceName}`
-    });
-  }
+  const lines = [
+    ...sales.flatMap((sale) => linesForSale(sale, mappings, tax)),
+    ...creditSales.flatMap((credit) => linesForCredit(credit, mappings, tax, isInWindow)),
+    ...procurements.flatMap((row) => linesForProcurement(row, mappings))
+  ];
 
   const debitTotal = lines.reduce((sum, line) => sum + Number(line.debitUgx || 0), 0);
   const creditTotal = lines.reduce((sum, line) => sum + Number(line.creditUgx || 0), 0);
@@ -302,4 +325,14 @@ const listMappings = async () => {
   return GlAccountMapping.find({}).sort({ eventType: 1 }).lean();
 };
 
-export { buildGlExport, toCsv, listMappings, EVENT_TYPES, ensureDefaultMappings };
+export {
+  buildGlExport,
+  toCsv,
+  listMappings,
+  EVENT_TYPES,
+  ensureDefaultMappings,
+  linesForSale,
+  linesForCredit,
+  linesForProcurement,
+  journalLineKey
+};

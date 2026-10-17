@@ -84,7 +84,18 @@ const authorize = (...roles) => {
     if (!req.user || !req.user.role) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    if (!roles.includes(req.user.role)) {
+    const routePath = `${req.baseUrl || ''}${req.path || ''}`;
+    const storekeeperAllowed =
+      req.user.role === 'storekeeper' &&
+      roles.includes('manager') &&
+      /\/(inventory|procurement|suppliers)/.test(routePath);
+    const auditorRead =
+      req.user.role === 'auditor' &&
+      req.method === 'GET' &&
+      (roles.includes('director') || roles.includes('manager')) &&
+      !routePath.includes('personal-data') &&
+      !routePath.includes('/auth/users');
+    if (!roles.includes(req.user.role) && !storekeeperAllowed && !auditorRead) {
       logger.warn('auth.access.denied', {
         reason: 'role_mismatch',
         userId: req.user?._id ? String(req.user._id) : null,

@@ -3223,6 +3223,122 @@ const swaggerSpec = {
         }
       }
     },
+    '/finance/aging': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Company receivables aging',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({
+            oneOf: [{ type: 'object', additionalProperties: true }]
+          })
+        }
+      }
+    },
+    '/finance/gl-journal': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Post GL export lines into the journal',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/finance/trial-balance': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Trial balance from posted journal lines',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/finance/bank-lines': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Bank statement lines with match suggestions',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'array', items: { type: 'object' } }] }) }
+      },
+      post: {
+        tags: ['Finance'],
+        summary: 'Import bank statement lines',
+        security: [{ bearerAuth: [] }],
+        responses: { 201: successResponse({ oneOf: [{ type: 'array', items: { type: 'object' } }] }) }
+      }
+    },
+    '/finance/bank-lines/{id}/match': {
+      post: {
+        tags: ['Finance'],
+        summary: 'Match a bank line to a sale or credit payment',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/procurement/orders': {
+      get: {
+        tags: ['Procurement'],
+        summary: 'List purchase orders',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'array', items: { type: 'object' } }] }) }
+      },
+      post: {
+        tags: ['Procurement'],
+        summary: 'Create a purchase order',
+        security: [{ bearerAuth: [] }],
+        responses: { 201: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/procurement/orders/{id}/approve': {
+      post: {
+        tags: ['Procurement'],
+        summary: 'Approve a purchase order (not the creator)',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/procurement/orders/{id}/receive': {
+      post: {
+        tags: ['Procurement'],
+        summary: 'Record a goods receipt against a purchase order',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/procurement/orders/{id}/match': {
+      get: {
+        tags: ['Procurement'],
+        summary: 'Three-way match of order, receipt, and procurement',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/messages/outbox': {
+      get: {
+        tags: ['Messages'],
+        summary: 'List the message outbox',
+        security: [{ bearerAuth: [] }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'array', items: { type: 'object' } }] }) }
+      }
+    },
+    '/messages/outbox/{id}/retry': {
+      post: {
+        tags: ['Messages'],
+        summary: 'Retry a queued or failed message',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
+    '/messages/delivery-receipts': {
+      post: {
+        tags: ['Messages'],
+        summary: 'Record an SMS provider delivery receipt',
+        responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
+      }
+    },
     '/audit-logs': {
       get: {
         tags: ['Audit'],
@@ -3420,6 +3536,105 @@ const swaggerSpec = {
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' },
           404: { $ref: '#/components/responses/NotFound' }
+        }
+      }
+    },
+    '/organization/entities': {
+      get: {
+        tags: ['Organization'],
+        summary: 'List legal entities and their branches',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'array', items: { type: 'object' } }] })
+        }
+      },
+      post: {
+        tags: ['Organization'],
+        summary: 'Create a legal entity',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          201: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/organization/entities/{id}/branches': {
+      post: {
+        tags: ['Organization'],
+        summary: 'Assign a branch to a legal entity',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/organization/entities/{id}/consolidation': {
+      get: {
+        tags: ['Organization'],
+        summary: 'Consolidated cash sales and open receivables for one company',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ $ref: '#/components/parameters/IdParam' }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/catalog/barcodes/{code}': {
+      get: {
+        tags: ['Catalog'],
+        summary: 'Look up a barcode at the caller branch',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'code', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/catalog/barcodes': {
+      post: {
+        tags: ['Catalog'],
+        summary: 'Register a produce barcode',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          201: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/finance/exchange-rates': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Latest rate to UGX for each foreign currency',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      },
+      post: {
+        tags: ['Finance'],
+        summary: 'Record an exchange rate',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          201: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/finance/exchange-rates/quote': {
+      get: {
+        tags: ['Finance'],
+        summary: 'Convert a foreign amount into UGX',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/platform/instances': {
+      get: {
+        tags: ['Platform'],
+        summary: 'API processes that have reported in the last minute',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
         }
       }
     },

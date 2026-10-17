@@ -6,6 +6,8 @@ import { validateEnv } from './config/env.js';
 import createApp from './app.js';
 import { ensureDefaultBranches } from './services/branchService.js';
 import { startJobInfrastructure, stopJobInfrastructure } from './services/jobQueueService.js';
+import { ensureHomeEntity } from './services/organizationService.js';
+import { startInstancePresence, stopInstancePresence } from './services/instancePresenceService.js';
 import logger from './utils/logger.js';
 
 dotenv.config();
@@ -18,6 +20,8 @@ const PORT = Number(process.env.PORT || 5000);
 const startServer = async () => {
   await connectDB();
   await ensureDefaultBranches();
+  await ensureHomeEntity();
+  startInstancePresence();
 
   const app = createApp();
   const jobs = await startJobInfrastructure();
@@ -38,6 +42,7 @@ const startServer = async () => {
 
     server.close(async () => {
       try {
+        await stopInstancePresence();
         await stopJobInfrastructure();
         await mongoose.disconnect();
         logger.info('server.shutdown.complete', { signal });

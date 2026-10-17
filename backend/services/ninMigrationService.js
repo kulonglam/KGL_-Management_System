@@ -4,6 +4,8 @@ import {
   blindIndex,
   decryptField,
   encryptField,
+  encryptWithMaster,
+  indexWithMaster,
   isEncryptedValue,
   isFieldEncryptionEnabled,
   normalizeNin
@@ -64,4 +66,35 @@ const migrateNationalIds = async ({ dryRun = false } = {}) => {
   return result;
 };
 
-export { migrateNationalIds };
+// Re-encrypt with NIN_ENCRYPTION_KEY_NEXT. Swap the env value to the new key only after this finishes.
+const rotateNationalIds = async ({ dryRun = false } = {}) => {
+  const nextKey = String(process.env.NIN_ENCRYPTION_KEY_NEXT || '').trim();
+  if (!nextKey || !indexWithMaster('CM000000000000', nextKey)) {
+    throw Object.assign(new Error('NIN_ENCRYPTION_KEY_NEXT must be a 32-byte key'), { statusCode: 400 });
+  }
+  const rotateCollection = async (model) => {
+    const summary = { scanned: 0, rotated: 0, skipped: 0 };
+    const cursor = model.collection.find({ nationalId: { $type: 'string' } }, { projection: { nationalId: 1 } });
+    for await (const row of cursor) {
+      summary.scanned += 1;
+      const plain = decryptField(row.nationalId);
+      if (!plain || isEncryptedValue(plain)) {
+        summary.skipped += 1;
+        continue;
+      }
+      summary.rotated += 1;
+      if (dryRun) continue;
+      await model.collection.updateOne(
+        { _id: row._id },
+        { $set: { nationalId: encryptWithMaster(normalizeNin(plain), nextKey), nationalIdHash: indexWithMaster(plain, nextKey) } }
+      );
+    }
+    return summary;
+  };
+  return {
+    trustedBuyers: await rotateCollection(TrustedBuyer),
+    creditSales: await rotateCollection(CreditSale)
+  };
+};
+
+export { migrateNationalIds, rotateNationalIds };

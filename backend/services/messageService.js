@@ -59,7 +59,48 @@ const upgradeToTls = (socket, host) =>
     secure.once('error', reject);
   });
 
-const sendSmtpEmail = async ({ to, subject, body }) => {
+const dotStuff = (value) =>
+  String(value || '')
+    .replace(/\r?\n/g, '\r\n')
+    .split('\r\n')
+    .map((line) => (line.startsWith('.') ? `.${line}` : line))
+    .join('\r\n');
+
+const wrapBase64 = (value) => String(value || '').replace(/\s+/g, '').replace(/.{1,76}/g, '$&\r\n');
+
+const buildEmailSource = ({ from, to, subject, body, attachmentName = '', attachmentBase64 = '' }) => {
+  const safeSubject = String(subject || '').replace(/[\r\n]+/g, ' ');
+  const text = dotStuff(body);
+  if (!attachmentBase64) {
+    return `From: ${from}\r\nTo: ${to}\r\nSubject: ${safeSubject}\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${text}\r\n.`;
+  }
+  const boundary = `kgl_${Date.now()}`;
+  const filename = String(attachmentName || 'statement.pdf').replace(/["\r\n]/g, '');
+  return [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${safeSubject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    text,
+    '',
+    `--${boundary}`,
+    `Content-Type: application/pdf; name="${filename}"`,
+    'Content-Transfer-Encoding: base64',
+    `Content-Disposition: attachment; filename="${filename}"`,
+    '',
+    wrapBase64(attachmentBase64).trimEnd(),
+    '',
+    `--${boundary}--`,
+    '.'
+  ].join('\r\n');
+};
+
+const sendSmtpEmail = async ({ to, subject, body, attachmentName = '', attachmentBase64 = '' }) => {
   const host = String(process.env.SMTP_HOST || '').trim();
   const from = String(process.env.SMTP_FROM || '').trim();
   if (!host || !from) {
@@ -114,7 +155,7 @@ const sendSmtpEmail = async ({ to, subject, body }) => {
     expectSmtp(await writeSmtp(socket, `MAIL FROM:<${from}>`), [250]);
     expectSmtp(await writeSmtp(socket, `RCPT TO:<${to}>`), [250, 251]);
     expectSmtp(await writeSmtp(socket, 'DATA'), [354]);
-    const payload = `From: ${from}\r\nTo: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}\r\n.`;
+    const payload = buildEmailSource({ from, to, subject, body, attachmentName, attachmentBase64 });
     expectSmtp(await writeSmtp(socket, payload), [250]);
     await writeSmtp(socket, 'QUIT');
     return { delivered: true };
@@ -147,7 +188,14 @@ const sendSmsWebhook = async ({ to, subject, body }) => {
   if (!response.ok) {
     throw new Error(`SMS webhook HTTP ${response.status}`);
   }
-  return { delivered: true };
+  let providerMessageId = '';
+  try {
+    const payload = await response.json();
+    providerMessageId = String(payload?.messageId || payload?.id || '');
+  } catch {
+    providerMessageId = '';
+  }
+  return { delivered: true, providerMessageId };
 };
 
 const queueMessage = async ({
@@ -157,7 +205,10 @@ const queueMessage = async ({
   body,
   relatedType = '',
   relatedId = '',
-  branch = ''
+  branch = '',
+  recipientUserId = '',
+  attachmentName = '',
+  attachmentBase64 = ''
 }) => {
   const message = await MessageOutbox.create({
     channel,
@@ -167,12 +218,36 @@ const queueMessage = async ({
     relatedType,
     relatedId: relatedId ? String(relatedId) : '',
     branch,
-    status: 'queued'
+    status: 'queued',
+    providerMessageId: '',
+    attachmentName,
+    attachmentBase64
   });
+  if (recipientUserId) {
+    const User = (await import('../models/User.js')).default;
+    const recipient = await User.findById(recipientUserId).select('notifyEmail notifySms notifyInApp').lean();
+    const allowed =
+      !recipient ||
+      (channel === 'email' && recipient.notifyEmail !== false) ||
+      (channel === 'sms' && recipient.notifySms !== false) ||
+      (channel === 'in_app' && recipient.notifyInApp !== false);
+    if (!allowed) {
+      message.status = 'failed';
+      message.errorMessage = 'recipient_opted_out';
+      await message.save();
+      return message;
+    }
+  }
 
   try {
     if (channel === 'email') {
-      const result = await sendSmtpEmail({ to, subject, body });
+      const result = await sendSmtpEmail({
+        to,
+        subject,
+        body,
+        attachmentName: message.attachmentName,
+        attachmentBase64: message.attachmentBase64
+      });
       message.status = result.delivered ? 'sent' : 'queued';
       message.sentAt = result.delivered ? new Date() : null;
       message.errorMessage = result.delivered ? '' : result.reason || '';
@@ -180,6 +255,7 @@ const queueMessage = async ({
       const result = await sendSmsWebhook({ to, subject, body });
       message.status = result.delivered ? 'sent' : 'queued';
       message.sentAt = result.delivered ? new Date() : null;
+      message.providerMessageId = result.providerMessageId || '';
       message.errorMessage = result.delivered ? '' : result.reason || '';
     } else {
       message.status = 'sent';
@@ -196,4 +272,53 @@ const queueMessage = async ({
   return message;
 };
 
-export { queueMessage, sendSmtpEmail, sendSmsWebhook };
+const retryOutboxMessage = async (id) => {
+  const message = await MessageOutbox.findById(id);
+  if (!message) {
+    const error = new Error('Message not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  message.status = 'queued';
+  message.errorMessage = '';
+  await message.save();
+  return queueMessage({
+    channel: message.channel,
+    to: message.to,
+    subject: message.subject,
+    body: message.body,
+    relatedType: message.relatedType,
+    relatedId: message.relatedId,
+    branch: message.branch,
+    attachmentName: message.attachmentName,
+    attachmentBase64: message.attachmentBase64
+  });
+};
+
+const recordDeliveryReceipt = async ({ providerMessageId, token }) => {
+  const expected = String(process.env.SMS_RECEIPT_TOKEN || '').trim();
+  if (!expected || token !== expected) {
+    const error = new Error('Not authorized');
+    error.statusCode = 401;
+    throw error;
+  }
+  const message = await MessageOutbox.findOne({ providerMessageId: String(providerMessageId || '') });
+  if (!message) {
+    const error = new Error('Message not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  message.deliveredAt = new Date();
+  message.status = 'sent';
+  await message.save();
+  return message.toObject();
+};
+
+const listOutbox = async ({ status, channel }) => {
+  const filter = {};
+  if (status) filter.status = status;
+  if (channel) filter.channel = channel;
+  return MessageOutbox.find(filter).select('-attachmentBase64').sort({ createdAt: -1 }).limit(200).lean();
+};
+
+export { buildEmailSource, listOutbox, queueMessage, recordDeliveryReceipt, retryOutboxMessage, sendSmtpEmail, sendSmsWebhook };

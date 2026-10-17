@@ -15,11 +15,24 @@ import { protect, authorize } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import {
+  approveOrderHandler,
+  createOrderHandler,
+  listOrdersHandler,
+  matchOrderHandler,
+  receiveOrderHandler
+} from '../controllers/enterpriseController.js';
+import {
   paginationValidation,
   mongoIdParamValidation,
   procurementCreateValidation,
   procurementUpdateValidation
 } from '../validators/requestValidators.js';
+
+router.get('/orders', protect, authorize('manager', 'director'), listOrdersHandler);
+router.post('/orders', protect, authorize('manager', 'director'), writeLimiter, createOrderHandler);
+router.post('/orders/:id/approve', protect, authorize('manager', 'director'), writeLimiter, mongoIdParamValidation, validateRequest, approveOrderHandler);
+router.post('/orders/:id/receive', protect, authorize('manager', 'director'), writeLimiter, mongoIdParamValidation, validateRequest, receiveOrderHandler);
+router.get('/orders/:id/match', protect, authorize('manager', 'director'), mongoIdParamValidation, validateRequest, matchOrderHandler);
 
 // GET /api/procurement: list branch procurement records with pagination.
 router.get('/', protect, authorize('manager'), paginationValidation, validateRequest, getAllProcurement);

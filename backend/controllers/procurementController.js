@@ -21,6 +21,8 @@ import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { emitDomainEvent } from '../services/webhookService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
+import { recordProcurementLot } from '../services/stockLotService.js';
+import { rememberJournal } from '../services/journalPostingService.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -153,6 +155,9 @@ const createProcurement = async (req, res, next) => {
           dealerName: supplier.name,
           dealerContact: supplier.contact,
           supplier: supplier._id,
+          purchaseOrder: req.body.purchaseOrder || null,
+          lotCode: String(req.body.lotCode || '').trim().slice(0, 40),
+          expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
           branch: req.user.branch,
           sellingPrice: priceResolution.priceUgx,
           recordedBy: req.user._id
@@ -166,6 +171,7 @@ const createProcurement = async (req, res, next) => {
           remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
         });
 
+        await recordProcurementLot(created);
         return created;
       }
     );
@@ -186,6 +192,7 @@ const createProcurement = async (req, res, next) => {
       costUgx: procurement.costUgx,
       supplierId: procurement.supplier ? String(procurement.supplier) : null
     }).catch(() => {});
+    await rememberJournal('procurement', procurement._id);
 
     res.status(201).json(procurement);
   } catch (error) {

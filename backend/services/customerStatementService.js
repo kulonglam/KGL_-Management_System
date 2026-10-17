@@ -214,6 +214,7 @@ const emailCustomerStatement = async ({ actorUser, buyerId, from, to }) => {
   if (!statement.buyer.email) {
     throw createServiceError(400, 'This buyer has no email address. Add one on the trusted buyer record first.');
   }
+  const pdf = renderStatementPdf(statement);
   const message = await queueMessage({
     channel: 'email',
     to: statement.buyer.email,
@@ -221,7 +222,9 @@ const emailCustomerStatement = async ({ actorUser, buyerId, from, to }) => {
     body: statementEmailBody(statement),
     relatedType: 'statement',
     relatedId: statement.buyer.id,
-    branch: statement.buyer.branch
+    branch: statement.buyer.branch,
+    attachmentName: `statement-${statement.period.from}-to-${statement.period.to}.pdf`,
+    attachmentBase64: Buffer.from(pdf).toString('base64')
   });
   return { statement, message };
 };

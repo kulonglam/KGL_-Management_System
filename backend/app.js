@@ -34,6 +34,8 @@ import messageRoutes from './routes/messageRoutes.js';
 import supplierRoutes from './routes/supplierRoutes.js';
 import opsRoutes from './routes/opsRoutes.js';
 import branchRoutes from './routes/branchRoutes.js';
+import organizationRoutes from './routes/organizationRoutes.js';
+import catalogRoutes from './routes/catalogRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 
 // Create app.
@@ -98,6 +100,8 @@ const createApp = () => {
     router.use('/messages', messageRoutes);
     router.use('/suppliers', supplierRoutes);
     router.use('/branches', branchRoutes);
+    router.use('/organization', organizationRoutes);
+    router.use('/catalog', catalogRoutes);
     router.use('/audit-logs', auditRoutes);
   };
 

@@ -12,6 +12,7 @@
     "restore": "node scripts/restoreDatabase.js",
     "backfill": "node scripts/backfillLedger.js",
     "encrypt-nin": "node scripts/encryptNationalIds.js",
+    "rotate-nin": "node scripts/rotateNationalIds.js",
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node --test tests/browser/*.browser.mjs",
     "lint": "eslint . --config eslint.config.mjs",

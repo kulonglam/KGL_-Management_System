@@ -16,6 +16,31 @@ import '../models/StockLock.js';
 import '../models/StockNotification.js';
 import '../models/TrustedBuyer.js';
 import '../models/User.js';
+import '../models/Supplier.js';
+import '../models/StockMovement.js';
+import '../models/StockBalance.js';
+import '../models/StockTransfer.js';
+import '../models/StockAdjustment.js';
+import '../models/StocktakeSession.js';
+import '../models/StockLot.js';
+import '../models/TaxInvoice.js';
+import '../models/TaxConfig.js';
+import '../models/InvoiceSequence.js';
+import '../models/CashUpSession.js';
+import '../models/GlAccountMapping.js';
+import '../models/GlJournalLine.js';
+import '../models/PeriodLock.js';
+import '../models/RetentionPolicy.js';
+import '../models/ApiKey.js';
+import '../models/WebhookSubscription.js';
+import '../models/WebhookDelivery.js';
+import '../models/PurchaseOrder.js';
+import '../models/GoodsReceipt.js';
+import '../models/BankStatementLine.js';
+import '../models/QueuedJob.js';
+import '../models/LegalEntity.js';
+import '../models/ExchangeRate.js';
+import '../models/ProductBarcode.js';
 
 const { EJSON } = mongoose.mongo.BSON;
 
@@ -27,12 +52,53 @@ const SNAPSHOT_MODELS = [
   'Sale',
   'CreditSale',
   'TrustedBuyer',
+  'Supplier',
   'StockNotification',
   'StockLock',
+  'StockMovement',
+  'StockBalance',
+  'StockTransfer',
+  'StockAdjustment',
+  'StocktakeSession',
+  'StockLot',
   'PriceHistory',
   'AuditLog',
-  'MessageOutbox'
+  'MessageOutbox',
+  'TaxInvoice',
+  'TaxConfig',
+  'InvoiceSequence',
+  'CashUpSession',
+  'GlAccountMapping',
+  'GlJournalLine',
+  'PeriodLock',
+  'RetentionPolicy',
+  'ApiKey',
+  'WebhookSubscription',
+  'WebhookDelivery',
+  'PurchaseOrder',
+  'GoodsReceipt',
+  'BankStatementLine',
+  'QueuedJob',
+  'LegalEntity',
+  'ExchangeRate',
+  'ProductBarcode'
 ];
+
+// A portable snapshot must not carry credentials. Restored users need a password reset.
+const REDACTED_FIELDS = {
+  User: ['password', 'recoveryCodeHashes', 'mfaSecret', 'mfaPendingSecret', 'previousRefreshJti'],
+  ApiKey: ['keyHash']
+};
+
+const redactDocument = (modelName, doc) => {
+  const fields = REDACTED_FIELDS[modelName];
+  if (!fields) return doc;
+  const copy = { ...doc };
+  for (const field of fields) {
+    if (field in copy) copy[field] = field === 'recoveryCodeHashes' ? [] : '';
+  }
+  return copy;
+};
 
 const backupDatabase = async (directory) => {
   await mkdir(directory, { recursive: true });
@@ -42,7 +108,9 @@ const backupDatabase = async (directory) => {
   };
 
   for (const name of SNAPSHOT_MODELS) {
-    const docs = await mongoose.model(name).collection.find({}).toArray();
+    const docs = (await mongoose.model(name).collection.find({}).toArray()).map((doc) =>
+      redactDocument(name, doc)
+    );
     const file = `${name}.json`;
     await writeFile(path.join(directory, file), EJSON.stringify(docs));
     manifest.collections.push({ model: name, file, count: docs.length });

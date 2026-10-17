@@ -5,11 +5,16 @@ import {
   markAllMessagesRead,
   getUnreadCount
 } from '../controllers/messageController.js';
+import { deliveryReceiptHandler, listOutboxHandler, retryOutboxHandler } from '../controllers/enterpriseController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validation.js';
 import { mongoIdParamValidation, paginationValidation } from '../validators/requestValidators.js';
 
 const router = express.Router();
+
+router.post('/delivery-receipts', deliveryReceiptHandler);
+router.get('/outbox', protect, authorize('director'), listOutboxHandler);
+router.post('/outbox/:id/retry', protect, authorize('director'), mongoIdParamValidation, validateRequest, retryOutboxHandler);
 
 router.get(
   '/',

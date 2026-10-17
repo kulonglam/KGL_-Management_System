@@ -204,7 +204,8 @@ export const platformAPI = {
   runWeeklyReport: () => api.post('/platform/reports/weekly/run'),
   listApiKeys: () => api.get('/platform/api-keys'),
   createApiKey: (data) => api.post('/platform/api-keys', data),
-  revokeApiKey: (id) => api.post(`/platform/api-keys/${id}/revoke`)
+  revokeApiKey: (id) => api.post(`/platform/api-keys/${id}/revoke`),
+  listInstances: () => api.get('/platform/instances')
 };
 
 export const procurementAPI = {
@@ -212,7 +213,12 @@ export const procurementAPI = {
   create: (data) => api.post('/procurement', data),
   update: (id, data) => api.put(`/procurement/${id}`, data),
   delete: (id) => api.delete(`/procurement/${id}`),
-  restore: (id) => api.post(`/procurement/${id}/restore`)
+  restore: (id) => api.post(`/procurement/${id}/restore`),
+  listOrders: () => api.get('/procurement/orders'),
+  createOrder: (data) => api.post('/procurement/orders', data),
+  approveOrder: (id) => api.post(`/procurement/orders/${id}/approve`),
+  receiveOrder: (id, data) => api.post(`/procurement/orders/${id}/receive`, data),
+  matchOrder: (id) => api.get(`/procurement/orders/${id}/match`)
 };
 
 export const salesAPI = {
@@ -278,7 +284,27 @@ export const financeAPI = {
     api.get(`/finance/statements/${buyerId}`, { params: { ...params, format: 'pdf' }, responseType: 'blob' }),
   emailStatement: (buyerId, data = {}) => api.post(`/finance/statements/${buyerId}/email`, data),
   exportBuyerData: (buyerId) => api.get(`/finance/personal-data/trusted-buyers/${buyerId}`),
-  exportUserData: (userId) => api.get(`/finance/personal-data/users/${userId}`)
+  exportUserData: (userId) => api.get(`/finance/personal-data/users/${userId}`),
+  getAging: (params = {}) => api.get('/finance/aging', { params }),
+  postJournal: (data) => api.post('/finance/gl-journal', data),
+  trialBalance: (params = {}) => api.get('/finance/trial-balance', { params }),
+  listBankLines: (params = {}) => api.get('/finance/bank-lines', { params }),
+  importBankLines: (data) => api.post('/finance/bank-lines', data),
+  matchBankLine: (id, data) => api.post(`/finance/bank-lines/${id}/match`, data),
+  listExchangeRates: () => api.get('/finance/exchange-rates'),
+  setExchangeRate: (data) => api.post('/finance/exchange-rates', data)
+};
+
+export const organizationAPI = {
+  listEntities: () => api.get('/organization/entities'),
+  createEntity: (data) => api.post('/organization/entities', data),
+  assignBranch: (entityId, branchId) => api.post(`/organization/entities/${entityId}/branches`, { branchId }),
+  consolidation: (entityId) => api.get(`/organization/entities/${entityId}/consolidation`)
+};
+
+export const catalogAPI = {
+  lookupBarcode: (code) => api.get(`/catalog/barcodes/${encodeURIComponent(code)}`),
+  registerBarcode: (data) => api.post('/catalog/barcodes', data)
 };
 
 export const inventoryOpsAPI = {
@@ -315,7 +341,9 @@ export const messagesAPI = {
   getAll: (params = {}) => api.get('/messages', { params }),
   unreadCount: () => api.get('/messages/unread-count'),
   markAsRead: (id) => api.put(`/messages/${id}/read`),
-  markAllRead: () => api.put('/messages/read-all')
+  markAllRead: () => api.put('/messages/read-all'),
+  listOutbox: (params = {}) => api.get('/messages/outbox', { params }),
+  retryOutbox: (id) => api.post(`/messages/outbox/${id}/retry`)
 };
 
 export const suppliersAPI = {

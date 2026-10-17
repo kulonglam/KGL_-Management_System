@@ -16,6 +16,8 @@ import {
   revokeApiKeyHandler
 } from '../controllers/platformController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { listLiveInstances } from '../services/instancePresenceService.js';
+import { forwardControllerError } from '../utils/httpError.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import {
@@ -31,6 +33,18 @@ import {
 const router = express.Router();
 
 router.get('/status', protect, authorize('director', 'manager'), getPlatformStatus);
+router.get('/instances', protect, authorize('director'), async (req, res, next) => {
+  try {
+    const instances = await listLiveInstances();
+    res.json({
+      instances,
+      count: instances.length,
+      note: 'Each API process reports itself. Run a second process against this database to add capacity. Scheduled jobs are claimed once.'
+    });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+});
 
 router.get('/webhooks', protect, authorize('director'), listWebhooksHandler);
 router.post(

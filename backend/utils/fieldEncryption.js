@@ -35,6 +35,32 @@ const derivedKeys = () => {
   return keys;
 };
 
+const keysFromRaw = (raw) => {
+  const master = parseNinKey(raw);
+  if (!master) return null;
+  return {
+    encrypt: Buffer.from(crypto.hkdfSync('sha256', master, Buffer.alloc(0), 'kgl-nin-encrypt', 32)),
+    index: Buffer.from(crypto.hkdfSync('sha256', master, Buffer.alloc(0), 'kgl-nin-index', 32))
+  };
+};
+
+const encryptWithMaster = (plain, raw) => {
+  const keys = keysFromRaw(raw);
+  if (!keys || plain == null || plain === '') return plain;
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', keys.encrypt, iv);
+  const ciphertext = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${ENCRYPTED_PREFIX}${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}`;
+};
+
+const indexWithMaster = (plain, raw) => {
+  const keys = keysFromRaw(raw);
+  const normalized = normalizeNin(plain);
+  if (!keys || !normalized) return null;
+  return crypto.createHmac('sha256', keys.index).update(normalized).digest('hex');
+};
+
 const isFieldEncryptionEnabled = () => Boolean(derivedKeys());
 
 const isEncryptedValue = (value) => typeof value === 'string' && value.startsWith(ENCRYPTED_PREFIX);
@@ -196,7 +222,9 @@ export {
   decryptField,
   decryptLeanRows,
   encryptField,
+  encryptWithMaster,
   encryptedNationalIdPlugin,
+  indexWithMaster,
   isEncryptedValue,
   isFieldEncryptionEnabled,
   nationalIdMatch,

@@ -44,6 +44,22 @@ const errorHandler = (err, req, res, _next) => {
     message: errorPayload.message
   });
 
+  const alertUrl = String(process.env.ALERT_WEBHOOK_URL || '').trim();
+  if (isServerError && alertUrl) {
+    fetch(alertUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'kgl-api',
+        requestId: req.requestId || null,
+        method: req.method,
+        path: req.originalUrl,
+        statusCode,
+        message: String(err.message || '').slice(0, 300)
+      })
+    }).catch(() => {});
+  }
+
   res.status(statusCode).json({
     success: false,
     data: null,

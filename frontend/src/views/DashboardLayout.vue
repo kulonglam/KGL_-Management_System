@@ -272,12 +272,14 @@ import { pinia } from '../stores';
 import { useAuthStore } from '../stores/auth';
 import { formatDisplayTimestamp } from '../utils/dateFormat.js';
 import { isDirector } from '../utils/directorAccess.js';
+import { getLocale, translate } from '../utils/locale.js';
 
 export default {
   name: 'DashboardLayout',
   data() {
     return {
       brandLogo,
+      locale: getLocale(),
       authStore: useAuthStore(pinia),
       outOfStockCount: 0,
       stockAlertDismissed: false,
@@ -314,7 +316,9 @@ export default {
       const roles = {
         director: 'Director',
         manager: 'Manager',
-        sales_agent: 'Sales Agent'
+        sales_agent: 'Sales Agent',
+        storekeeper: 'Storekeeper',
+        auditor: 'Auditor'
       };
       return roles[this.user.role] || '';
     },
@@ -327,6 +331,9 @@ export default {
           { path: '/dashboard/branches', icon: 'bi bi-diagram-3', label: 'Branches' },
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
+          { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
+          { path: '/dashboard/group', icon: 'bi bi-buildings', label: 'Group' },
+          { path: '/dashboard/till', icon: 'bi bi-upc-scan', label: 'Till' },
           { path: '/dashboard/platform', icon: 'bi bi-plug', label: 'Platform' },
           { path: '/dashboard/inbox', icon: 'bi bi-inbox', label: 'Inbox' },
           { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
@@ -339,7 +346,9 @@ export default {
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
+          { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
           { path: '/dashboard/sales', icon: 'bi bi-grid', label: 'Cash Sales' },
+          { path: '/dashboard/till', icon: 'bi bi-upc-scan', label: 'Till' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
             path: '/dashboard/sales-records',
@@ -368,6 +377,21 @@ export default {
           { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
+      } else if (this.user.role === 'storekeeper') {
+        items.push(
+          { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
+          { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
+          { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
+          { path: '/dashboard/suppliers', icon: 'bi bi-truck', label: 'Suppliers' },
+          { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
+        );
+      } else if (this.user.role === 'auditor') {
+        items.push(
+          { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
+          { path: '/dashboard/audit-logs', icon: 'bi bi-clipboard-data', label: 'Audit Log' },
+          { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
+          { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
+        );
       } else if (this.user.role === 'sales_agent') {
         items.push(
           { path: '/dashboard/sales-agent', icon: 'bi bi-grid', label: 'Dashboard' },
@@ -375,6 +399,7 @@ export default {
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/inbox', icon: 'bi bi-inbox', label: 'Inbox' },
           { path: '/dashboard/sales', icon: 'bi bi-cart', label: 'Cash Sales' },
+          { path: '/dashboard/till', icon: 'bi bi-upc-scan', label: 'Till' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
           {
             path: '/dashboard/sales-records',
@@ -390,7 +415,7 @@ export default {
         );
       }
 
-      return items;
+      return items.map((item) => ({ ...item, label: translate(item.label, this.locale) }));
     },
     mainNavItems() {
       return this.navItems.filter((item) => item.path);
@@ -408,7 +433,9 @@ export default {
             '/dashboard/manager',
             '/dashboard/inventory',
             '/dashboard/procurement',
+            '/dashboard/purchasing',
             '/dashboard/sales',
+            '/dashboard/till',
             '/dashboard/credit-sales'
           ])
         },
@@ -497,6 +524,7 @@ export default {
     this.stopStockMonitor();
   },
   methods: {
+    translate,
     openLogoutModal() {
       this.lastFocusedElement = document.activeElement;
       this.logoutError = '';

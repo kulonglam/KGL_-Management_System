@@ -10,7 +10,7 @@ import { API_KEY_SCOPES } from '../models/ApiKey.js';
 const PRODUCE_TYPES = ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'];
 // Configure source types.
 const SOURCE_TYPES = ['individual', 'company', 'kgl_farm'];
-const ROLES = ['director', 'manager', 'sales_agent'];
+const ROLES = ['director', 'manager', 'sales_agent', 'storekeeper', 'auditor'];
 const ALPHANUMERIC_TEXT = /^[A-Za-z0-9]+(?: [A-Za-z0-9]+)*$/;
 // Configure phone pattern.
 const PHONE_PATTERN = LOCAL_PHONE_PATTERN;

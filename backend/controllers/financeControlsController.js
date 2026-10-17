@@ -7,6 +7,7 @@ import {
 } from '../services/customerStatementService.js';
 import { exportTrustedBuyerData, exportUserData } from '../services/personalDataService.js';
 import { recordAudit } from '../services/auditService.js';
+import { rememberJournal } from '../services/journalPostingService.js';
 import { forwardControllerError } from '../utils/httpError.js';
 
 const safeFilePart = (value) => String(value || 'export').replace(/[^A-Za-z0-9_-]+/g, '-').slice(0, 60);
@@ -45,6 +46,7 @@ const approveWriteOffHandler = async (req, res, next) => {
         note: creditSale.writeOff.decisionNote
       }
     });
+    await rememberJournal('creditSale', creditSale._id);
     res.json(creditSale);
   } catch (error) {
     return forwardControllerError(error, res, next);

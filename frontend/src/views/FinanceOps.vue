@@ -552,6 +552,93 @@
       </div>
     </div>
 
+    <div v-show="activeTab === 'ledger'" class="card">
+      <div class="card-header"><h5 class="mb-0">Posted journal and trial balance</h5></div>
+      <div class="card-body">
+        <p class="text-muted small">Posts the GL export for the dates above into a stored journal, then shows the trial balance.</p>
+        <button v-if="isDirector" type="button" class="btn btn-primary mb-3" :disabled="submitting" @click="postJournal">
+          Post journal
+        </button>
+        <table v-if="trialBalance" class="table table-sm">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th class="text-end">Debit</th>
+              <th class="text-end">Credit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in trialBalance.accounts" :key="row.account">
+              <td>{{ row.account }}</td>
+              <td class="text-end">{{ formatUgx(row.debitUgx) }}</td>
+              <td class="text-end">{{ formatUgx(row.creditUgx) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'aging'" class="card">
+      <div class="card-header"><h5 class="mb-0">Receivables aging</h5></div>
+      <div class="card-body">
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-3" @click="loadAging">Refresh</button>
+        <table v-if="aging" class="table table-sm">
+          <thead>
+            <tr>
+              <th>Buyer</th>
+              <th>Branch</th>
+              <th class="text-end">Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in aging.buyers" :key="row.trustedBuyerId || row.buyerName">
+              <td>{{ row.buyerName }}</td>
+              <td>{{ row.branch }}</td>
+              <td class="text-end">{{ formatUgx(row.balanceUgx) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="aging" class="mb-0">Total outstanding {{ formatUgx(aging.totalUgx) }} as of {{ aging.asOf }}.</p>
+      </div>
+    </div>
+
+    <div v-show="activeTab === 'bank'" class="card">
+      <div class="card-header"><h5 class="mb-0">Bank reconciliation</h5></div>
+      <div class="card-body">
+        <label class="form-label" for="bank-csv">Lines as date,description,amount,in or out</label>
+        <textarea id="bank-csv" v-model="bankCsv" class="form-control mb-2" rows="4" placeholder="2026-10-17,Shop deposit,50000,in"></textarea>
+        <button type="button" class="btn btn-primary btn-sm mb-3" :disabled="submitting" @click="importBank">Import</button>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th class="text-end">Amount</th>
+              <th>Match</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="line in bankLines" :key="line._id">
+              <td>{{ line.statementDate }}</td>
+              <td>{{ line.description }}</td>
+              <td class="text-end">{{ line.direction }} {{ formatUgx(line.amountUgx) }}</td>
+              <td>
+                <span v-if="line.matchedRefId">Matched</span>
+                <button
+                  v-else-if="line.suggestions?.length"
+                  type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  @click="matchBank(line, line.suggestions[0])"
+                >
+                  Match {{ line.suggestions[0].label }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Tax config (director) -->
     <div v-show="activeTab === 'tax'" class="card">
       <div class="card-header"><h5 class="mb-0">Tax configuration</h5></div>
@@ -697,6 +784,10 @@ export default {
       buyers: [],
       statementForm: { buyerId: '', from: shiftDateKey(today, -90), to: today },
       statement: null,
+      aging: null,
+      trialBalance: null,
+      bankLines: [],
+      bankCsv: '',
       staffUsers: [],
       privacyForm: { buyerId: '', userId: '' },
       activeTab: 'cashup',
@@ -735,6 +826,9 @@ export default {
         { id: 'cashup', label: 'Cash-up' },
         { id: 'invoices', label: 'Invoices' },
         { id: 'gl', label: 'GL export' },
+        { id: 'ledger', label: 'Ledger' },
+        { id: 'aging', label: 'Receivables' },
+        { id: 'bank', label: 'Bank' },
         { id: 'writeoffs', label: 'Write-offs' },
         { id: 'statements', label: 'Statements' },
         { id: 'periods', label: 'Period close' },
@@ -753,6 +847,8 @@ export default {
       if (tab === 'cashup') this.loadCashUps();
       if (tab === 'invoices') this.loadInvoices();
       if (tab === 'writeoffs') this.loadWriteOffs();
+      if (tab === 'aging') this.loadAging();
+      if (tab === 'bank') this.loadBankLines();
       if (tab === 'statements' && this.buyers.length === 0) this.loadBuyers();
       if (tab === 'periods') this.loadPeriodLocks();
       if (tab === 'tax') this.loadTaxConfig();
@@ -937,6 +1033,66 @@ export default {
         this.error = errorMessage(err, 'Personal-data export failed.');
       } finally {
         this.submitting = false;
+      }
+    },
+    async loadAging() {
+      try {
+        const response = await financeAPI.getAging();
+        this.aging = response.data;
+      } catch (err) {
+        this.error = errorMessage(err, 'Failed to load receivables aging.');
+      }
+    },
+    async postJournal() {
+      this.submitting = true;
+      this.error = '';
+      try {
+        await financeAPI.postJournal({ from: this.glForm.from, to: this.glForm.to });
+        const response = await financeAPI.trialBalance({ from: this.glForm.from, to: this.glForm.to });
+        this.trialBalance = response.data;
+        this.success = this.trialBalance.totals.balanced ? 'Journal posted and balanced.' : 'Journal posted, out of balance.';
+      } catch (err) {
+        this.error = errorMessage(err, 'Failed to post the journal.');
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async loadBankLines() {
+      try {
+        const response = await financeAPI.listBankLines();
+        this.bankLines = Array.isArray(response.data) ? response.data : [];
+      } catch (err) {
+        this.error = errorMessage(err, 'Failed to load bank lines.');
+      }
+    },
+    async importBank() {
+      const lines = this.bankCsv
+        .split('\n')
+        .map((row) => row.trim())
+        .filter(Boolean)
+        .map((row) => {
+          const [statementDate, description, amountUgx, direction] = row.split(',').map((part) => part.trim());
+          return { statementDate, description, amountUgx: Number(amountUgx), direction };
+        });
+      this.submitting = true;
+      this.error = '';
+      try {
+        await financeAPI.importBankLines({ lines });
+        this.bankCsv = '';
+        this.success = 'Statement lines imported.';
+        await this.loadBankLines();
+      } catch (err) {
+        this.error = errorMessage(err, 'Failed to import the statement.');
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async matchBank(line, suggestion) {
+      try {
+        await financeAPI.matchBankLine(line._id, { refType: suggestion.refType, refId: suggestion.refId });
+        await this.loadBankLines();
+      } catch (err) {
+        this.error = errorMessage(err, 'Failed to match the bank line.');
       }
     },
     async openInvoiceDocument(id) {

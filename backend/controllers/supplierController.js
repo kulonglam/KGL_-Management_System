@@ -7,10 +7,13 @@ import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
 import { buildSearchFilter, resolveSort } from '../utils/listQuery.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit } from '../services/auditService.js';
+import { isDirectorAccount } from '../services/authService.js';
 
 const listSuppliers = async (req, res, next) => {
   try {
-    const filter = { branch: req.user.branch };
+    const filter = {};
+    if (!isDirectorAccount(req.user)) filter.branch = req.user.branch;
+    else if (req.query.branch) filter.branch = req.query.branch;
     Object.assign(filter, buildSearchFilter(req.query.search, ['name', 'contact', 'sourceType']));
     Object.assign(filter, removedRecordFilter(req.query.deleted));
     if (String(req.query.active) === 'true') {

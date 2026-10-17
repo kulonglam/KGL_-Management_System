@@ -4,6 +4,7 @@ import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { isDirectorAccount } from './authService.js';
 import { roundUgx } from '../utils/money.js';
 import { trustedQuery } from '../utils/listQuery.js';
+import { assertPeriodOpen } from './periodLockService.js';
 
 const createServiceError = (statusCode, message) => {
   const error = new Error(message);
@@ -48,6 +49,7 @@ const computeSystemTotals = async (branch, businessDate) => {
 };
 
 const openOrGetCashUp = async ({ actorUser, branch, businessDate }) => {
+  await assertPeriodOpen({ branch, dates: [businessDate] });
   const resolvedBranch = String(branch || actorUser.branch || '').trim();
   if (!resolvedBranch) throw createServiceError(400, 'branch is required');
   if (!ISO_DATE.test(businessDate || '')) {
@@ -86,6 +88,7 @@ const closeCashUp = async ({ actorUser, sessionId, countedTotals, varianceNote =
   if (session.status !== 'open') {
     throw createServiceError(400, 'Cash-up session is already closed');
   }
+  await assertPeriodOpen({ branch: session.branch, dates: [session.businessDate] });
 
   const { totals, salesCount } = await computeSystemTotals(session.branch, session.businessDate);
   session.systemTotals = totals;

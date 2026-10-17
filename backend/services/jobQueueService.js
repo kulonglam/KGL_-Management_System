@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
+import mongoose from 'mongoose';
 import JobSchedule from '../models/JobSchedule.js';
+import QueuedJob from '../models/QueuedJob.js';
 import logger from '../utils/logger.js';
 
 const handlers = new Map();
@@ -20,7 +22,9 @@ const JOB_NAMES = {
   OVERDUE_SCAN: 'credit.overdue.scan',
   RETENTION_RUN: 'retention.run',
   WEEKLY_REPORT: 'reports.director.weekly',
-  WEBHOOK_DELIVER: 'webhook.deliver'
+  WEBHOOK_DELIVER: 'webhook.deliver',
+  INVOICE_ISSUE: 'invoice.issue',
+  JOURNAL_POST: 'journal.post'
 };
 
 const readNumberEnv = (name, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) => {
@@ -161,17 +165,48 @@ const drainInProcess = async () => {
       };
       try {
         const result = await executeJob(meta, job.data);
+        await rememberJob(job, 'completed');
         job.resolve?.(result);
       } catch (error) {
         if (job.attempt < job.maxAttempts) {
+          const delay = job.backoffMs * 2 ** (job.attempt - 1);
+          await rememberJob({ ...job, attempt: job.attempt + 1 }, 'retrying', {
+            runAfter: new Date(Date.now() + delay),
+            lastError: error.message
+          });
           scheduleRetry(job);
         } else {
+          await rememberJob(job, 'failed', { lastError: error.message });
           job.reject?.(error);
         }
       }
     }
   } finally {
     draining = false;
+  }
+};
+
+const rememberJob = async (job, status, extra = {}) => {
+  if (mongoose.connection.readyState !== 1) return;
+  try {
+    await QueuedJob.updateOne(
+      { jobId: job.id },
+      {
+        $set: {
+          name: job.name,
+          data: job.data || {},
+          attempt: job.attempt,
+          maxAttempts: job.maxAttempts,
+          backoffMs: job.backoffMs,
+          status,
+          runAfter: extra.runAfter || new Date(),
+          lastError: String(extra.lastError || '').slice(0, 500)
+        }
+      },
+      { upsert: true }
+    );
+  } catch (error) {
+    logger.warn('jobs.persist_failed', { jobId: job.id, message: error.message });
   }
 };
 
@@ -187,12 +222,14 @@ const enqueueInProcess = (jobName, data = {}, options = {}) => {
     id,
     name: jobName,
     data,
-    attempt: 1,
     maxAttempts: options.attempts || defaultAttemptsFor(jobName),
     backoffMs: options.backoffMs || getRetryBaseMs(),
+    attempt: options.attempt || 1,
     resolve,
     reject
   });
+  const queued = inProcessQueue[inProcessQueue.length - 1];
+  rememberJob(queued, 'queued').catch(() => {});
   setImmediate(() => {
     drainInProcess().catch(() => {});
   });
@@ -249,6 +286,19 @@ const registerDefaultHandlers = async () => {
   registerHandler(JOB_NAMES.RETENTION_RUN, async () => runRetentionJob({}));
   registerHandler(JOB_NAMES.WEBHOOK_DELIVER, async (data, meta) => deliverWebhookJob(data, meta));
   registerHandler(JOB_NAMES.WEEKLY_REPORT, async () => runDirectorWeeklyReport());
+  registerHandler(JOB_NAMES.INVOICE_ISSUE, async (data) => {
+    const { issueTaxInvoiceForSale } = await import('./invoiceService.js');
+    const Sale = (await import('../models/Sale.js')).default;
+    const User = (await import('../models/User.js')).default;
+    const sale = await Sale.findById(data.saleId);
+    const actorUser = await User.findById(data.actorId);
+    if (!sale || !actorUser) return { skipped: true };
+    return issueTaxInvoiceForSale({ actorUser, sale });
+  });
+  registerHandler(JOB_NAMES.JOURNAL_POST, async (data) => {
+    const { postRefJournal } = await import('./journalPostingService.js');
+    return postRefJournal(data.refType, data.refId);
+  });
   handlersReady = true;
 };
 
@@ -333,6 +383,22 @@ const startJobInfrastructure = async () => {
   const usedRedis = await startRedisBackend();
   if (!usedRedis) {
     logger.info('jobs.backend', { mode: 'in_process' });
+    if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState === 1) {
+      const due = await QueuedJob.find({
+        status: { $in: ['queued', 'retrying'] },
+        runAfter: { $lte: new Date() }
+      })
+        .limit(100)
+        .lean();
+      for (const doc of due) {
+        enqueueInProcess(doc.name, doc.data, {
+          jobId: doc.jobId,
+          attempts: doc.maxAttempts,
+          backoffMs: doc.backoffMs,
+          attempt: doc.attempt
+        });
+      }
+    }
   }
   startSchedulers();
   started = true;

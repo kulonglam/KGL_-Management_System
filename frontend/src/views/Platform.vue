@@ -421,6 +421,47 @@
       </div>
     </div>
 
+    <div v-show="activeTab === 'outbox'" class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5 class="mb-0">Message outbox</h5>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @click="loadOutbox">Refresh</button>
+      </div>
+      <div class="card-body table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Channel</th>
+              <th>To</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in outbox" :key="row._id">
+              <td>{{ formatDateTime(row.createdAt) }}</td>
+              <td>{{ row.channel }}</td>
+              <td>{{ row.to }}</td>
+              <td>
+                {{ row.status }}
+                <div v-if="row.errorMessage" class="small text-danger">{{ row.errorMessage }}</div>
+              </td>
+              <td class="text-end">
+                <button
+                  v-if="row.status !== 'sent'"
+                  type="button"
+                  class="btn btn-sm btn-outline-primary"
+                  @click="retryOutbox(row)"
+                >
+                  Retry
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Weekly report -->
     <div v-show="activeTab === 'report'" class="card">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -454,7 +495,7 @@
 </template>
 
 <script>
-import { branchAPI, platformAPI } from '../services/api';
+import { branchAPI, messagesAPI, platformAPI } from '../services/api';
 import { formatDisplayTimestamp } from '../utils/dateFormat.js';
 
 const API_KEY_SCOPES = ['stock:read', 'sales:read', 'procurement:read', 'prices:read'];
@@ -480,6 +521,7 @@ export default {
         { id: 'webhooks', label: 'Webhooks' },
         { id: 'deliveries', label: 'Deliveries' },
         { id: 'apikeys', label: 'API keys' },
+        { id: 'outbox', label: 'Outbox' },
         { id: 'report', label: 'Weekly report' }
       ],
       apiKeyScopes: API_KEY_SCOPES,
@@ -500,7 +542,8 @@ export default {
       testEvent: 'sale.created',
       deliveries: [],
       deliveryStatus: '',
-      reportPreview: null
+      reportPreview: null,
+      outbox: []
     };
   },
   computed: {
@@ -519,6 +562,7 @@ export default {
       this.pendingRevokeId = '';
       if (tab === 'jobs') this.loadStatus();
       if (tab === 'apikeys') this.loadApiKeys();
+      if (tab === 'outbox') this.loadOutbox();
       if (tab === 'webhooks') this.loadWebhooks();
       if (tab === 'deliveries') this.loadDeliveries();
       if (tab === 'report') this.loadReportPreview();
@@ -744,6 +788,24 @@ export default {
         this.reportPreview = response.data;
       } catch (err) {
         this.error = this.messageOf(err, 'Failed to build report preview.');
+      }
+    },
+    async loadOutbox() {
+      try {
+        const response = await messagesAPI.listOutbox();
+        this.outbox = Array.isArray(response.data) ? response.data : [];
+      } catch (err) {
+        this.error = this.messageOf(err, 'Failed to load the outbox.');
+      }
+    },
+    async retryOutbox(row) {
+      this.error = '';
+      try {
+        await messagesAPI.retryOutbox(row._id);
+        this.success = 'Retry queued.';
+        await this.loadOutbox();
+      } catch (err) {
+        this.error = this.messageOf(err, 'Retry failed.');
       }
     },
     async sendReportNow() {

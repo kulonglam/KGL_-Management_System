@@ -2,6 +2,7 @@
  
 
 import mongoose from 'mongoose';
+import os from 'node:os';
 
 // GET /healthz: lightweight liveness endpoint showing service heartbeat metadata.
 const getHealth = (req, res) => {
@@ -13,7 +14,7 @@ const getHealth = (req, res) => {
 };
 
 // GET /readyz: readiness probe that returns 503 until MongoDB is connected.
-const getReadiness = (req, res) => {
+const getReadiness = async (req, res) => {
   const readyState = mongoose.connection.readyState;
   const isReady = readyState === 1;
 
@@ -24,9 +25,23 @@ const getReadiness = (req, res) => {
     });
   }
 
+  let topology = 'unknown';
+  let replicaSet = '';
+  try {
+    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
+    topology = hello.setName ? 'replica_set' : 'standalone';
+    replicaSet = hello.setName || '';
+  } catch {
+    topology = 'unknown';
+  }
+
   return res.json({
     status: 'ready',
-    databaseReadyState: readyState
+    databaseReadyState: readyState,
+    topology,
+    replicaSet,
+    hostname: os.hostname(),
+    pid: process.pid
   });
 };
 

@@ -6,6 +6,8 @@ const getHomeRouteForUser = (user) => {
   if (isDirector(user)) return '/dashboard/director';
   if (user?.role === 'manager') return '/dashboard/manager';
   if (user?.role === 'sales_agent') return '/dashboard/sales-agent';
+  if (user?.role === 'storekeeper') return '/dashboard/inventory-ops';
+  if (user?.role === 'auditor') return '/dashboard/finance';
   return '/';
 };
 

@@ -32,7 +32,7 @@ const buildDirectorWeeklyReport = async ({ to: windowEnd } = {}) => {
       .select('branch balanceUgx dueDate')
       .lean(),
     TaxInvoice.countDocuments({ issuedAt: inWindow() }),
-    User.find({ role: 'director' }).select('username name email').lean()
+    User.find({ role: 'director' }).select('username name email notifyEmail notifyInApp').lean()
   ]);
 
   const tender = { cash: 0, momo: 0, bank: 0 };
@@ -128,7 +128,8 @@ const runDirectorWeeklyReport = async () => {
         to: email,
         subject: report.subject,
         body: report.body,
-        relatedType: 'report'
+        relatedType: 'report',
+        recipientUserId: director._id
       });
       emailed += 1;
     } else {
@@ -139,7 +140,8 @@ const runDirectorWeeklyReport = async () => {
       to: director.username,
       subject: report.subject,
       body: report.body,
-      relatedType: 'report'
+      relatedType: 'report',
+      recipientUserId: director._id
     });
     inApp += 1;
   }

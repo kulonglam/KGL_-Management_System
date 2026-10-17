@@ -28,6 +28,10 @@ const Branches = () => import('../views/Branches.vue');
 const AuditLogs = () => import('../views/AuditLogs.vue');
 const Inbox = () => import('../views/Inbox.vue');
 const NotFound = () => import('../views/NotFound.vue');
+const PrivacyNotice = () => import('../views/PrivacyNotice.vue');
+const Purchasing = () => import('../views/Purchasing.vue');
+const Organization = () => import('../views/Organization.vue');
+const OfflinePos = () => import('../views/OfflinePos.vue');
 
 // Route table grouped under dashboard layout with per-route role metadata.
 const routes = [
@@ -35,6 +39,11 @@ const routes = [
     path: '/',
     name: 'Login',
     component: Login
+  },
+  {
+    path: '/privacy',
+    name: 'PrivacyNotice',
+    component: PrivacyNotice
   },
   {
     path: '/reset-password',
@@ -68,7 +77,7 @@ const routes = [
         path: 'procurement',
         name: 'Procurement',
         component: Procurement,
-        meta: { role: 'manager' }
+        meta: { roles: ['manager', 'storekeeper'] }
       },
       {
         path: 'procurement-records',
@@ -104,19 +113,37 @@ const routes = [
         path: 'inventory',
         name: 'Inventory',
         component: Inventory,
-        meta: { roles: ['manager', 'sales_agent'] }
+        meta: { roles: ['manager', 'sales_agent', 'auditor', 'storekeeper'] }
       },
       {
         path: 'inventory-ops',
         name: 'InventoryOps',
         component: InventoryOps,
-        meta: { roles: ['director', 'manager', 'sales_agent'] }
+        meta: { roles: ['director', 'manager', 'sales_agent', 'storekeeper'] }
       },
       {
         path: 'finance',
         name: 'FinanceOps',
         component: FinanceOps,
-        meta: { roles: ['director', 'manager'] }
+        meta: { roles: ['director', 'manager', 'auditor'] }
+      },
+      {
+        path: 'purchasing',
+        name: 'Purchasing',
+        component: Purchasing,
+        meta: { roles: ['director', 'manager', 'storekeeper'] }
+      },
+      {
+        path: 'group',
+        name: 'Organization',
+        component: Organization,
+        meta: { roles: ['director'] }
+      },
+      {
+        path: 'till',
+        name: 'OfflinePos',
+        component: OfflinePos,
+        meta: { roles: ['director', 'manager', 'sales_agent'] }
       },
       {
         path: 'platform',
@@ -140,7 +167,7 @@ const routes = [
         path: 'suppliers',
         name: 'Suppliers',
         component: Suppliers,
-        meta: { role: 'manager' }
+        meta: { roles: ['manager', 'storekeeper'] }
       },
       {
         path: 'price-management',
@@ -158,13 +185,13 @@ const routes = [
         path: 'audit-logs',
         name: 'AuditLogs',
         component: AuditLogs,
-        meta: { roles: ['director', 'manager'] }
+        meta: { roles: ['director', 'manager', 'auditor'] }
       },
       {
         path: 'inbox',
         name: 'Inbox',
         component: Inbox,
-        meta: { roles: ['director', 'manager', 'sales_agent'] }
+        meta: { roles: ['director', 'manager', 'sales_agent', 'storekeeper', 'auditor'] }
       },
       {
         path: 'profile',

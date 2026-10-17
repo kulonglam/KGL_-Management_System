@@ -29,6 +29,10 @@ import {
 } from '../services/invoiceService.js';
 import { emitDomainEvent } from '../services/webhookService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
+import { allocateLots, assertLotAvailable } from '../services/stockLotService.js';
+import { enqueue, JOB_NAMES } from '../services/jobQueueService.js';
+import { rememberJournal } from '../services/journalPostingService.js';
+import { quoteCurrency } from '../services/currencyService.js';
 
 const recordSaleAudit = (actor, action, sale) =>
   recordAudit({
@@ -115,11 +119,24 @@ const createSale = async (req, res, next) => {
       date,
       time,
       paymentMethod: rawPaymentMethod,
-      tenderAmountUgx: rawTenderAmountUgx
+      tenderAmountUgx: rawTenderAmountUgx,
+      clientSaleId: rawClientSaleId,
+      currency: rawCurrency,
+      foreignAmount: rawForeignAmount
     } = req.body;
     const paymentMethod = ['cash', 'momo', 'bank'].includes(String(rawPaymentMethod || '').trim())
       ? String(rawPaymentMethod).trim()
       : 'cash';
+    const clientSaleId = String(rawClientSaleId || '').trim().slice(0, 80);
+    if (clientSaleId) {
+      const existing = await Sale.findOne({ clientSaleId });
+      if (existing) {
+        if (existing.branch !== req.user.branch) {
+          return res.status(403).json({ message: 'Access denied to this branch data' });
+        }
+        return res.status(200).json(existing);
+      }
+    }
     const produceName = normalizeProduceName(rawProduceName);
     const requestedType = normalizeProduceType(requestedProduceType || '');
     const tonnage = Number(tonnageKg);
@@ -159,6 +176,12 @@ const createSale = async (req, res, next) => {
             statusCode: 400
           });
         }
+        await assertLotAvailable({
+          branch: req.user.branch,
+          produceName: item.produceName,
+          produceType: item.produceType,
+          qtyKg: tonnage
+        });
 
         const amountPaidUgx = roundUgx(item.sellingPrice * tonnage);
         const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
@@ -173,6 +196,20 @@ const createSale = async (req, res, next) => {
           );
         }
 
+        const currencyCode = String(rawCurrency || 'UGX').trim().toUpperCase() || 'UGX';
+        let currency = 'UGX';
+        let fxRateToUgx = 1;
+        let foreignAmount = 0;
+        if (currencyCode !== 'UGX') {
+          const quoted = await quoteCurrency({ code: currencyCode, amount: rawForeignAmount });
+          if (quoted.amountUgx < amountPaidUgx) {
+            throw Object.assign(new Error('Foreign tender does not cover the UGX price'), { statusCode: 400 });
+          }
+          currency = quoted.code;
+          fxRateToUgx = quoted.rateToUgx;
+          foreignAmount = quoted.foreignAmount;
+        }
+
         const createdSale = await Sale.create({
           produceName: item.produceName,
           produceType: item.produceType,
@@ -185,7 +222,18 @@ const createSale = async (req, res, next) => {
           date,
           time,
           branch: req.user.branch,
-          recordedBy: req.user._id
+          recordedBy: req.user._id,
+          clientSaleId: clientSaleId || undefined,
+          currency,
+          fxRateToUgx,
+          foreignAmount
+        });
+
+        await allocateLots({
+          branch: req.user.branch,
+          produceName: item.produceName,
+          produceType: item.produceType,
+          qtyKg: tonnage
         });
 
         await syncStockLevelNotifications({
@@ -200,11 +248,18 @@ const createSale = async (req, res, next) => {
     );
 
     await recordSaleAudit(req.user, 'create', sale);
+    await rememberJournal('sale', sale._id);
     let invoice = null;
+    let invoicePending = false;
     try {
       invoice = await issueTaxInvoiceForSale({ actorUser: req.user, sale });
-    } catch {
-      /* invoice failure must not block the sale */
+    } catch (invoiceError) {
+      invoicePending = true;
+      await enqueue(JOB_NAMES.INVOICE_ISSUE, {
+        saleId: String(sale._id),
+        actorId: String(req.user._id)
+      }).catch(() => {});
+      invoice = { pending: true, message: invoiceError.message };
     }
     const payload = typeof sale.toObject === 'function' ? sale.toObject() : sale;
     emitDomainEvent('sale.created', {
@@ -214,7 +269,7 @@ const createSale = async (req, res, next) => {
       paymentMethod: sale.paymentMethod || 'cash',
       produceName: sale.produceName
     }).catch(() => {});
-    res.status(201).json({ ...payload, invoice });
+    res.status(201).json({ ...payload, invoice, invoicePending });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -413,6 +468,7 @@ const voidSale = async (req, res, next) => {
       branch: sale.branch,
       metadata: { ...transactionAuditMetadata(sale), voidReason }
     });
+    await rememberJournal('sale', sale._id);
     let creditNote = null;
     try {
       creditNote = await issueCreditNoteForVoidedSale({

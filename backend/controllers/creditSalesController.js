@@ -19,6 +19,7 @@ import { appendNationalIdSearch } from '../utils/fieldEncryption.js';
 import { businessDateKey } from '../utils/businessTime.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
 import { requestWriteOff } from '../services/creditWriteOffService.js';
+import { rememberJournal } from '../services/journalPostingService.js';
 import {
   calculateInventoryByFilter,
   getBucketTonnage
@@ -162,6 +163,7 @@ const createCreditSale = async (req, res, next) => {
       amountDueUgx: creditSale.amountDueUgx,
       dueDate: creditSale.dueDate
     }).catch(() => {});
+    await rememberJournal('creditSale', creditSale._id);
 
     res.status(201).json(creditSale);
   } catch (error) {
@@ -203,6 +205,7 @@ const repayCreditSale = async (req, res, next) => {
     await recordCreditSaleAudit(req.user, 'repay', updated, {
       repaymentAmountUgx: latestPayment?.amountUgx
     });
+    await rememberJournal('creditSale', updated._id);
 
     res.json(updated);
   } catch (error) {

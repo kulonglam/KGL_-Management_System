@@ -184,6 +184,16 @@
             </select>
           </div>
         </div>
+        <div class="row g-2 align-items-end mt-2">
+          <div class="col-md-6">
+            <label class="form-label" for="display-locale">Language</label>
+            <select id="display-locale" v-model="locale" class="form-select" @change="saveLocale">
+              <option value="en">English</option>
+              <option value="lg">Luganda</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-muted small mb-0 mt-2">Navigation labels follow this language on this device.</p>
       </div>
     </div>
   </div>
@@ -203,6 +213,7 @@ import {
   getDisplayTimeZone,
   setDisplayTimeZone
 } from '../utils/businessTime.js';
+import { getLocale, setLocale } from '../utils/locale.js';
 
 // Cap uploaded profile image size to 1 MB.
 const MAX_PROFILE_IMAGE_SIZE_BYTES = 1024 * 1024;
@@ -217,6 +228,7 @@ export default {
     return {
       businessZone,
       displayZone,
+      locale: getLocale(),
       timeZoneOptions: [...new Set([businessZone, displayZone, ...DISPLAY_TIMEZONE_OPTIONS])],
       loading: false,
       saving: false,
@@ -244,6 +256,10 @@ export default {
     await this.loadProfile();
   },
   methods: {
+    saveLocale() {
+      this.locale = setLocale(this.locale);
+      this.success = this.locale === 'lg' ? 'Navigation will show in Luganda.' : 'Navigation will show in English.';
+    },
     saveDisplayZone() {
       this.displayZone = setDisplayTimeZone(this.displayZone === this.businessZone ? '' : this.displayZone);
       this.success = `Timestamps will show in ${this.displayZone}.`;

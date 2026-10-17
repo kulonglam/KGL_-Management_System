@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from 'express-validator';
+import { body, query } from 'express-validator';
 import {
   getTaxConfigHandler,
   updateTaxConfigHandler,
@@ -44,6 +44,17 @@ import {
   rejectWriteOffHandler,
   setPeriodLockHandler
 } from '../controllers/financeControlsController.js';
+import {
+  agingHandler,
+  importBankHandler,
+  listBankHandler,
+  matchBankHandler,
+  postJournalHandler,
+  trialBalanceHandler,
+  listRatesHandler,
+  quoteRateHandler,
+  setRateHandler
+} from '../controllers/enterpriseController.js';
 
 const router = express.Router();
 
@@ -120,6 +131,12 @@ router.get(
   glExportHandler
 );
 router.get('/gl-mappings', protect, authorize('director', 'manager'), listGlMappingsHandler);
+router.get('/aging', protect, authorize('director', 'manager'), agingHandler);
+router.post('/gl-journal', protect, authorize('director'), writeLimiter, postJournalHandler);
+router.get('/trial-balance', protect, authorize('director', 'manager'), trialBalanceHandler);
+router.get('/bank-lines', protect, authorize('director', 'manager'), listBankHandler);
+router.post('/bank-lines', protect, authorize('director', 'manager'), writeLimiter, importBankHandler);
+router.post('/bank-lines/:id/match', protect, authorize('director', 'manager'), writeLimiter, mongoIdParamValidation, validateRequest, matchBankHandler);
 
 router.get('/retention', protect, authorize('director'), getRetentionHandler);
 router.put(
@@ -205,6 +222,20 @@ router.get(
   mongoIdParamValidation,
   validateRequest,
   exportUserDataHandler
+);
+
+router.get('/exchange-rates', protect, authorize('director', 'manager'), listRatesHandler);
+router.get('/exchange-rates/quote', protect, authorize('director', 'manager', 'sales_agent'), quoteRateHandler);
+router.post(
+  '/exchange-rates',
+  protect,
+  authorize('director'),
+  writeLimiter,
+  body('code').trim().isLength({ min: 3, max: 3 }).withMessage('code is required'),
+  body('rateToUgx').isFloat({ gt: 0 }).withMessage('rateToUgx must be greater than zero'),
+  body('effectiveOn').optional().matches(/^\d{4}-\d{2}-\d{2}$/),
+  validateRequest,
+  setRateHandler
 );
 
 export default router;

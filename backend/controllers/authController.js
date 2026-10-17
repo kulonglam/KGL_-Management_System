@@ -270,7 +270,7 @@ const updateMe = async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, username, password, profileImage } = req.body;
+    const { name, username, password, profileImage, notifyEmail, notifySms, notifyInApp } = req.body;
     const setupPasswordChange = req.setupPurpose === 'password';
     if (setupPasswordChange && !password) {
       return res.status(400).json({ message: 'Choose a new password' });
@@ -290,6 +290,9 @@ const updateMe = async (req, res, next) => {
     if (!setupPasswordChange && name !== undefined) {
       user.name = name;
     }
+    if (!setupPasswordChange && typeof notifyEmail === 'boolean') user.notifyEmail = notifyEmail;
+    if (!setupPasswordChange && typeof notifySms === 'boolean') user.notifySms = notifySms;
+    if (!setupPasswordChange && typeof notifyInApp === 'boolean') user.notifyInApp = notifyInApp;
 
     if (!setupPasswordChange && username !== undefined) {
       const existing = await User.findOne({

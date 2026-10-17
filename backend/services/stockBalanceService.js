@@ -120,6 +120,7 @@ const adjustOnHand = async ({ branch, produceName, produceType, deltaKg = 0, sel
   });
   const delta = Number(deltaKg) || 0;
   if (!storedBranch || !name || !type) return;
+  markBalancesDirty();
 
   const update = {};
   if (delta !== 0) update.$inc = { onHandKg: delta };
@@ -293,11 +294,14 @@ let reconcileQueue = Promise.resolve();
 const reconcileStockBalances = () => {
   const run = reconcileQueue.then(async () => {
     if (mongoose.connection.readyState !== 1) return false;
+    const seen = balanceGeneration;
+    if (seen === reconciledGeneration) return false;
     const expected = await collectExpectedBalances();
     const stored = await StockBalance.find({}).lean();
-    if (balancesMatchMovements(stored, expected)) return false;
-    await writeExpectedBalances(expected);
-    return true;
+    const matched = balancesMatchMovements(stored, expected);
+    if (!matched) await writeExpectedBalances(expected);
+    if (balanceGeneration === seen) reconciledGeneration = seen;
+    return !matched;
   });
   reconcileQueue = run.catch(() => false);
   return run;
@@ -356,8 +360,16 @@ const writeExpectedBalances = async (expected) => {
   return expected.length;
 };
 
+let balanceGeneration = 0;
+let reconciledGeneration = -1;
+
+const markBalancesDirty = () => {
+  balanceGeneration += 1;
+};
+
 export {
   adjustOnHand,
+  canonicalBucket,
   listStockBalances,
   rebuildStockBalances,
   reconcileStockBalances,
