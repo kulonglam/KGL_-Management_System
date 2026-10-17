@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import JobSchedule from '../models/JobSchedule.js';
 import QueuedJob from '../models/QueuedJob.js';
 import logger from '../utils/logger.js';
+import { trustedQuery } from '../utils/listQuery.js';
 
 const handlers = new Map();
 const inProcessQueue = [];
@@ -384,19 +385,23 @@ const startJobInfrastructure = async () => {
   if (!usedRedis) {
     logger.info('jobs.backend', { mode: 'in_process' });
     if (process.env.NODE_ENV !== 'test' && mongoose.connection.readyState === 1) {
-      const due = await QueuedJob.find({
-        status: { $in: ['queued', 'retrying'] },
-        runAfter: { $lte: new Date() }
-      })
-        .limit(100)
-        .lean();
-      for (const doc of due) {
-        enqueueInProcess(doc.name, doc.data, {
-          jobId: doc.jobId,
-          attempts: doc.maxAttempts,
-          backoffMs: doc.backoffMs,
-          attempt: doc.attempt
-        });
+      try {
+        const due = await QueuedJob.find({
+          status: trustedQuery({ $in: ['queued', 'retrying'] }),
+          runAfter: trustedQuery({ $lte: new Date() })
+        })
+          .limit(100)
+          .lean();
+        for (const doc of due) {
+          enqueueInProcess(doc.name, doc.data, {
+            jobId: doc.jobId,
+            attempts: doc.maxAttempts,
+            backoffMs: doc.backoffMs,
+            attempt: doc.attempt
+          });
+        }
+      } catch (error) {
+        logger.warn('jobs.resume_failed', { message: error.message });
       }
     }
   }
@@ -428,7 +433,7 @@ const stopJobInfrastructure = async () => {
 const listJobSchedules = async (now = new Date()) => {
   const definitions = getScheduleDefinitions();
   const docs = await JobSchedule.find({
-    jobName: { $in: definitions.map((definition) => definition.jobName) }
+    jobName: trustedQuery({ $in: definitions.map((definition) => definition.jobName) })
   }).lean();
   const byName = new Map(docs.map((doc) => [doc.jobName, doc]));
   return definitions.map((definition) => {
