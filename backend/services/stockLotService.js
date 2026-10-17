@@ -1,6 +1,7 @@
 import StockLot from '../models/StockLot.js';
 import StockBalance from '../models/StockBalance.js';
 import { canonicalBucket } from './stockBalanceService.js';
+import { trustedQuery } from '../utils/listQuery.js';
 
 const createServiceError = (statusCode, message) => {
   const error = new Error(message);
@@ -30,7 +31,7 @@ const recordProcurementLot = async (procurement) => {
 // When a bucket has lots, expired quantity cannot be sold. Unlotted weight stays sellable.
 const assertLotAvailable = async ({ branch, produceName, produceType, qtyKg }) => {
   const bucket = canonicalBucket({ branch, produceName, produceType });
-  const lots = await StockLot.find({ ...bucketFilter(bucket), qtyKg: { $gt: 0 } }).lean();
+  const lots = await StockLot.find({ ...bucketFilter(bucket), qtyKg: trustedQuery({ $gt: 0 }) }).lean();
   if (lots.length === 0) return;
   const now = Date.now();
   const lotQty = lots.reduce((sum, lot) => sum + Number(lot.qtyKg || 0), 0);
@@ -51,7 +52,7 @@ const assertLotAvailable = async ({ branch, produceName, produceType, qtyKg }) =
 
 const allocateLots = async ({ branch, produceName, produceType, qtyKg }) => {
   const bucket = canonicalBucket({ branch, produceName, produceType });
-  const lots = await StockLot.find({ ...bucketFilter(bucket), qtyKg: { $gt: 0 } }).sort({ expiryDate: 1, createdAt: 1 });
+  const lots = await StockLot.find({ ...bucketFilter(bucket), qtyKg: trustedQuery({ $gt: 0 }) }).sort({ expiryDate: 1, createdAt: 1 });
   if (lots.length === 0) return;
   const now = Date.now();
   let remaining = Number(qtyKg);
