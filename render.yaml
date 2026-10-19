@@ -30,6 +30,28 @@
         sync: false
       - key: BACKUP_UPLOAD_TOKEN
         sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMS_WEBHOOK_URL
+        sync: false
+      - key: SMS_WEBHOOK_TOKEN
+        sync: false
+      - key: SMS_RECEIPT_TOKEN
+        sync: false
+      - key: EFRIS_BASE_URL
+        sync: false
+      - key: EFRIS_API_KEY
+        sync: false
 
   - type: web
     name: kgl-backend-standby
@@ -70,6 +92,55 @@
           name: kgl-backend
           type: web
           envVarKey: NIN_ENCRYPTION_KEY
+      - key: SMTP_HOST
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMTP_HOST
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMTP_USER
+      - key: SMTP_PASS
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMTP_PASS
+      - key: SMTP_FROM
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMTP_FROM
+      - key: SMS_WEBHOOK_URL
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMS_WEBHOOK_URL
+      - key: SMS_WEBHOOK_TOKEN
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMS_WEBHOOK_TOKEN
+      - key: SMS_RECEIPT_TOKEN
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: SMS_RECEIPT_TOKEN
+      - key: EFRIS_BASE_URL
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: EFRIS_BASE_URL
+      - key: EFRIS_API_KEY
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: EFRIS_API_KEY
 
   - type: cron
     name: kgl-backup
@@ -82,11 +153,20 @@
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: MONGODB_URI
       - key: BACKUP_UPLOAD_URL
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: BACKUP_UPLOAD_URL
       - key: BACKUP_UPLOAD_TOKEN
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: BACKUP_UPLOAD_TOKEN
 
   - type: web
     name: kgl-frontend
@@ -97,6 +177,8 @@
     envVars:
       - key: VITE_API_URL
         value: https://kgl-backend-7mow.onrender.com/api
+      - key: VITE_BUSINESS_TIMEZONE
+        value: Africa/Kampala
     headers:
       - path: /*
         name: Content-Security-Policy
