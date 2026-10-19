@@ -107,19 +107,14 @@ test('procurement soft-delete and restore', { timeout: 60_000 }, async () => {
   });
 
   const created = await request(app)
-    .post('/api/v1/procurement')
+    .post('/api/v1/procurement/receipts')
     .set('Authorization', `Bearer ${managerToken}`)
     .send({
+      supplierId: String(supplier._id),
       produceName: 'Red Beans',
       produceType: 'Beans',
-      sourceType: 'company',
-      dateReceived: new Date().toISOString(),
-      timeReceived: '10:00',
       tonnageKg: 2000,
-      costUgx: 20000000,
-      dealerName: supplier.name,
-      dealerContact: supplier.contact,
-      supplierId: String(supplier._id)
+      unitCostUgx: 10000
     });
   assert.equal(created.status, 201);
   const procurementId = dataOf(created)._id;

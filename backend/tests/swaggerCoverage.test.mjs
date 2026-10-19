@@ -25,7 +25,6 @@ const required = [
   ['post', '/auth/users/{id}/restore'],
   ['post', '/auth/users/{id}/recovery-codes'],
   ['get', '/procurement'],
-  ['post', '/procurement'],
   ['get', '/procurement/{id}'],
   ['put', '/procurement/{id}'],
   ['delete', '/procurement/{id}'],

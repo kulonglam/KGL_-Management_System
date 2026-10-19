@@ -1,12 +1,10 @@
-/** Form validation tests across procurement, sales, credit, and trusted-buyer workflows. */
+/** Form validation tests across sales, credit, and trusted-buyer workflows. */
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import Procurement from '../../src/views/Procurement.vue';
 import Sales from '../../src/views/Sales.vue';
 import CreditSales from '../../src/views/CreditSales.vue';
 import TrustedBuyers from '../../src/views/TrustedBuyers.vue';
 import {
-  procurementAPI,
   salesAPI,
   creditSalesAPI,
   inventoryAPI,
@@ -15,12 +13,6 @@ import {
 } from '../../src/services/api';
 
 vi.mock('../../src/services/api', () => ({
-  procurementAPI: {
-    getAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn()
-  },
   salesAPI: {
     getAll: vi.fn(),
     create: vi.fn(),
@@ -103,129 +95,9 @@ describe('Forms Validation E2E', () => {
         }
       ]
     });
-    procurementAPI.create.mockResolvedValue({ data: {} });
     salesAPI.create.mockResolvedValue({ data: {} });
     creditSalesAPI.create.mockResolvedValue({ data: {} });
     trustedBuyersAPI.create.mockResolvedValue({ data: {} });
-  });
-
-  it('shows per-field errors and blocks invalid procurement submission', async () => {
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    await wrapper.find('form').trigger('submit.prevent');
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Produce Name is required.');
-    expect(wrapper.text()).toContain('Produce Type is required.');
-    expect(wrapper.text()).toContain('Source Type is required.');
-    expect(procurementAPI.create).not.toHaveBeenCalled();
-  });
-
-  it('submits procurement when all fields pass validation', async () => {
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    await wrapper.find('#procurement-produce-name').setValue('Beans 1');
-    await wrapper.find('#procurement-produce-type').setValue('Beans');
-    await wrapper.find('#procurement-source-type').setValue('company');
-    await wrapper.find('#procurement-tonnage').setValue('500');
-    await wrapper.find('#procurement-cost').setValue('15000');
-    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
-    await wrapper.find('#procurement-dealer-contact').setValue('+256700000002');
-    await wrapper.find('form').trigger('submit.prevent');
-    await flushPromises();
-
-    expect(procurementAPI.create).toHaveBeenCalledTimes(1);
-    expect(procurementAPI.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        produceName: 'Beans 1',
-        produceType: 'Beans',
-        sourceType: 'company',
-        tonnageKg: 500,
-        costUgx: 15000,
-        sellingPrice: 22000,
-        dealerName: 'Dealer 1',
-        dealerContact: '0700000002'
-      })
-    );
-  });
-
-  it('applies a produce-specific procurement price before submit', async () => {
-    priceAPI.getAll.mockResolvedValueOnce({
-      data: [
-        { source: 'managed', produceType: 'Beans', priceUgx: 22000 },
-        { source: 'managed', produceName: 'Red Beans', produceType: 'Beans', priceUgx: 25000 }
-      ]
-    });
-
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    await wrapper.find('#procurement-produce-name').setValue('red bean');
-    await wrapper.find('#procurement-produce-type').setValue('Beans');
-    await wrapper.find('#procurement-source-type').setValue('company');
-    await wrapper.find('#procurement-tonnage').setValue('500');
-    await wrapper.find('#procurement-cost').setValue('15000');
-    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
-    await wrapper.find('#procurement-dealer-contact').setValue('+256700000002');
-    await wrapper.find('form').trigger('submit.prevent');
-    await flushPromises();
-
-    expect(procurementAPI.create).toHaveBeenCalledTimes(1);
-    expect(procurementAPI.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        produceName: 'red bean',
-        produceType: 'Beans',
-        sellingPrice: 25000
-      })
-    );
-  });
-
-  it('blocks procurement when individual source tonnage is below 1000 kg', async () => {
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    await wrapper.find('#procurement-produce-name').setValue('Beans 1');
-    await wrapper.find('#procurement-produce-type').setValue('Beans');
-    await wrapper.find('#procurement-source-type').setValue('individual');
-    await wrapper.find('#procurement-tonnage').setValue('999');
-    await wrapper.find('#procurement-cost').setValue('15000');
-    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
-    await wrapper.find('#procurement-dealer-contact').setValue('+256700000002');
-    await wrapper.find('form').trigger('submit.prevent');
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Tonnage (kg) must be at least 1000.');
-    expect(procurementAPI.create).not.toHaveBeenCalled();
-  });
-
-  it('blocks procurement when dealer contact format is invalid', async () => {
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    await wrapper.find('#procurement-produce-name').setValue('Beans 1');
-    await wrapper.find('#procurement-produce-type').setValue('Beans');
-    await wrapper.find('#procurement-source-type').setValue('company');
-    await wrapper.find('#procurement-tonnage').setValue('500');
-    await wrapper.find('#procurement-cost').setValue('15000');
-    await wrapper.find('#procurement-dealer-name').setValue('Dealer 1');
-    await wrapper.find('#procurement-dealer-contact').setValue('0700');
-    await wrapper.find('form').trigger('submit.prevent');
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Dealer Contact must use the 07XXXXXXXX format.');
-    expect(procurementAPI.create).not.toHaveBeenCalled();
-  });
-
-  it('sanitizes non-phone characters from dealer contact input', async () => {
-    const wrapper = mount(Procurement);
-    await flushPromises();
-
-    const contactInput = wrapper.find('#procurement-dealer-contact');
-    await contactInput.setValue('07ab0-12x34');
-
-    expect(contactInput.element.value).toBe('0701234');
   });
 
   it('shows per-field errors and blocks invalid sale submission', async () => {

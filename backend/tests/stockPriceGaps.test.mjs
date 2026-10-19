@@ -9,6 +9,7 @@ import createApp from '../app.js';
 import { getJwtClaimOptions } from '../config/security.js';
 import PriceHistory from '../models/PriceHistory.js';
 import PriceSetting from '../models/PriceSetting.js';
+import Supplier from '../models/Supplier.js';
 import User from '../models/User.js';
 import { APPEND_ONLY_MESSAGE } from '../utils/appendOnly.js';
 
@@ -76,50 +77,51 @@ test(
     });
 
     const agentProcurement = await request(app)
-      .post('/api/v1/procurement')
+      .post('/api/v1/procurement/receipts')
       .set('Authorization', `Bearer ${agentToken}`)
       .send({
         produceName: 'SoyBeans',
         produceType: 'Soybeans',
-        sourceType: 'company',
-        dateReceived: '2026-03-06',
-        timeReceived: '09:00',
         tonnageKg: 200,
-        costUgx: 2000000,
-        dealerName: 'Maganjo Farm',
-        dealerContact: '0700123456'
+        unitCostUgx: 10000
       });
     assert.equal(agentProcurement.status, 403, JSON.stringify(agentProcurement.body));
 
+    const individual = await Supplier.create({
+      name: 'Farm Dealer',
+      contact: '0700123456',
+      sourceType: 'individual',
+      branch: 'Maganjo',
+      recordedBy: manager._id
+    });
     const shortIndividual = await request(app)
-      .post('/api/v1/procurement')
+      .post('/api/v1/procurement/receipts')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        supplierId: String(individual._id),
         produceName: 'SoyBeans',
         produceType: 'Soybeans',
-        sourceType: 'individual',
-        dateReceived: '2026-03-06',
-        timeReceived: '09:00',
         tonnageKg: 500,
-        costUgx: 2000000,
-        dealerName: 'Farm Dealer',
-        dealerContact: '0700123456'
+        unitCostUgx: 4000
       });
     assert.equal(shortIndividual.status, 400, JSON.stringify(shortIndividual.body));
 
+    const company = await Supplier.create({
+      name: 'Maganjo Farm',
+      contact: '0700654321',
+      sourceType: 'company',
+      branch: 'Maganjo',
+      recordedBy: manager._id
+    });
     const procurement = await request(app)
-      .post('/api/v1/procurement')
+      .post('/api/v1/procurement/receipts')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        supplierId: String(company._id),
         produceName: 'SoyBeans',
         produceType: 'Soybeans',
-        sourceType: 'company',
-        dateReceived: '2026-03-06',
-        timeReceived: '09:00',
         tonnageKg: 200,
-        costUgx: 2000000,
-        dealerName: 'Maganjo Farm',
-        dealerContact: '0700123456'
+        unitCostUgx: 10000
       });
     assert.equal(procurement.status, 201, JSON.stringify(procurement.body));
 

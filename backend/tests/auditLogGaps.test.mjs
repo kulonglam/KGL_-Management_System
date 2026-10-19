@@ -9,6 +9,7 @@ import createApp from '../app.js';
 import { getJwtClaimOptions } from '../config/security.js';
 import AuditLog from '../models/AuditLog.js';
 import PriceSetting from '../models/PriceSetting.js';
+import Supplier from '../models/Supplier.js';
 import User from '../models/User.js';
 
 configureMemoryServerBinary();
@@ -74,19 +75,22 @@ test(
       produceType: 'Grain Maize',
       priceUgx: 20000
     });
+    const supplier = await Supplier.create({
+      name: 'Maganjo Farm',
+      contact: '0700123456',
+      sourceType: 'company',
+      branch: 'Maganjo',
+      recordedBy: manager._id
+    });
     const procurementResponse = await request(app)
-      .post('/api/v1/procurement')
+      .post('/api/v1/procurement/receipts')
       .set('Authorization', `Bearer ${token}`)
       .send({
+        supplierId: String(supplier._id),
         produceName: 'White Maize',
         produceType: 'Grain Maize',
-        sourceType: 'company',
-        dateReceived: '2026-03-06',
-        timeReceived: '09:00',
         tonnageKg: 200,
-        costUgx: 2000000,
-        dealerName: 'Maganjo Farm',
-        dealerContact: '0700123456'
+        unitCostUgx: 10000
       });
     assert.equal(procurementResponse.status, 201, JSON.stringify(procurementResponse.body));
     const procurementId = procurementResponse.body.data._id;

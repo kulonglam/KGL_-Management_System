@@ -210,7 +210,6 @@ export const platformAPI = {
 
 export const procurementAPI = {
   getAll: (params = {}) => api.get('/procurement', { params }),
-  create: (data) => api.post('/procurement', data),
   update: (id, data) => api.put(`/procurement/${id}`, data),
   delete: (id) => api.delete(`/procurement/${id}`),
   restore: (id) => api.post(`/procurement/${id}/restore`),

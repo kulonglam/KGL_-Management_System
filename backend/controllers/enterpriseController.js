@@ -74,7 +74,7 @@ const createOrderHandler = wrap(async (req) => {
 const approveOrderHandler = wrap(async (req) => approvePurchaseOrder({ actorUser: req.user, id: req.params.id }));
 
 const receiveOrderHandler = wrap(async (req) =>
-  receiveGoods({ actorUser: req.user, id: req.params.id, lines: req.body.lines, note: req.body.note })
+  receiveGoods({ actorUser: req.user, id: req.params.id, lines: req.body.lines })
 );
 
 const matchOrderHandler = wrap(async (req) => matchPurchaseOrder({ actorUser: req.user, id: req.params.id }));

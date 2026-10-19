@@ -5,7 +5,6 @@ import express from 'express';
 const router = express.Router();
 import {
   getAllProcurement,
-  createProcurement,
   getProcurementById,
   updateProcurement,
   deleteProcurement,
@@ -26,7 +25,6 @@ import { body } from 'express-validator';
 import {
   paginationValidation,
   mongoIdParamValidation,
-  procurementCreateValidation,
   procurementUpdateValidation
 } from '../validators/requestValidators.js';
 
@@ -53,13 +51,6 @@ router.get('/orders/:id/match', protect, authorize('manager', 'director'), mongo
 
 // GET /api/procurement: list branch procurement records with pagination.
 router.get('/', protect, authorize('manager'), paginationValidation, validateRequest, getAllProcurement);
-// POST /api/procurement: create a new procurement entry.
-router.post('/', protect, authorize('manager'),
-  writeLimiter,
-  procurementCreateValidation,
-  validateRequest,
-  createProcurement
-);
 
 router.post(
   '/:id/restore',

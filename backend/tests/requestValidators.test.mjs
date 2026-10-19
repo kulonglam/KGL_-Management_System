@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validationResult } from 'express-validator';
 import {
-  procurementCreateValidation,
+  procurementUpdateValidation,
   saleCreateValidation,
   creditSaleCreateValidation,
   trustedBuyerCreateValidation
@@ -27,6 +27,8 @@ const hasFieldError = (errors, field) => errors.some((entry) => entry.field === 
 const oneDayMs = 24 * 60 * 60 * 1000;
 const tomorrowIso = new Date(Date.now() + oneDayMs).toISOString().split('T')[0];
 const yesterdayIso = new Date(Date.now() - oneDayMs).toISOString().split('T')[0];
+
+const procurementId = '507f1f77bcf86cd799439011';
 
 const validProcurementPayload = () => ({
   produceName: 'Beans A1',
@@ -68,7 +70,8 @@ const validTrustedBuyerPayload = () => ({
 
 test('procurement validation accepts a valid strict payload', async () => {
   const errors = await runValidation({
-    rules: procurementCreateValidation,
+    rules: procurementUpdateValidation,
+    params: { id: procurementId },
     body: validProcurementPayload()
   });
 
@@ -80,7 +83,8 @@ test('procurement validation accepts missing sellingPrice because pricing is man
   delete payload.sellingPrice;
 
   const errors = await runValidation({
-    rules: procurementCreateValidation,
+    rules: procurementUpdateValidation,
+    params: { id: procurementId },
     body: payload
   });
 
@@ -92,7 +96,8 @@ test('procurement validation rejects invalid dealer contact', async () => {
   payload.dealerContact = '12345';
 
   const errors = await runValidation({
-    rules: procurementCreateValidation,
+    rules: procurementUpdateValidation,
+    params: { id: procurementId },
     body: payload
   });
 
@@ -105,11 +110,11 @@ test('procurement validation normalizes +256 dealer contact to 07 format', async
       ...validProcurementPayload(),
       dealerContact: '+256700000001'
     },
-    params: {},
+    params: { id: procurementId },
     query: {}
   };
 
-  for (const rule of procurementCreateValidation) {
+  for (const rule of procurementUpdateValidation) {
     await rule.run(req);
   }
 
@@ -124,7 +129,8 @@ test('procurement validation enforces individual minimum tonnage', async () => {
   payload.tonnageKg = 500;
 
   const errors = await runValidation({
-    rules: procurementCreateValidation,
+    rules: procurementUpdateValidation,
+    params: { id: procurementId },
     body: payload
   });
 

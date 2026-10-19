@@ -1237,25 +1237,6 @@ const swaggerSpec = {
           401: { $ref: '#/components/responses/Unauthorized' },
           403: { $ref: '#/components/responses/Forbidden' }
         }
-      },
-      post: {
-        tags: ['Procurement'],
-        summary: 'Create procurement',
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/ProcurementCreateRequest' }
-            }
-          }
-        },
-        responses: {
-          201: successResponse({ $ref: '#/components/schemas/Procurement' }),
-          400: { $ref: '#/components/responses/BadRequest' },
-          401: { $ref: '#/components/responses/Unauthorized' },
-          403: { $ref: '#/components/responses/Forbidden' }
-        }
       }
     },
     '/procurement/{id}': {

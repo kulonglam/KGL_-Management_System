@@ -180,77 +180,6 @@ const userUpdateValidation = [
     .withMessage('password must include uppercase, lowercase, number, and symbol')
 ];
 
-// Configure procurement create validation.
-const procurementCreateValidation = [
-  body('produceName')
-    .trim()
-    .notEmpty()
-    .withMessage('produceName is required')
-    .isLength({ min: procurementRules.produceName.minLength })
-    .withMessage(`produceName must be at least ${procurementRules.produceName.minLength} characters`)
-    .matches(ALPHANUMERIC_TEXT)
-    .withMessage('produceName must be alphanumeric'),
-  body('produceType')
-    .trim()
-    .notEmpty()
-    .withMessage('produceType is required')
-    .isIn(PRODUCE_TYPES)
-    .withMessage('Invalid produceType'),
-  body('sourceType')
-    .trim()
-    .notEmpty()
-    .withMessage('sourceType is required')
-    .isIn(SOURCE_TYPES)
-    .withMessage('Invalid source type'),
-  body('dateReceived')
-    .notEmpty()
-    .withMessage('dateReceived is required')
-    .isISO8601()
-    .withMessage('dateReceived must be a valid date'),
-  body('timeReceived')
-    .notEmpty()
-    .withMessage('timeReceived is required')
-    .matches(TIME_PATTERN)
-    .withMessage('timeReceived must be in HH:mm format'),
-  body('tonnageKg')
-    .notEmpty()
-    .withMessage('tonnageKg is required')
-    .isFloat({ min: procurementRules.tonnageKg.min })
-    .withMessage(`tonnageKg must be at least ${procurementRules.tonnageKg.min}`)
-    .custom((value, { req }) => {
-      if (
-        req.body.sourceType === procurementRules.tonnageKg.conditionalMin.equals &&
-        Number(value) < procurementRules.tonnageKg.conditionalMin.min
-      ) {
-        throw new Error(
-          `tonnageKg must be at least ${procurementRules.tonnageKg.conditionalMin.min} for individual sourceType`
-        );
-      }
-      return true;
-    }),
-  body('costUgx')
-    .notEmpty()
-    .withMessage('costUgx is required')
-    .isFloat({ min: procurementRules.costUgx.min })
-    .withMessage(`costUgx must be at least ${procurementRules.costUgx.min}`),
-  body('supplierId').optional({ values: 'falsy' }).isMongoId().withMessage('supplierId must be a valid id'),
-  body('dealerName')
-    .trim()
-    .notEmpty()
-    .withMessage('dealerName is required')
-    .isLength({ min: procurementRules.dealerName.minLength })
-    .withMessage(`dealerName must be at least ${procurementRules.dealerName.minLength} characters`)
-    .matches(ALPHANUMERIC_TEXT)
-    .withMessage('dealerName must be alphanumeric'),
-  body('dealerContact')
-    .trim()
-    .customSanitizer(normalizeLocalPhone)
-    .notEmpty()
-    .withMessage('dealerContact is required')
-    .matches(PHONE_PATTERN)
-    .withMessage('dealerContact must use the 07XXXXXXXX format')
-];
-
 // Configure procurement update validation.
 const procurementUpdateValidation = [
   ...mongoIdParamValidation,
@@ -848,7 +777,6 @@ export {
   registerValidation,
   profileUpdateValidation,
   userUpdateValidation,
-  procurementCreateValidation,
   procurementUpdateValidation,
   saleCreateValidation,
   saleUpdateValidation,

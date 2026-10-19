@@ -17,6 +17,7 @@ import CreditSale from '../models/CreditSale.js';
 import PriceHistory from '../models/PriceHistory.js';
 import PriceSetting from '../models/PriceSetting.js';
 import Procurement from '../models/Procurement.js';
+import Supplier from '../models/Supplier.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import User from '../models/User.js';
 
@@ -168,19 +169,22 @@ test('login refresh, procurement, cash rejection, and credit repayment use the d
     produceType: 'Cow peas',
     priceUgx: 20000
   });
+  const supplier = await Supplier.create({
+    name: 'Maganjo Farm',
+    contact: '0700123456',
+    sourceType: 'company',
+    branch: 'Maganjo',
+    recordedBy: manager._id
+  });
   const procurementResponse = await request(app)
-    .post('/api/v1/procurement')
+    .post('/api/v1/procurement/receipts')
     .set('Authorization', `Bearer ${token}`)
     .send({
+      supplierId: String(supplier._id),
       produceName: 'Cow Peas',
       produceType: 'Cow peas',
-      sourceType: 'company',
-      dateReceived: '2026-03-06',
-      timeReceived: '09:00',
       tonnageKg: 1000,
-      costUgx: 8000000,
-      dealerName: 'Maganjo Farm',
-      dealerContact: '0700123456'
+      unitCostUgx: 8000
     });
   assert.equal(procurementResponse.status, 201, JSON.stringify(procurementResponse.body));
 

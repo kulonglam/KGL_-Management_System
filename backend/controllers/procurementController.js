@@ -7,7 +7,6 @@ import {
   resolveSellingPriceDetails,
   canManagerAccessBranch
 } from '../services/procurementService.js';
-import { findOrCreateSupplier } from '../services/supplierService.js';
 import { parsePagination, buildPaginationMeta, applyListLimit } from '../utils/pagination.js';
 import { buildSearchFilter, resolveSort, buildDateRangeFilter } from '../utils/listQuery.js';
 import { removedOnly, removedRecordFilter } from '../utils/softDelete.js';
@@ -19,11 +18,7 @@ import {
 import { withStockLock, withStockLocks } from '../services/stockLockService.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
-import { emitDomainEvent } from '../services/webhookService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
-import { recordProcurementLot } from '../services/stockLotService.js';
-import { postDocumentJournal, rememberJournal } from '../services/journalPostingService.js';
-import { runInTransaction } from '../utils/transaction.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -100,107 +95,6 @@ const getAllProcurement = async (req, res, next) => {
         total
       })
     });
-  } catch (error) {
-    return forwardControllerError(error, res, next);
-  }
-};
-
-// POST /api/procurement: create a procurement record using managed price resolution and canonicalized fields.
-const createProcurement = async (req, res, next) => {
-  try {
-    const {
-      produceName: rawProduceName,
-      produceType: rawProduceType,
-      sourceType,
-      dateReceived,
-      timeReceived,
-      tonnageKg,
-      costUgx,
-      dealerName,
-      dealerContact,
-      supplierId
-    } = req.body;
-    await assertPeriodOpen({ branch: req.user.branch, dates: [dateReceived] });
-
-    const priceResolution = await resolveSellingPriceDetails({
-      branch: req.user.branch,
-      produceName: normalizeProduceName(rawProduceName),
-      produceType: normalizeProduceType(rawProduceType)
-    });
-    const produceName = priceResolution.produceName;
-    const produceType = priceResolution.produceType;
-    const supplier = await findOrCreateSupplier({
-      branch: req.user.branch,
-      name: dealerName,
-      contact: dealerContact,
-      sourceType,
-      recordedBy: req.user._id,
-      supplierId
-    });
-
-    const procurement = await withStockLock(
-      {
-        branch: req.user.branch,
-        produceName,
-        produceType
-      },
-      async () => {
-        const created = await runInTransaction(async (session) => {
-          const payload = {
-            produceName,
-            produceType,
-            sourceType: normalizeSourceType(sourceType),
-            dateReceived,
-            timeReceived,
-            tonnageKg,
-            costUgx,
-            dealerName: supplier.name,
-            dealerContact: supplier.contact,
-            supplier: supplier._id,
-            purchaseOrder: req.body.purchaseOrder || null,
-            lotCode: String(req.body.lotCode || '').trim().slice(0, 40),
-            expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
-            branch: req.user.branch,
-            sellingPrice: priceResolution.priceUgx,
-            recordedBy: req.user._id
-          };
-          const doc = session ? (await Procurement.create([payload], { session }))[0] : await Procurement.create(payload);
-          await recordProcurementLot(doc, session);
-          if (session) await postDocumentJournal('procurement', doc.toObject(), session);
-          return doc;
-        });
-
-        const snapshot = await calculateInventoryByFilter({ branch: req.user.branch });
-        await syncStockLevelNotifications({
-          branch: req.user.branch,
-          produceName,
-          produceType,
-          remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
-        });
-
-        return created;
-      }
-    );
-    await recordAudit({
-      actor: req.user,
-      action: 'create',
-      entityType: 'procurement',
-      entityId: procurement._id,
-      branch: req.user.branch,
-      metadata: transactionAuditMetadata(procurement)
-    });
-    emitDomainEvent('procurement.created', {
-      procurementId: String(procurement._id),
-      branch: procurement.branch,
-      produceName: procurement.produceName,
-      produceType: procurement.produceType,
-      tonnageKg: procurement.tonnageKg,
-      costUgx: procurement.costUgx,
-      supplierId: procurement.supplier ? String(procurement.supplier) : null
-    }).catch(() => {});
-    await rememberJournal('procurement', procurement._id);
-
-    res.status(201).json(procurement);
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -502,7 +396,6 @@ const restoreProcurement = async (req, res, next) => {
 
 export {
   getAllProcurement,
-  createProcurement,
   getProcurementById,
   updateProcurement,
   deleteProcurement,
