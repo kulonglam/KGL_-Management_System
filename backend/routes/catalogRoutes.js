@@ -4,9 +4,17 @@ import { protect, authorize } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import { forwardControllerError } from '../utils/httpError.js';
-import { lookupBarcode, registerBarcode } from '../services/catalogService.js';
+import { listBarcodes, lookupBarcode, registerBarcode } from '../services/catalogService.js';
 
 const router = express.Router();
+
+router.get('/barcodes', protect, authorize('director', 'manager', 'sales_agent'), async (req, res, next) => {
+  try {
+    res.json(await listBarcodes({ actorUser: req.user, branch: req.query.branch }));
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+});
 
 router.get(
   '/barcodes/:code',

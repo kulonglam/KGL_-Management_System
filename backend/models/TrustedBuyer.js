@@ -29,6 +29,7 @@ const trustedBuyerSchema = new mongoose.Schema(
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     // null = legacy one-open-credit rule; number = max outstanding UGX allowed
     creditLimitUgx: { type: Number, default: null, min: 0 },
+    portalPasswordHash: { type: String, default: '', select: false },
     deletedAt: { type: Date, default: null }
   },
   {

@@ -1,6 +1,7 @@
 import net from 'node:net';
 import tls from 'node:tls';
 import logger from '../utils/logger.js';
+import { safeEquals } from '../config/security.js';
 import MessageOutbox from '../models/MessageOutbox.js';
 
 const readSmtpReply = (socket) =>
@@ -239,20 +240,24 @@ const queueMessage = async ({
     }
   }
 
+  return deliverOutboxMessage(message);
+};
+
+const deliverOutboxMessage = async (message) => {
   try {
-    if (channel === 'email') {
+    if (message.channel === 'email') {
       const result = await sendSmtpEmail({
-        to,
-        subject,
-        body,
+        to: message.to,
+        subject: message.subject,
+        body: message.body,
         attachmentName: message.attachmentName,
         attachmentBase64: message.attachmentBase64
       });
       message.status = result.delivered ? 'sent' : 'queued';
       message.sentAt = result.delivered ? new Date() : null;
       message.errorMessage = result.delivered ? '' : result.reason || '';
-    } else if (channel === 'sms') {
-      const result = await sendSmsWebhook({ to, subject, body });
+    } else if (message.channel === 'sms') {
+      const result = await sendSmsWebhook({ to: message.to, subject: message.subject, body: message.body });
       message.status = result.delivered ? 'sent' : 'queued';
       message.sentAt = result.delivered ? new Date() : null;
       message.providerMessageId = result.providerMessageId || '';
@@ -266,7 +271,7 @@ const queueMessage = async ({
     message.status = 'failed';
     message.errorMessage = error.message;
     await message.save();
-    logger.warn('message.delivery.failed', { channel, to, message: error.message });
+    logger.warn('message.delivery.failed', { channel: message.channel, to: message.to, message: error.message });
   }
 
   return message;
@@ -281,23 +286,12 @@ const retryOutboxMessage = async (id) => {
   }
   message.status = 'queued';
   message.errorMessage = '';
-  await message.save();
-  return queueMessage({
-    channel: message.channel,
-    to: message.to,
-    subject: message.subject,
-    body: message.body,
-    relatedType: message.relatedType,
-    relatedId: message.relatedId,
-    branch: message.branch,
-    attachmentName: message.attachmentName,
-    attachmentBase64: message.attachmentBase64
-  });
+  return deliverOutboxMessage(message);
 };
 
 const recordDeliveryReceipt = async ({ providerMessageId, token }) => {
   const expected = String(process.env.SMS_RECEIPT_TOKEN || '').trim();
-  if (!expected || token !== expected) {
+  if (!expected || !safeEquals(token, expected)) {
     const error = new Error('Not authorized');
     error.statusCode = 401;
     throw error;

@@ -3,6 +3,7 @@ import LegalEntity from '../models/LegalEntity.js';
 import Branch from '../models/Branch.js';
 import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
+import GlJournalLine from '../models/GlJournalLine.js';
 import { roundUgx } from '../utils/money.js';
 
 const HOME_NAME = 'Karibu Groceries LTD';
@@ -78,7 +79,7 @@ const consolidateEntity = async (entityId) => {
       openReceivablesUgx: 0
     };
   }
-  const [sales, credit] = await Promise.all([
+  const [sales, credit, eliminations] = await Promise.all([
     Sale.aggregate([
       { $match: { branch: { $in: names }, voidedAt: null, deletedAt: null } },
       { $group: { _id: null, amountUgx: { $sum: '$amountPaidUgx' } } }
@@ -86,14 +87,28 @@ const consolidateEntity = async (entityId) => {
     CreditSale.aggregate([
       { $match: { branch: { $in: names }, voidedAt: null, deletedAt: null, balanceUgx: { $gt: 0 } } },
       { $group: { _id: null, amountUgx: { $sum: '$balanceUgx' } } }
+    ]),
+    GlJournalLine.aggregate([
+      {
+        $match: {
+          eventType: 'intercompany_transfer',
+          branch: { $in: names },
+          debitUgx: { $gt: 0 }
+        }
+      },
+      { $group: { _id: null, amountUgx: { $sum: '$debitUgx' } } }
     ])
   ]);
+  const eliminatedUgx = roundUgx(eliminations[0]?.amountUgx || 0);
   return {
     entity: entity.name,
     baseCurrency: entity.baseCurrency || 'UGX',
     branches: names,
     cashSalesUgx: roundUgx(sales[0]?.amountUgx || 0),
-    openReceivablesUgx: roundUgx(credit[0]?.amountUgx || 0)
+    openReceivablesUgx: roundUgx(credit[0]?.amountUgx || 0),
+    internalTransferUgx: eliminatedUgx,
+    eliminationsUgx: eliminatedUgx,
+    consolidatedTransferUgx: 0
   };
 };
 

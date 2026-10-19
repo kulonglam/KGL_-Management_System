@@ -38,15 +38,27 @@ const allocateInvoiceNumber = async (branch, session) => {
   return `INV-${branchToken(branch)}-${year}-${padded}`;
 };
 
+const queueFiscalQuietly = async (invoice) => {
+  try {
+    const { queueFiscalDocument } = await import('./operationsService.js');
+    await queueFiscalDocument(invoice);
+  } catch {
+    // A fiscal outage must not undo the invoice.
+  }
+};
+
 const issueTaxInvoiceForSale = async ({ actorUser, sale }) => {
   if (!sale?._id) throw createServiceError(400, 'Sale is required');
   const existing = await TaxInvoice.findOne({ sale: sale._id, documentType: 'tax_invoice' });
-  if (existing) return existing;
+  if (existing) {
+    await queueFiscalQuietly(existing);
+    return existing;
+  }
 
   const config = await getTaxConfig();
   const amounts = splitVatInclusive(sale.amountPaidUgx, config.vatRatePercent);
 
-  return runInTransaction(async (session) => {
+  const invoice = await runInTransaction(async (session) => {
     const invoiceNumber = await allocateInvoiceNumber(sale.branch, session);
     const doc = {
       invoiceNumber,
@@ -67,11 +79,13 @@ const issueTaxInvoiceForSale = async ({ actorUser, sale }) => {
       issuedAt: new Date()
     };
     if (session) {
-      const [invoice] = await TaxInvoice.create([doc], { session });
-      return invoice;
+      const [created] = await TaxInvoice.create([doc], { session });
+      return created;
     }
     return TaxInvoice.create(doc);
   });
+  await queueFiscalQuietly(invoice);
+  return invoice;
 };
 
 const issueCreditNoteForVoidedSale = async ({ actorUser, sale, voidReason = '' }) => {

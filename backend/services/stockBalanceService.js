@@ -112,7 +112,15 @@ const writeDocumentLedger = async ({ kind, direction, before, after, documentId,
   }
 };
 
-const adjustOnHand = async ({ branch, produceName, produceType, deltaKg = 0, sellingPrice, session }) => {
+const adjustOnHand = async ({
+  branch,
+  produceName,
+  produceType,
+  deltaKg = 0,
+  sellingPrice,
+  unitCostUgx,
+  session
+}) => {
   const { branch: storedBranch, produceName: name, produceType: type } = canonicalBucket({
     branch,
     produceName,
@@ -127,6 +135,18 @@ const adjustOnHand = async ({ branch, produceName, produceType, deltaKg = 0, sel
   if (Number.isFinite(Number(sellingPrice)) && Number(sellingPrice) > 0) {
     update.$set = { sellingPrice: Number(sellingPrice) };
   }
+  const unitCost = Number(unitCostUgx);
+  if (delta > 0 && unitCost > 0) {
+    const filter = { branch: storedBranch, produceName: name, produceType: type };
+    let currentQuery = StockBalance.findOne(filter).select('onHandKg averageCostUgx');
+    if (session) currentQuery = currentQuery.session(session);
+    const current = await currentQuery.lean();
+    const oldQty = Math.max(0, Number(current?.onHandKg || 0));
+    const oldAvg = Number(current?.averageCostUgx || 0);
+    const newQty = oldQty + delta;
+    const averageCostUgx = newQty > 0 ? Math.round((oldQty * oldAvg + delta * unitCost) / newQty) : 0;
+    update.$set = { ...(update.$set || {}), averageCostUgx };
+  }
   if (!update.$inc && !update.$set) return;
 
   await StockBalance.updateOne(
@@ -140,6 +160,7 @@ const currentStock = (doc) => ({
   ...canonicalBucket(doc),
   tonnageKg: Number(doc.tonnageKg || 0),
   sellingPrice: doc.sellingPrice,
+  costUgx: Number(doc.costUgx || 0),
   deletedAt: doc.deletedAt || null
 });
 
@@ -155,20 +176,22 @@ const trackStockMovement = (schema, direction, kind = 'sale') => {
     const after = currentStock(this);
     const session = typeof this.$session === 'function' ? this.$session() : null;
     const price = direction > 0 ? after.sellingPrice : undefined;
+    const unitCostUgx = direction > 0 && after.costUgx > 0 && after.tonnageKg > 0 ? after.costUgx / after.tonnageKg : undefined;
 
     if (!before) {
       if (!after.deletedAt) {
-        await adjustOnHand({ ...after, deltaKg: direction * after.tonnageKg, sellingPrice: price, session });
+        await adjustOnHand({ ...after, deltaKg: direction * after.tonnageKg, sellingPrice: price, unitCostUgx, session });
       }
     } else if (!before.deletedAt && after.deletedAt) {
       await adjustOnHand({ ...before, deltaKg: -direction * before.tonnageKg, session });
     } else if (before.deletedAt && !after.deletedAt) {
-      await adjustOnHand({ ...after, deltaKg: direction * after.tonnageKg, sellingPrice: price, session });
+      await adjustOnHand({ ...after, deltaKg: direction * after.tonnageKg, sellingPrice: price, unitCostUgx, session });
     } else if (!after.deletedAt && sameBucket(before, after)) {
       await adjustOnHand({
         ...after,
         deltaKg: direction * (after.tonnageKg - before.tonnageKg),
         sellingPrice: price,
+        unitCostUgx,
         session
       });
     } else if (!after.deletedAt) {
@@ -179,6 +202,7 @@ const trackStockMovement = (schema, direction, kind = 'sale') => {
           ...afterBucket,
           deltaKg: direction * (after.tonnageKg - before.tonnageKg),
           sellingPrice: price,
+          unitCostUgx,
           session
         });
       } else {
@@ -187,6 +211,7 @@ const trackStockMovement = (schema, direction, kind = 'sale') => {
           ...afterBucket,
           deltaKg: direction * after.tonnageKg,
           sellingPrice: price,
+          unitCostUgx,
           session
         });
       }
@@ -349,6 +374,31 @@ const collectExpectedBalances = async () => {
   creditSales.forEach((row) => apply(row, -1, false));
   // qtyKg on ops movements is already signed (outbound negative).
   opsLedger.forEach((row) => apply(row, 1, false));
+  if (mongoose.models.Procurement) {
+    const costs = await mongoose.model('Procurement').aggregate([
+      { $match: { deletedAt: null, tonnageKg: { $gt: 0 } } },
+      {
+        $group: {
+          _id: {
+            branch: '$branch',
+            produceName: { $ifNull: ['$produceName', ''] },
+            produceType: { $ifNull: ['$produceType', ''] }
+          },
+          costUgx: { $sum: '$costUgx' },
+          tonnageKg: { $sum: '$tonnageKg' }
+        }
+      }
+    ]);
+    for (const row of costs) {
+      const identity = canonicalBucket({
+        branch: row._id.branch,
+        produceName: row._id.produceName,
+        produceType: row._id.produceType
+      });
+      const bucket = buckets.get(bucketKey(identity));
+      if (bucket && row.tonnageKg > 0) bucket.averageCostUgx = Math.round(row.costUgx / row.tonnageKg);
+    }
+  }
   return [...buckets.values()];
 };
 

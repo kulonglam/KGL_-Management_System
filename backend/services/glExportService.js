@@ -2,6 +2,7 @@ import Sale from '../models/Sale.js';
 import CreditSale from '../models/CreditSale.js';
 import Procurement from '../models/Procurement.js';
 import GlAccountMapping, { EVENT_TYPES } from '../models/GlAccountMapping.js';
+import GlAccount, { DEFAULT_ACCOUNTS } from '../models/GlAccount.js';
 import { getTaxConfig, splitVatInclusive } from './taxConfigService.js';
 import { roundUgx } from '../utils/money.js';
 import { includeRemoved } from '../utils/softDelete.js';
@@ -38,8 +39,32 @@ const DEFAULT_MAPPINGS = [
   { eventType: 'vat_output', debitAccount: '4000', creditAccount: '2100', description: 'Output VAT' }
 ];
 
+const currencyFields = (tender, side) => {
+  if (side === 'debit' && tender?.currency && tender.currency !== 'UGX') {
+    return {
+      currency: tender.currency,
+      foreignAmount: Number(tender.foreignAmount) || 0,
+      fxRateToUgx: Number(tender.fxRateToUgx) || 1
+    };
+  }
+  return { currency: 'UGX', foreignAmount: 0, fxRateToUgx: 1 };
+};
+
+const ensureDefaultAccounts = async () => {
+  const existing = await GlAccount.find({}).select('code').lean();
+  const known = new Set(existing.map((row) => row.code));
+  const missing = DEFAULT_ACCOUNTS.filter((row) => !known.has(row.code));
+  if (missing.length > 0) {
+    await GlAccount.insertMany(missing, { ordered: false }).catch((error) => {
+      if (error?.code !== 11000 && !error?.writeErrors) throw error;
+    });
+  }
+  return GlAccount.find({ isActive: true }).lean();
+};
+
 // Seeds any event type that has no mapping yet; existing (possibly customised) rows are kept.
 const ensureDefaultMappings = async () => {
+  await ensureDefaultAccounts();
   const existing = await GlAccountMapping.find({}).lean();
   const known = new Set(existing.map((row) => row.eventType));
   const missing = DEFAULT_MAPPINGS.filter((row) => !known.has(row.eventType));
@@ -55,7 +80,7 @@ const ensureDefaultMappings = async () => {
 const journalLineKey = ({ eventType, refType, refId, keySuffix, side, account }) =>
   `${eventType}|${refType}|${String(refId)}|${keySuffix}|${side}|${account}`;
 
-const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refType, refId, memo, keySuffix }) => {
+const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refType, refId, memo, keySuffix, tender }) => {
   const amount = roundUgx(amountUgx);
   if (!amount) return;
   if (!mapping) {
@@ -67,6 +92,7 @@ const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refT
     account: mapping.debitAccount,
     debitUgx: Math.abs(amount),
     creditUgx: 0,
+    ...currencyFields(tender, 'debit'),
     lineKey: journalLineKey({ eventType, refType, refId, keySuffix, side: 'debit', account: mapping.debitAccount })
   });
   lines.push({
@@ -74,6 +100,7 @@ const pushBalanced = (lines, { date, branch, eventType, mapping, amountUgx, refT
     account: mapping.creditAccount,
     debitUgx: 0,
     creditUgx: Math.abs(amount),
+    ...currencyFields(tender, 'credit'),
     lineKey: journalLineKey({ eventType, refType, refId, keySuffix, side: 'credit', account: mapping.creditAccount })
   });
 };
@@ -94,7 +121,12 @@ const linesForSale = (sale, mappings, tax) => {
     refType: 'sale',
     refId: sale._id,
     memo: `Sale ${sale.produceName}`,
-    keySuffix: 'net'
+    keySuffix: 'net',
+    tender: {
+      currency: sale.currency,
+      foreignAmount: sale.foreignAmount,
+      fxRateToUgx: sale.fxRateToUgx
+    }
   });
   if (split.vatUgx > 0 && tenderMap) {
     const vatMap = mappings.get('vat_output');
@@ -330,6 +362,7 @@ export {
   toCsv,
   listMappings,
   EVENT_TYPES,
+  ensureDefaultAccounts,
   ensureDefaultMappings,
   linesForSale,
   linesForCredit,

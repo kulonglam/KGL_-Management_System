@@ -22,7 +22,8 @@ import { recordAudit, transactionAuditMetadata } from '../services/auditService.
 import { emitDomainEvent } from '../services/webhookService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
 import { recordProcurementLot } from '../services/stockLotService.js';
-import { rememberJournal } from '../services/journalPostingService.js';
+import { postDocumentJournal, rememberJournal } from '../services/journalPostingService.js';
+import { runInTransaction } from '../utils/transaction.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -144,23 +145,29 @@ const createProcurement = async (req, res, next) => {
         produceType
       },
       async () => {
-        const created = await Procurement.create({
-          produceName,
-          produceType,
-          sourceType: normalizeSourceType(sourceType),
-          dateReceived,
-          timeReceived,
-          tonnageKg,
-          costUgx,
-          dealerName: supplier.name,
-          dealerContact: supplier.contact,
-          supplier: supplier._id,
-          purchaseOrder: req.body.purchaseOrder || null,
-          lotCode: String(req.body.lotCode || '').trim().slice(0, 40),
-          expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
-          branch: req.user.branch,
-          sellingPrice: priceResolution.priceUgx,
-          recordedBy: req.user._id
+        const created = await runInTransaction(async (session) => {
+          const payload = {
+            produceName,
+            produceType,
+            sourceType: normalizeSourceType(sourceType),
+            dateReceived,
+            timeReceived,
+            tonnageKg,
+            costUgx,
+            dealerName: supplier.name,
+            dealerContact: supplier.contact,
+            supplier: supplier._id,
+            purchaseOrder: req.body.purchaseOrder || null,
+            lotCode: String(req.body.lotCode || '').trim().slice(0, 40),
+            expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
+            branch: req.user.branch,
+            sellingPrice: priceResolution.priceUgx,
+            recordedBy: req.user._id
+          };
+          const doc = session ? (await Procurement.create([payload], { session }))[0] : await Procurement.create(payload);
+          await recordProcurementLot(doc, session);
+          if (session) await postDocumentJournal('procurement', doc.toObject(), session);
+          return doc;
         });
 
         const snapshot = await calculateInventoryByFilter({ branch: req.user.branch });
@@ -171,7 +178,6 @@ const createProcurement = async (req, res, next) => {
           remainingStock: getBucketTonnage(snapshot, produceName, produceType, req.user.branch)
         });
 
-        await recordProcurementLot(created);
         return created;
       }
     );

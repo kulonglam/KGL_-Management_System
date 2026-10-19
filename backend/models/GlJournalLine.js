@@ -11,7 +11,10 @@ const glJournalLineSchema = new mongoose.Schema(
     refType: { type: String, default: '' },
     refId: { type: String, default: '' },
     memo: { type: String, default: '' },
-    lineKey: { type: String, required: true }
+    lineKey: { type: String, required: true },
+    currency: { type: String, default: 'UGX', maxlength: 3 },
+    foreignAmount: { type: Number, default: 0, min: 0 },
+    fxRateToUgx: { type: Number, default: 1, min: 0 }
   },
   { timestamps: true }
 );

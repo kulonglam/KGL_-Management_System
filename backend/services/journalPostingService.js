@@ -11,15 +11,16 @@ import {
   linesForProcurement
 } from './glExportService.js';
 
-const upsertJournalLines = async (lines) => {
+const upsertJournalLines = async (lines, session) => {
   let posted = 0;
+  const options = session ? { upsert: true, session } : { upsert: true };
   for (const line of lines) {
     if (!line.lineKey) continue;
     try {
       const result = await GlJournalLine.updateOne(
         { lineKey: line.lineKey },
         { $setOnInsert: { ...line, date: new Date(line.date) } },
-        { upsert: true }
+        options
       );
       posted += result.upsertedCount || 0;
     } catch (error) {
@@ -27,6 +28,15 @@ const upsertJournalLines = async (lines) => {
     }
   }
   return { posted, examined: lines.length };
+};
+
+const postDocumentJournal = async (refType, doc, session) => {
+  const mappings = await ensureDefaultMappings();
+  const tax = await getTaxConfig();
+  if (refType === 'sale') return upsertJournalLines(linesForSale(doc, mappings, tax), session);
+  if (refType === 'creditSale') return upsertJournalLines(linesForCredit(doc, mappings, tax), session);
+  if (refType === 'procurement') return upsertJournalLines(linesForProcurement(doc, mappings), session);
+  return { posted: 0, examined: 0 };
 };
 
 const postRefJournal = async (refType, refId) => {
@@ -61,4 +71,4 @@ const rememberJournal = async (refType, refId) => {
   }
 };
 
-export { postRefJournal, rememberJournal, upsertJournalLines };
+export { postDocumentJournal, postRefJournal, rememberJournal, upsertJournalLines };

@@ -50,4 +50,24 @@ const lookupBarcode = async ({ actorUser, code, branch }) => {
   };
 };
 
-export { registerBarcode, lookupBarcode };
+const listBarcodes = async ({ actorUser, branch }) => {
+  const resolvedBranch = branchFor(actorUser, branch);
+  const filter = resolvedBranch ? { branch: resolvedBranch } : {};
+  const [rows, prices] = await Promise.all([
+    ProductBarcode.find(filter).limit(500).lean(),
+    PriceSetting.find(filter).lean()
+  ]);
+  return rows.map((row) => {
+    const named = prices.find((price) => price.produceName === row.produceName && price.produceType === row.produceType);
+    const typeDefault = prices.find((price) => !price.produceName && price.produceType === row.produceType);
+    return {
+      code: row.code,
+      branch: row.branch,
+      produceName: row.produceName,
+      produceType: row.produceType,
+      priceUgx: named?.priceUgx ?? typeDefault?.priceUgx ?? null
+    };
+  });
+};
+
+export { listBarcodes, registerBarcode, lookupBarcode };

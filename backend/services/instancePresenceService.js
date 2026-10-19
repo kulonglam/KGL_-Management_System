@@ -1,6 +1,7 @@
 import os from 'node:os';
 import crypto from 'node:crypto';
 import InstancePresence from '../models/InstancePresence.js';
+import { LeaderLease } from '../models/operationsModels.js';
 import { trustedQuery } from '../utils/listQuery.js';
 
 const instanceId = crypto.randomUUID();
@@ -40,4 +41,23 @@ const listLiveInstances = async () => {
   return InstancePresence.find({ lastSeenAt: trustedQuery({ $gte: cutoff }) }).sort({ startedAt: 1 }).lean();
 };
 
-export { startInstancePresence, stopInstancePresence, listLiveInstances, beat };
+const claimLeadership = async (leaseMs = 90000) => {
+  const now = new Date();
+  const until = new Date(now.getTime() + leaseMs);
+  try {
+    const claimed = await LeaderLease.findOneAndUpdate(
+      trustedQuery({
+        key: 'scheduler',
+        $or: [{ ownerId: instanceId }, { until: { $lte: now } }]
+      }),
+      { $set: { ownerId: instanceId, until, key: 'scheduler' } },
+      { upsert: true, new: true }
+    );
+    return claimed?.ownerId === instanceId;
+  } catch (error) {
+    if (error?.code === 11000) return false;
+    throw error;
+  }
+};
+
+export { beat, claimLeadership, listLiveInstances, startInstancePresence, stopInstancePresence };

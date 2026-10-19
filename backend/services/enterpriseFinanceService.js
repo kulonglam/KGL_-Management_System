@@ -1,6 +1,8 @@
 import CreditSale from '../models/CreditSale.js';
 import Sale from '../models/Sale.js';
+import Procurement from '../models/Procurement.js';
 import GlJournalLine from '../models/GlJournalLine.js';
+import GlAccount from '../models/GlAccount.js';
 import BankStatementLine from '../models/BankStatementLine.js';
 import { AGING_BUCKETS } from './customerStatementService.js';
 import { buildGlExport } from './glExportService.js';
@@ -107,15 +109,27 @@ const trialBalance = async ({ from, to, branch }) => {
     },
     { $sort: { _id: 1 } }
   ]);
+  const chart = await GlAccount.find({}).select('code name').lean();
+  const names = new Map(chart.map((account) => [account.code, account.name]));
   const accounts = rows.map((row) => ({
     account: row._id,
+    name: names.get(row._id) || row._id,
     debitUgx: roundUgx(row.debitUgx),
     creditUgx: roundUgx(row.creditUgx),
     balanceUgx: roundUgx(row.debitUgx - row.creditUgx)
   }));
+  const foreignRows = await GlJournalLine.aggregate([
+    { $match: { ...match, currency: { $nin: [null, '', 'UGX'] } } },
+    { $group: { _id: '$currency', foreignAmount: { $sum: '$foreignAmount' } } },
+    { $sort: { _id: 1 } }
+  ]);
+  const foreignBalances = foreignRows.map((row) => ({
+    currency: row._id,
+    foreignAmount: Number(row.foreignAmount) || 0
+  }));
   const debitUgx = roundUgx(accounts.reduce((sum, row) => sum + row.debitUgx, 0));
   const creditUgx = roundUgx(accounts.reduce((sum, row) => sum + row.creditUgx, 0));
-  return { accounts, totals: { debitUgx, creditUgx, balanced: debitUgx === creditUgx } };
+  return { accounts, foreignBalances, totals: { debitUgx, creditUgx, balanced: debitUgx === creditUgx } };
 };
 
 const importBankStatement = async ({ actorUser, branch, lines }) => {
@@ -141,13 +155,24 @@ const importBankStatement = async ({ actorUser, branch, lines }) => {
     };
   });
   const created = await BankStatementLine.insertMany(docs);
+  for (const line of created) {
+    const suggestions = await suggestBankMatches(line);
+    if (suggestions.length !== 1) continue;
+    line.matchedRefType = suggestions[0].refType;
+    line.matchedRefId = suggestions[0].refId;
+    line.matchedAt = new Date();
+    await line.save();
+  }
   return created;
 };
 
-const dayBounds = (dateKey) => ({
-  start: new Date(`${dateKey}T00:00:00.000Z`),
-  end: new Date(`${dateKey}T23:59:59.999Z`)
-});
+const dayBounds = (dateKey) => {
+  const start = new Date(`${dateKey}T00:00:00.000Z`);
+  const end = new Date(`${dateKey}T23:59:59.999Z`);
+  start.setUTCDate(start.getUTCDate() - 2);
+  end.setUTCDate(end.getUTCDate() + 2);
+  return { start, end };
+};
 
 const suggestBankMatches = async (line) => {
   const { start, end } = dayBounds(line.statementDate);
@@ -182,7 +207,20 @@ const suggestBankMatches = async (line) => {
       label: credit.buyerName
     }));
   }
-  return [];
+  const procurements = await Procurement.find({
+    branch: line.branch,
+    deletedAt: null,
+    costUgx: line.amountUgx,
+    dateReceived: trustedQuery({ $gte: start, $lte: end })
+  })
+    .select('dealerName costUgx')
+    .limit(5)
+    .lean();
+  return procurements.map((row) => ({
+    refType: 'procurement',
+    refId: String(row._id),
+    label: row.dealerName
+  }));
 };
 
 const listBankLines = async ({ actorUser, branch }) => {

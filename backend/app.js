@@ -37,6 +37,8 @@ import branchRoutes from './routes/branchRoutes.js';
 import organizationRoutes from './routes/organizationRoutes.js';
 import catalogRoutes from './routes/catalogRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import operationsRoutes from './routes/operationsRoutes.js';
+import portalRoutes from './routes/portalRoutes.js';
 
 // Create app.
 const createApp = () => {
@@ -103,6 +105,8 @@ const createApp = () => {
     router.use('/organization', organizationRoutes);
     router.use('/catalog', catalogRoutes);
     router.use('/audit-logs', auditRoutes);
+    router.use('/operations', operationsRoutes);
+    router.use('/portal', portalRoutes);
   };
 
   const apiV1 = express.Router();

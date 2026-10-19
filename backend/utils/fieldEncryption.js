@@ -102,6 +102,13 @@ const blindIndex = (plain) => {
   return crypto.createHmac('sha256', key).update(normalized).digest('hex');
 };
 
+const nationalIdLast4Hash = (plain, raw) => {
+  const digits = String(plain || '').replace(/\D/g, '');
+  if (digits.length < 4) return null;
+  const token = `LAST4:${digits.slice(-4)}`;
+  return raw ? indexWithMaster(token, raw) : blindIndex(token);
+};
+
 // Filter clause matching a NIN by blind index, with a plaintext fallback for unmigrated rows.
 const nationalIdMatch = (value) => {
   const plain = normalizeNin(value);
@@ -111,6 +118,9 @@ const nationalIdMatch = (value) => {
 // Exact NIN searches only: ciphertext cannot be prefix-matched.
 const appendNationalIdSearch = (filter, search) => {
   const plain = normalizeNin(search);
+  if (/^\d{4}$/.test(plain)) {
+    return { ...filter, nationalIdLast4Hash: nationalIdLast4Hash(plain) };
+  }
   if (!NIN_PATTERN.test(plain)) return filter;
   return { ...filter, $or: [...(filter.$or || []), ...nationalIdMatch(plain).$or] };
 };
@@ -121,6 +131,7 @@ const decryptLeanRows = (result) => {
     if (!row || typeof row !== 'object') continue;
     if (isEncryptedValue(row.nationalId)) row.nationalId = decryptField(row.nationalId);
     delete row.nationalIdHash;
+    delete row.nationalIdLast4Hash;
   }
 };
 
@@ -130,19 +141,26 @@ const encryptUpdate = (update) => {
     if (!target || typeof target.nationalId !== 'string' || isEncryptedValue(target.nationalId)) continue;
     const plain = normalizeNin(target.nationalId);
     target.nationalIdHash = blindIndex(plain);
+    target.nationalIdLast4Hash = nationalIdLast4Hash(plain);
     target.nationalId = encryptField(plain);
   }
 };
 
 const encryptedNationalIdPlugin = (schema) => {
-  schema.add({ nationalIdHash: { type: String, default: null } });
+  schema.add({
+    nationalIdHash: { type: String, default: null },
+    nationalIdLast4Hash: { type: String, default: null }
+  });
   const existingToJson = schema.get('toJSON') || {};
   schema.set('toJSON', {
     ...existingToJson,
     transform(doc, ret, options) {
       const out =
         typeof existingToJson.transform === 'function' ? existingToJson.transform(doc, ret, options) : ret;
-      if (out && typeof out === 'object') delete out.nationalIdHash;
+      if (out && typeof out === 'object') {
+        delete out.nationalIdHash;
+        delete out.nationalIdLast4Hash;
+      }
       return out;
     }
   });
@@ -160,6 +178,7 @@ const encryptedNationalIdPlugin = (schema) => {
     const plain = normalizeNin(raw);
     this.set('nationalId', plain);
     this.nationalIdHash = blindIndex(plain);
+    this.nationalIdLast4Hash = nationalIdLast4Hash(plain);
   });
 
   // Runs after validation, so validators see plaintext and only ciphertext is written.
@@ -218,6 +237,7 @@ const encryptedNationalIdPlugin = (schema) => {
 export {
   NIN_PATTERN,
   appendNationalIdSearch,
+  nationalIdLast4Hash,
   blindIndex,
   decryptField,
   decryptLeanRows,

@@ -37,6 +37,7 @@
           <div class="text-center mb-5">
             <h2 class="fw-bold text-dark h3">Sign In</h2>
             <p class="text-muted">Access your dashboard</p>
+            <p class="small mb-0"><router-link to="/portal">Buyer statement portal</router-link></p>
           </div>
 
           <form @submit.prevent="handleLogin">

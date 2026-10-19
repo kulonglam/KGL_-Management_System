@@ -31,8 +31,9 @@ import { emitDomainEvent } from '../services/webhookService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
 import { allocateLots, assertLotAvailable } from '../services/stockLotService.js';
 import { enqueue, JOB_NAMES } from '../services/jobQueueService.js';
-import { rememberJournal } from '../services/journalPostingService.js';
+import { postDocumentJournal, rememberJournal } from '../services/journalPostingService.js';
 import { quoteCurrency } from '../services/currencyService.js';
+import { runInTransaction } from '../utils/transaction.js';
 
 const recordSaleAudit = (actor, action, sale) =>
   recordAudit({
@@ -210,31 +211,41 @@ const createSale = async (req, res, next) => {
           foreignAmount = quoted.foreignAmount;
         }
 
-        const createdSale = await Sale.create({
-          produceName: item.produceName,
-          produceType: item.produceType,
-          tonnageKg: tonnage,
-          amountPaidUgx,
-          paymentMethod,
-          tenderAmountUgx,
-          buyerName,
-          salesAgentName: req.user.name,
-          date,
-          time,
-          branch: req.user.branch,
-          recordedBy: req.user._id,
-          clientSaleId: clientSaleId || undefined,
-          currency,
-          fxRateToUgx,
-          foreignAmount
+        let journalInTransaction = false;
+        const createdSale = await runInTransaction(async (session) => {
+          const payload = {
+            produceName: item.produceName,
+            produceType: item.produceType,
+            tonnageKg: tonnage,
+            amountPaidUgx,
+            paymentMethod,
+            tenderAmountUgx,
+            buyerName,
+            salesAgentName: req.user.name,
+            date,
+            time,
+            branch: req.user.branch,
+            recordedBy: req.user._id,
+            clientSaleId: clientSaleId || undefined,
+            currency,
+            fxRateToUgx,
+            foreignAmount
+          };
+          const sale = session ? (await Sale.create([payload], { session }))[0] : await Sale.create(payload);
+          await allocateLots({
+            branch: req.user.branch,
+            produceName: item.produceName,
+            produceType: item.produceType,
+            qtyKg: tonnage,
+            session
+          });
+          if (session) {
+            await postDocumentJournal('sale', sale.toObject(), session);
+            journalInTransaction = true;
+          }
+          return sale;
         });
-
-        await allocateLots({
-          branch: req.user.branch,
-          produceName: item.produceName,
-          produceType: item.produceType,
-          qtyKg: tonnage
-        });
+        if (!journalInTransaction) await rememberJournal('sale', createdSale._id);
 
         await syncStockLevelNotifications({
           branch: req.user.branch,
@@ -248,7 +259,6 @@ const createSale = async (req, res, next) => {
     );
 
     await recordSaleAudit(req.user, 'create', sale);
-    await rememberJournal('sale', sale._id);
     let invoice = null;
     let invoicePending = false;
     try {

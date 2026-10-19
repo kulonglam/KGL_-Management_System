@@ -7,6 +7,7 @@ import {
   encryptWithMaster,
   indexWithMaster,
   isEncryptedValue,
+  nationalIdLast4Hash,
   isFieldEncryptionEnabled,
   normalizeNin
 } from '../utils/fieldEncryption.js';
@@ -17,7 +18,7 @@ const migrateCollection = async (model, { dryRun }) => {
   const summary = { scanned: 0, updated: 0, undecryptable: 0 };
   const cursor = model.collection.find(
     { nationalId: { $type: 'string' } },
-    { projection: { nationalId: 1, nationalIdHash: 1 } }
+    { projection: { nationalId: 1, nationalIdHash: 1, nationalIdLast4Hash: 1 } }
   );
   for await (const row of cursor) {
     summary.scanned += 1;
@@ -28,8 +29,9 @@ const migrateCollection = async (model, { dryRun }) => {
     }
     const normalized = normalizeNin(plain);
     const hash = blindIndex(normalized);
+    const last4Hash = nationalIdLast4Hash(normalized);
     const needsEncrypt = isFieldEncryptionEnabled() && !isEncryptedValue(row.nationalId);
-    if (!needsEncrypt && row.nationalIdHash === hash) continue;
+    if (!needsEncrypt && row.nationalIdHash === hash && row.nationalIdLast4Hash === last4Hash) continue;
     summary.updated += 1;
     if (dryRun) continue;
     await model.collection.updateOne(
@@ -37,7 +39,8 @@ const migrateCollection = async (model, { dryRun }) => {
       {
         $set: {
           nationalId: needsEncrypt ? encryptField(normalized) : row.nationalId,
-          nationalIdHash: hash
+          nationalIdHash: hash,
+          nationalIdLast4Hash: last4Hash
         }
       }
     );
@@ -86,7 +89,13 @@ const rotateNationalIds = async ({ dryRun = false } = {}) => {
       if (dryRun) continue;
       await model.collection.updateOne(
         { _id: row._id },
-        { $set: { nationalId: encryptWithMaster(normalizeNin(plain), nextKey), nationalIdHash: indexWithMaster(plain, nextKey) } }
+        {
+          $set: {
+            nationalId: encryptWithMaster(normalizeNin(plain), nextKey),
+            nationalIdHash: indexWithMaster(plain, nextKey),
+            nationalIdLast4Hash: nationalIdLast4Hash(plain, nextKey)
+          }
+        }
       );
     }
     return summary;

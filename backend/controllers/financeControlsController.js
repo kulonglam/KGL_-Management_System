@@ -1,5 +1,7 @@
 import { approveWriteOff, listWriteOffs, rejectWriteOff } from '../services/creditWriteOffService.js';
 import { listPeriodLocks, setPeriodLock } from '../services/periodLockService.js';
+import { closePeriod } from '../services/periodCloseService.js';
+import { rotateNationalIds } from '../services/ninMigrationService.js';
 import {
   buildCustomerStatement,
   emailCustomerStatement,
@@ -90,6 +92,10 @@ const setPeriodLockHandler = async (req, res, next) => {
       lockedThrough: req.body.lockedThrough ?? null,
       note: req.body.note
     });
+    const closing =
+      lock.lockedThrough && (!previousLockedThrough || lock.lockedThrough > previousLockedThrough)
+        ? await closePeriod({ scope: lock.scope, lockedThrough: lock.lockedThrough })
+        : { posted: 0, examined: 0 };
     await recordAudit({
       actor: req.user,
       action: 'update',
@@ -103,7 +109,7 @@ const setPeriodLockHandler = async (req, res, next) => {
         note: lock.note
       }
     });
-    res.json(lock);
+    res.json({ ...lock, closing });
   } catch (error) {
     return forwardControllerError(error, res, next);
   }
@@ -190,6 +196,18 @@ const exportUserDataHandler = async (req, res, next) => {
   }
 };
 
+const rotateNationalIdsHandler = async (req, res, next) => {
+  try {
+    const result = await rotateNationalIds({ dryRun: req.body?.dryRun === true });
+    res.json({
+      ...result,
+      nextStep: 'Set NIN_ENCRYPTION_KEY to the current NIN_ENCRYPTION_KEY_NEXT value, then remove NIN_ENCRYPTION_KEY_NEXT.'
+    });
+  } catch (error) {
+    return forwardControllerError(error, res, next);
+  }
+};
+
 export {
   approveWriteOffHandler,
   emailStatementHandler,
@@ -199,5 +217,6 @@ export {
   listPeriodLocksHandler,
   listWriteOffsHandler,
   rejectWriteOffHandler,
-  setPeriodLockHandler
+  setPeriodLockHandler,
+  rotateNationalIdsHandler
 };

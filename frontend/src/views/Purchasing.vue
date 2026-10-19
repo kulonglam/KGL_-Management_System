@@ -1,18 +1,18 @@
 <template>
   <div class="view-shell">
     <div class="view-heading">
-      <h2 class="page-title">Purchasing</h2>
-      <p class="page-subtitle">Purchase orders, goods receipts, and the match against procurement.</p>
+      <h2 class="page-title">{{ $t('Purchasing') }}</h2>
+      <p class="page-subtitle">{{ $t('Purchase orders, goods receipts, and the match against stock.') }}</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
     <div class="card mb-3">
-      <div class="card-header"><h5 class="mb-0">New order</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ $t('New order') }}</h5></div>
       <div class="card-body">
         <form class="row g-3" @submit.prevent="createOrder">
           <div class="col-md-4">
-            <label class="form-label" for="po-supplier">Supplier</label>
+            <label class="form-label" for="po-supplier">{{ $t('Supplier') }}</label>
             <select id="po-supplier" v-model="form.supplierId" class="form-select" required>
               <option value="" disabled>Choose a supplier</option>
               <option v-for="supplier in suppliers" :key="supplier._id" :value="supplier._id">
@@ -21,23 +21,25 @@
             </select>
           </div>
           <div class="col-md-3">
-            <label class="form-label" for="po-name">Produce</label>
+            <label class="form-label" for="po-name">{{ $t('Produce') }}</label>
             <input id="po-name" v-model.trim="form.produceName" class="form-control" required />
           </div>
           <div class="col-md-2">
-            <label class="form-label" for="po-type">Type</label>
-            <input id="po-type" v-model.trim="form.produceType" class="form-control" placeholder="Beans" required />
+            <label class="form-label" for="po-type">{{ $t('Type') }}</label>
+            <select id="po-type" v-model="form.produceType" class="form-select" required>
+              <option v-for="produceType in produceTypes" :key="produceType" :value="produceType">{{ produceType }}</option>
+            </select>
           </div>
           <div class="col-md-1">
             <label class="form-label" for="po-kg">Kg</label>
             <input id="po-kg" v-model.number="form.orderedKg" type="number" min="1" class="form-control" required />
           </div>
           <div class="col-md-2">
-            <label class="form-label" for="po-cost">Unit cost</label>
+            <label class="form-label" for="po-cost">{{ $t('Unit cost') }}</label>
             <input id="po-cost" v-model.number="form.unitCostUgx" type="number" min="0" class="form-control" required />
           </div>
           <div class="col-12">
-            <button class="btn btn-primary" type="submit" :disabled="submitting">Create draft</button>
+            <button class="btn btn-primary" type="submit" :disabled="submitting">{{ $t('Create draft') }}</button>
           </div>
         </form>
       </div>
@@ -45,7 +47,7 @@
 
     <div class="card">
       <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">Orders</h5>
+        <h5 class="mb-0">{{ $t('Orders') }}</h5>
         <button type="button" class="btn btn-outline-secondary btn-sm" @click="load">Refresh</button>
       </div>
       <div class="card-body table-responsive">
@@ -65,7 +67,7 @@
               <td>{{ order.lines.map((line) => `${line.produceName} ${line.receivedKg}/${line.orderedKg} kg`).join(', ') }}</td>
               <td class="text-end text-nowrap">
                 <button v-if="order.status === 'draft'" type="button" class="btn btn-sm btn-success me-1" @click="approve(order)">
-                  Approve
+                  {{ $t('Approve') }}
                 </button>
                 <button
                   v-if="order.status === 'approved' || order.status === 'partial'"
@@ -73,9 +75,9 @@
                   class="btn btn-sm btn-outline-primary me-1"
                   @click="receive(order)"
                 >
-                  Receive
+                  {{ $t('Receive') }}
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @click="match(order)">Match</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @click="match(order)">{{ $t('Match') }}</button>
               </td>
             </tr>
           </tbody>
@@ -99,6 +101,7 @@ export default {
       success: '',
       submitting: false,
       matchResult: '',
+      produceTypes: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
       form: { supplierId: '', produceName: '', produceType: 'Beans', orderedKg: 1000, unitCostUgx: 8000 }
     };
   },
@@ -131,7 +134,7 @@ export default {
             }
           ]
         });
-        this.success = 'Draft order created. A different person must approve it.';
+        this.success = this.$t('Draft order created. A different person must approve it.');
         await this.load();
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to create the order.';
@@ -150,14 +153,17 @@ export default {
       }
     },
     async receive(order) {
-      const kg = window.prompt('Kilograms received for the first line', String(order.lines[0]?.orderedKg || ''));
-      if (!kg) return;
-      const line = order.lines[0];
+      const lines = order.lines
+        .map((line) => ({
+          produceName: line.produceName,
+          produceType: line.produceType,
+          receivedKg: Number(line.orderedKg) - Number(line.receivedKg || 0)
+        }))
+        .filter((line) => line.receivedKg > 0);
+      if (lines.length === 0) return;
       try {
-        await procurementAPI.receiveOrder(order._id, {
-          lines: [{ produceName: line.produceName, produceType: line.produceType, receivedKg: Number(kg) }]
-        });
-        this.success = 'Goods receipt recorded. Link the procurement to this order to complete the match.';
+        await procurementAPI.receiveOrder(order._id, { lines });
+        this.success = this.$t('Goods received and stock updated.');
         await this.load();
       } catch (err) {
         this.error = err.response?.data?.message || 'Receipt failed.';

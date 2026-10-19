@@ -2,6 +2,8 @@ import CreditSale from '../models/CreditSale.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { isDirectorAccount } from './authService.js';
 import { roundUgx } from '../utils/money.js';
+import { runInTransaction } from '../utils/transaction.js';
+import { postDocumentJournal } from './journalPostingService.js';
 
 const createServiceError = (statusCode, message) => {
   const error = new Error(message);
@@ -73,7 +75,10 @@ const approveWriteOff = async ({ actorUser, creditSaleId, note }) => {
   creditSale.writeOff.decidedBy = actorUser._id;
   creditSale.writeOff.decidedAt = new Date();
   creditSale.writeOff.decisionNote = String(note || '').trim().slice(0, 500);
-  await creditSale.save();
+  await runInTransaction(async (session) => {
+    await creditSale.save(session ? { session } : undefined);
+    if (session) await postDocumentJournal('creditSale', creditSale.toObject(), session);
+  });
   return { creditSale, amountUgx: amount };
 };
 

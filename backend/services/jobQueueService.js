@@ -366,10 +366,14 @@ const runSchedulerTick = async (now = new Date()) => {
 const startSchedulers = () => {
   if (process.env.NODE_ENV === 'test' || process.env.JOB_SCHEDULER_DISABLED === 'true') return;
   const tickMs = readNumberEnv('JOB_SCHEDULER_TICK_MS', 60 * 1000, { min: 1000 });
-  const tick = () => {
-    runSchedulerTick().catch((error) => {
+  const tick = async () => {
+    try {
+      const { claimLeadership } = await import('./instancePresenceService.js');
+      if (!(await claimLeadership())) return;
+      await runSchedulerTick();
+    } catch (error) {
       logger.warn('jobs.schedule_tick_failed', { message: error.message });
-    });
+    }
   };
   const initial = setTimeout(tick, 5000);
   initial.unref?.();

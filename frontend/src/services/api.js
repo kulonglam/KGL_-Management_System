@@ -303,6 +303,7 @@ export const organizationAPI = {
 };
 
 export const catalogAPI = {
+  listBarcodes: () => api.get('/catalog/barcodes'),
   lookupBarcode: (code) => api.get(`/catalog/barcodes/${encodeURIComponent(code)}`),
   registerBarcode: (data) => api.post('/catalog/barcodes', data)
 };
@@ -378,4 +379,72 @@ export const branchAPI = {
 
 export const auditAPI = {
   list: (params = {}) => api.get('/audit-logs', { params })
+};
+
+const portalApi = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+portalApi.interceptors.request.use((config) => {
+  const token = window.sessionStorage.getItem('kgl.portalToken');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+portalApi.interceptors.response.use(
+  (response) => {
+    const payload = response.data;
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      Object.prototype.hasOwnProperty.call(payload, 'success') &&
+      Object.prototype.hasOwnProperty.call(payload, 'data')
+    ) {
+      response.data = payload.data;
+    }
+    return response;
+  },
+  (error) => {
+    normalizeErrorPayload(error);
+    return Promise.reject(error);
+  }
+);
+
+export const operationsAPI = {
+  listEmployees: () => api.get('/operations/employees'),
+  createEmployee: (data) => api.post('/operations/employees', data),
+  markAttendance: (data) => api.post('/operations/attendance', data),
+  listLeave: () => api.get('/operations/leave'),
+  requestLeave: (data) => api.post('/operations/leave', data),
+  decideLeave: (id, data) => api.post(`/operations/leave/${id}/decision`, data),
+  runPayroll: (data) => api.post('/operations/payroll', data),
+  listBills: () => api.get('/operations/bills'),
+  createBill: (data) => api.post('/operations/bills', data),
+  payBill: (id, data) => api.post(`/operations/bills/${id}/payments`, data),
+  listBins: () => api.get('/operations/bins'),
+  createBin: (data) => api.post('/operations/bins', data),
+  putaway: (data) => api.post('/operations/putaway', data),
+  createPickList: (data) => api.post('/operations/pick-lists', data),
+  latestWeighing: () => api.get('/operations/weighings/latest'),
+  recordWeighing: (data) => api.post('/operations/weighings', data),
+  listFiscal: () => api.get('/operations/fiscal'),
+  listAssets: () => api.get('/operations/assets'),
+  createAsset: (data) => api.post('/operations/assets', data),
+  runDepreciation: (data) => api.post('/operations/depreciation', data),
+  disposeAsset: (id, data) => api.post(`/operations/assets/${id}/dispose`, data),
+  listFleet: () => api.get('/operations/fleet'),
+  createVehicle: (data) => api.post('/operations/vehicles', data),
+  recordTrip: (data) => api.post('/operations/trips', data),
+  recordFuel: (data) => api.post('/operations/fuel', data),
+  setBudget: (data) => api.post('/operations/budgets', data),
+  budgetVariance: (params) => api.get('/operations/budgets/variance', { params }),
+  listRestoreDrills: () => api.get('/operations/restore-drills'),
+  recordRestoreDrill: () => api.post('/operations/restore-drills'),
+  grantPortalAccess: (data) => api.post('/operations/portal-access', data)
+};
+
+export const portalAPI = {
+  login: (data) => portalApi.post('/portal/login', data),
+  home: () => portalApi.get('/portal/home')
 };

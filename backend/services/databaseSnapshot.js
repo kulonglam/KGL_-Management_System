@@ -27,6 +27,7 @@ import '../models/TaxInvoice.js';
 import '../models/TaxConfig.js';
 import '../models/InvoiceSequence.js';
 import '../models/CashUpSession.js';
+import '../models/GlAccount.js';
 import '../models/GlAccountMapping.js';
 import '../models/GlJournalLine.js';
 import '../models/PeriodLock.js';
@@ -41,6 +42,7 @@ import '../models/QueuedJob.js';
 import '../models/LegalEntity.js';
 import '../models/ExchangeRate.js';
 import '../models/ProductBarcode.js';
+import '../models/operationsModels.js';
 
 const { EJSON } = mongoose.mongo.BSON;
 
@@ -68,6 +70,7 @@ const SNAPSHOT_MODELS = [
   'TaxConfig',
   'InvoiceSequence',
   'CashUpSession',
+  'GlAccount',
   'GlAccountMapping',
   'GlJournalLine',
   'PeriodLock',
@@ -81,13 +84,32 @@ const SNAPSHOT_MODELS = [
   'QueuedJob',
   'LegalEntity',
   'ExchangeRate',
-  'ProductBarcode'
+  'ProductBarcode',
+  'Employee',
+  'Attendance',
+  'LeaveRequest',
+  'PayRun',
+  'SupplierBill',
+  'VendorPayment',
+  'WarehouseBin',
+  'BinStock',
+  'PickList',
+  'WeighTicket',
+  'FiscalDocument',
+  'FixedAsset',
+  'Vehicle',
+  'Trip',
+  'FuelLog',
+  'BudgetLine',
+  'RestoreDrill',
+  'LeaderLease'
 ];
 
 // A portable snapshot must not carry credentials. Restored users need a password reset.
 const REDACTED_FIELDS = {
   User: ['password', 'recoveryCodeHashes', 'mfaSecret', 'mfaPendingSecret', 'previousRefreshJti'],
-  ApiKey: ['keyHash']
+  ApiKey: ['keyHash'],
+  TrustedBuyer: ['portalPasswordHash']
 };
 
 const redactDocument = (modelName, doc) => {
@@ -213,4 +235,29 @@ const restoreDatabase = async (directory) => {
   return manifest;
 };
 
-export { SNAPSHOT_MODELS, backupDatabase, materializeBackup, publishBackup, restoreDatabase };
+const rehearseRestore = async (directory) => {
+  const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+  if (!Array.isArray(manifest.collections) || manifest.collections.length === 0) {
+    throw new Error('Backup manifest is missing collections');
+  }
+  const collections = [];
+  for (const entry of manifest.collections) {
+    if (!SNAPSHOT_MODELS.includes(entry.model)) {
+      throw new Error(`Backup manifest names an unknown collection: ${entry.model}`);
+    }
+    const docs = EJSON.parse(await readFile(path.join(directory, entry.file), 'utf8'));
+    if (!Array.isArray(docs) || docs.length !== entry.count) {
+      throw new Error(`${entry.model} snapshot count does not match the manifest`);
+    }
+    if (entry.model === 'User' && docs.some((user) => user.password || user.mfaSecret)) {
+      throw new Error('User snapshot still contains a password or MFA secret');
+    }
+    if (entry.model === 'TrustedBuyer' && docs.some((buyer) => buyer.portalPasswordHash)) {
+      throw new Error('Trusted buyer snapshot still contains a portal password');
+    }
+    collections.push({ model: entry.model, count: docs.length });
+  }
+  return { ok: true, collections };
+};
+
+export { SNAPSHOT_MODELS, backupDatabase, materializeBackup, publishBackup, rehearseRestore, restoreDatabase };

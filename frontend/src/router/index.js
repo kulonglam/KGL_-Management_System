@@ -32,6 +32,8 @@ const PrivacyNotice = () => import('../views/PrivacyNotice.vue');
 const Purchasing = () => import('../views/Purchasing.vue');
 const Organization = () => import('../views/Organization.vue');
 const OfflinePos = () => import('../views/OfflinePos.vue');
+const BackOffice = () => import('../views/BackOffice.vue');
+const Portal = () => import('../views/Portal.vue');
 
 // Route table grouped under dashboard layout with per-route role metadata.
 const routes = [
@@ -49,6 +51,11 @@ const routes = [
     path: '/reset-password',
     name: 'PasswordReset',
     component: PasswordReset
+  },
+  {
+    path: '/portal',
+    name: 'Portal',
+    component: Portal
   },
   {
     path: '/dashboard',
@@ -126,6 +133,12 @@ const routes = [
         name: 'FinanceOps',
         component: FinanceOps,
         meta: { roles: ['director', 'manager', 'auditor'] }
+      },
+      {
+        path: 'back-office',
+        name: 'BackOffice',
+        component: BackOffice,
+        meta: { roles: ['director', 'manager', 'storekeeper'] }
       },
       {
         path: 'purchasing',

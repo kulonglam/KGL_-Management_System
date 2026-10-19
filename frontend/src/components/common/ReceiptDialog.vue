@@ -2,7 +2,7 @@
   <div v-if="sale" class="modal-mask" @click.self="$emit('close')">
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="receipt-title" v-focus-trap="() => $emit('close')">
       <div class="modal-header">
-        <h5 id="receipt-title" class="mb-0">Sale receipt</h5>
+        <h5 id="receipt-title" class="mb-0">{{ $t('Sale receipt') }}</h5>
         <button type="button" class="btn-close" aria-label="Close receipt" @click="$emit('close')"></button>
       </div>
       <div class="modal-body">
@@ -31,19 +31,19 @@
           </p>
           <p>{{ sale.branch }} · {{ saleType }}</p>
           <hr />
-          <p><strong>Produce:</strong> {{ sale.produceName }} ({{ sale.produceType }})</p>
-          <p><strong>Tonnage:</strong> {{ Number(sale.tonnageKg || 0).toLocaleString() }} kg</p>
+          <p><strong>{{ $t('Produce') }}:</strong> {{ sale.produceName }} ({{ sale.produceType }})</p>
+          <p><strong>{{ $t('Tonnage') }}:</strong> {{ Number(sale.tonnageKg || 0).toLocaleString() }} kg</p>
           <p>
-            <strong>Amount:</strong>
+            <strong>{{ $t('Amount') }}:</strong>
             {{ Number(sale.amountPaidUgx || sale.amountDueUgx || 0).toLocaleString('en-UG') }} UGX
           </p>
-          <p><strong>Buyer:</strong> {{ sale.buyerName }}</p>
-          <p><strong>Agent:</strong> {{ sale.salesAgentName }}</p>
-          <p v-if="sale.dueDate"><strong>Due:</strong> {{ formatDate(sale.dueDate) }}</p>
+          <p><strong>{{ $t('Buyer') }}:</strong> {{ sale.buyerName }}</p>
+          <p><strong>{{ $t('Agent') }}:</strong> {{ sale.salesAgentName }}</p>
+          <p v-if="sale.dueDate"><strong>{{ $t('Due') }}:</strong> {{ formatDate(sale.dueDate) }}</p>
         </div>
         <div class="d-flex gap-2 mt-3">
-          <button type="button" class="btn btn-primary" @click="printReceipt">Print</button>
-          <button type="button" class="btn btn-outline-secondary" @click="$emit('close')">Close</button>
+          <button type="button" class="btn btn-primary" @click="printReceipt">{{ $t('Print') }}</button>
+          <button type="button" class="btn btn-outline-secondary" @click="$emit('close')">{{ $t('Close') }}</button>
         </div>
       </div>
     </div>

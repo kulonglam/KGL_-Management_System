@@ -42,7 +42,8 @@ import {
   listPeriodLocksHandler,
   listWriteOffsHandler,
   rejectWriteOffHandler,
-  setPeriodLockHandler
+  setPeriodLockHandler,
+  rotateNationalIdsHandler
 } from '../controllers/financeControlsController.js';
 import {
   agingHandler,
@@ -179,6 +180,7 @@ router.post(
 );
 
 router.get('/period-locks', protect, authorize('director', 'manager'), listPeriodLocksHandler);
+router.post('/national-ids/rotate', protect, authorize('director'), writeLimiter, rotateNationalIdsHandler);
 router.put(
   '/period-locks',
   protect,

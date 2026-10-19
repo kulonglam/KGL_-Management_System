@@ -147,17 +147,19 @@ test('purchase orders need a second approver and then match receipts', async () 
   const match = await as(auditorToken)(request(app).get(`/api/v1/procurement/orders/${order._id}/match`));
   assert.equal(match.status, 200, JSON.stringify(match.body));
   assert.equal(dataOf(match).lines[0].receivedKg, 500);
-  assert.equal(dataOf(match).matched, false);
+  assert.equal(dataOf(match).lines[0].invoicedKg, 500);
+  assert.equal(dataOf(match).matched, true);
 });
 
 test('expired lots cannot be sold', async () => {
+  await StockLot.updateMany({}, { $set: { expiryDate: new Date('2020-01-01T00:00:00.000Z') } });
   await StockLot.create({
     branch: 'Maganjo',
     produceName: 'Red Beans',
     produceType: 'Beans',
     lotCode: 'OLD',
     expiryDate: new Date('2020-01-01T00:00:00.000Z'),
-    qtyKg: 2000
+    qtyKg: 10000
   });
   const sale = await as(managerToken)(request(app).post('/api/v1/sales')).send({
     produceName: 'Red Beans',

@@ -3,6 +3,7 @@
 
 import mongoose from 'mongoose';
 import os from 'node:os';
+import { isProduction } from '../config/security.js';
 
 // GET /healthz: lightweight liveness endpoint showing service heartbeat metadata.
 const getHealth = (req, res) => {
@@ -33,6 +34,15 @@ const getReadiness = async (req, res) => {
     replicaSet = hello.setName || '';
   } catch {
     topology = 'unknown';
+  }
+
+  if (isProduction() && topology === 'standalone') {
+    return res.status(503).json({
+      status: 'not_ready',
+      databaseReadyState: readyState,
+      topology,
+      reason: 'A replica set is required before this API can take live writes.'
+    });
   }
 
   return res.json({

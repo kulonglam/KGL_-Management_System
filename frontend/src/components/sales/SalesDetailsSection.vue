@@ -7,7 +7,7 @@
       </legend>
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label" for="sales-produce-name">Produce Name</label>
+          <label class="form-label" for="sales-produce-name">{{ $t('Produce Name') }}</label>
           <select
             id="sales-produce-name"
             :class="['form-select', { 'is-invalid': errors.produceName }]"
@@ -29,7 +29,7 @@
         <small class="field-note">Only produce with stock in this branch is listed.</small>
       </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-tonnage-kg">Tonnage (kg)</label>
+          <label class="form-label" for="sales-tonnage-kg">{{ $t('Tonnage (kg)') }}</label>
           <input
             id="sales-tonnage-kg"
             type="number"
@@ -42,7 +42,7 @@
           <div v-if="errors.tonnageKg" class="invalid-feedback">{{ errors.tonnageKg }}</div>
         </div>
         <div class="col-md-6">
-        <label class="form-label" for="sales-amount-paid">Amount Paid (UGX)</label>
+        <label class="form-label" for="sales-amount-paid">{{ $t('Amount Paid (UGX)') }}</label>
         <input
           id="sales-amount-paid"
           type="number"
@@ -56,7 +56,7 @@
           <small class="field-note">Auto-calculated from the manager-set price.</small>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-buyer-name">Buyer Name</label>
+          <label class="form-label" for="sales-buyer-name">{{ $t('Buyer Name') }}</label>
           <input
             id="sales-buyer-name"
             type="text"
@@ -70,7 +70,7 @@
           <div v-if="errors.buyerName" class="invalid-feedback">{{ errors.buyerName }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-payment-method">Payment method</label>
+          <label class="form-label" for="sales-payment-method">{{ $t('Payment method') }}</label>
           <select
             id="sales-payment-method"
             :class="['form-select', { 'is-invalid': errors.paymentMethod }]"
@@ -84,7 +84,7 @@
           <div v-if="errors.paymentMethod" class="invalid-feedback">{{ errors.paymentMethod }}</div>
         </div>
         <div class="col-md-6">
-          <label class="form-label" for="sales-tender-amount">Amount tendered (UGX)</label>
+          <label class="form-label" for="sales-tender-amount">{{ $t('Amount tendered (UGX)') }}</label>
           <input
             id="sales-tender-amount"
             type="number"

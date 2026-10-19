@@ -16,6 +16,8 @@ import {
 } from '../utils/produceNormalization.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { roundUgx } from '../utils/money.js';
+import { runInTransaction } from '../utils/transaction.js';
+import { postDocumentJournal } from './journalPostingService.js';
 
 // Construct a service-domain error object with an explicit HTTP status code.
 const createServiceError = (statusCode, message) => {
@@ -194,25 +196,30 @@ const createCreditSaleRecord = async ({ actorUser, payload }) => {
       }
       const remainingStock = Number(item.totalTonnageKg || 0) - tonnage;
 
-        const creditSale = await CreditSale.create({
-        buyerName: trustedBuyer.name,
-        nationalId: trustedBuyer.nationalId,
-        location: trustedBuyer.location,
-        contact: trustedBuyer.contact,
-        amountDueUgx,
-        amountPaidUgx: 0,
-        balanceUgx: amountDueUgx,
-        salesAgentName: actorUser.name,
-        dueDate,
-          produceName: item.produceName,
-          produceType: item.produceType,
-        tonnageKg: tonnage,
-        dateOfDispatch,
-        branch: actorUser.branch,
-        recordedBy: actorUser._id,
-        trustedBuyer: trustedBuyer._id,
-        isPaid: false
-      });
+        const creditSale = await runInTransaction(async (session) => {
+          const payload = {
+            buyerName: trustedBuyer.name,
+            nationalId: trustedBuyer.nationalId,
+            location: trustedBuyer.location,
+            contact: trustedBuyer.contact,
+            amountDueUgx,
+            amountPaidUgx: 0,
+            balanceUgx: amountDueUgx,
+            salesAgentName: actorUser.name,
+            dueDate,
+            produceName: item.produceName,
+            produceType: item.produceType,
+            tonnageKg: tonnage,
+            dateOfDispatch,
+            branch: actorUser.branch,
+            recordedBy: actorUser._id,
+            trustedBuyer: trustedBuyer._id,
+            isPaid: false
+          };
+          const created = session ? (await CreditSale.create([payload], { session }))[0] : await CreditSale.create(payload);
+          if (session) await postDocumentJournal('creditSale', created.toObject(), session);
+          return created;
+        });
 
         await syncStockLevelNotifications({
           branch: actorUser.branch,

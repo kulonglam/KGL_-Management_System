@@ -331,6 +331,7 @@ export default {
           { path: '/dashboard/branches', icon: 'bi bi-diagram-3', label: 'Branches' },
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
+          { path: '/dashboard/back-office', icon: 'bi bi-briefcase', label: 'Back office' },
           { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
           { path: '/dashboard/group', icon: 'bi bi-buildings', label: 'Group' },
           { path: '/dashboard/till', icon: 'bi bi-upc-scan', label: 'Till' },
@@ -347,6 +348,7 @@ export default {
           { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
+          { path: '/dashboard/back-office', icon: 'bi bi-briefcase', label: 'Back office' },
           { path: '/dashboard/sales', icon: 'bi bi-grid', label: 'Cash Sales' },
           { path: '/dashboard/till', icon: 'bi bi-upc-scan', label: 'Till' },
           { path: '/dashboard/credit-sales', icon: 'bi bi-credit-card', label: 'Credit Sales' },
@@ -382,6 +384,7 @@ export default {
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
+          { path: '/dashboard/back-office', icon: 'bi bi-briefcase', label: 'Back office' },
           { path: '/dashboard/suppliers', icon: 'bi bi-truck', label: 'Suppliers' },
           { path: '/dashboard/profile', icon: 'bi bi-person-circle', label: 'Profile' }
         );
@@ -447,7 +450,7 @@ export default {
         {
           key: 'finance',
           label: 'Finance',
-          items: pick(['/dashboard/finance'])
+          items: pick(['/dashboard/finance', '/dashboard/back-office'])
         },
         {
           key: 'records',

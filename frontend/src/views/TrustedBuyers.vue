@@ -62,7 +62,7 @@
                 v-model.trim="searchQuery"
                 type="text"
                 class="form-control form-control-sm"
-                placeholder="Name, NIN, location, contact..."
+                placeholder="Name, full NIN or last 4 digits, location, contact..."
               />
             </div>
             <div class="data-toolbar-field">

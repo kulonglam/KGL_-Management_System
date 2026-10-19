@@ -2,7 +2,7 @@
   <div class="view-shell">
     <div class="view-heading">
       <h2 class="page-title">Group</h2>
-      <p class="page-subtitle">Companies, the branches inside them, and the rates that turn foreign money into Uganda shillings.</p>
+      <p class="page-subtitle">Companies, the branches inside them, foreign rates, and the stock transfers that cancel out inside one company.</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>

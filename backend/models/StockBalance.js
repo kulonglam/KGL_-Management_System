@@ -17,7 +17,8 @@ const stockBalanceSchema = new mongoose.Schema(
       enum: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']
     },
     onHandKg: { type: Number, required: true, default: 0 },
-    sellingPrice: { type: Number, default: 0, min: 0 }
+    sellingPrice: { type: Number, default: 0, min: 0 },
+    averageCostUgx: { type: Number, default: 0, min: 0 }
   },
   { timestamps: true }
 );

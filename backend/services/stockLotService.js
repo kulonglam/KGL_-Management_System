@@ -15,17 +15,20 @@ const bucketFilter = (bucket) => ({
   produceType: bucket.produceType
 });
 
-const recordProcurementLot = async (procurement) => {
+const recordProcurementLot = async (procurement, session) => {
   const lotCode = String(procurement.lotCode || '').trim();
   if (!lotCode && !procurement.expiryDate) return null;
   const bucket = canonicalBucket(procurement);
-  return StockLot.create({
+  const doc = {
     ...bucket,
     lotCode: lotCode || `LOT-${String(procurement._id).slice(-6)}`,
     expiryDate: procurement.expiryDate || null,
     qtyKg: Number(procurement.tonnageKg),
     procurement: procurement._id
-  });
+  };
+  if (!session) return StockLot.create(doc);
+  const [created] = await StockLot.create([doc], { session });
+  return created;
 };
 
 // When a bucket has lots, expired quantity cannot be sold. Unlotted weight stays sellable.
@@ -50,9 +53,14 @@ const assertLotAvailable = async ({ branch, produceName, produceType, qtyKg }) =
   }
 };
 
-const allocateLots = async ({ branch, produceName, produceType, qtyKg }) => {
+const allocateLots = async ({ branch, produceName, produceType, qtyKg, session }) => {
   const bucket = canonicalBucket({ branch, produceName, produceType });
-  const lots = await StockLot.find({ ...bucketFilter(bucket), qtyKg: trustedQuery({ $gt: 0 }) }).sort({ expiryDate: 1, createdAt: 1 });
+  const query = StockLot.find({ ...bucketFilter(bucket), qtyKg: trustedQuery({ $gt: 0 }) }).sort({
+    expiryDate: 1,
+    createdAt: 1
+  });
+  if (session) query.session(session);
+  const lots = await query;
   if (lots.length === 0) return;
   const now = Date.now();
   let remaining = Number(qtyKg);
@@ -62,7 +70,7 @@ const allocateLots = async ({ branch, produceName, produceType, qtyKg }) => {
     const take = Math.min(lot.qtyKg, remaining);
     lot.qtyKg = Number(lot.qtyKg) - take;
     remaining -= take;
-    await lot.save();
+    await lot.save(session ? { session } : undefined);
   }
 };
 

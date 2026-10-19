@@ -1,17 +1,18 @@
 <template>
   <div class="view-shell">
     <div class="view-heading">
-      <h2 class="page-title">Till</h2>
+      <h2 class="page-title">{{ $t('Till') }}</h2>
       <p class="page-subtitle">Scan a barcode and sell. If the network drops, the sale waits on this device and sends when you are back online.</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
     <div class="alert" :class="queued.length ? 'alert-warning' : 'alert-light'">
-      {{ online ? 'Online' : 'Offline' }} · {{ queued.length }} sale{{ queued.length === 1 ? '' : 's' }} waiting to sync
+      {{ online ? $t('Online') : $t('Offline') }} · {{ queued.length }} sale{{ queued.length === 1 ? '' : 's' }} waiting to sync
+      <span v-if="catalog.length"> · {{ catalog.length }} barcodes on this device</span>
     </div>
 
     <div class="card mb-3">
-      <div class="card-header"><h5 class="mb-0">Scan</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ $t('Scan') }}</h5></div>
       <div class="card-body">
         <form class="row g-2" @submit.prevent="scan">
           <div class="col-md-5">
@@ -21,7 +22,7 @@
             <input v-model.number="kg" type="number" min="1" class="form-control" aria-label="Kilograms" />
           </div>
           <div class="col-md-2">
-            <button class="btn btn-primary w-100" type="submit">Add</button>
+            <button class="btn btn-primary w-100" type="submit">{{ $t('Add') }}</button>
           </div>
         </form>
         <ul class="mt-3 mb-0">
@@ -33,7 +34,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header"><h5 class="mb-0">Take payment</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ $t('Take payment') }}</h5></div>
       <div class="card-body">
         <form class="row g-2" @submit.prevent="checkout">
           <div class="col-md-4">
@@ -93,6 +94,7 @@ import { useAuthStore } from '../stores/auth';
 import { businessTodayIso } from '../utils/businessTime';
 
 const QUEUE_KEY = 'kgl.offlineSales';
+const CATALOG_KEY = 'kgl.barcodeCatalog';
 
 const readQueue = () => {
   try {
@@ -105,6 +107,19 @@ const readQueue = () => {
 
 const writeQueue = (rows) => {
   window.localStorage.setItem(QUEUE_KEY, JSON.stringify(rows));
+};
+
+const readCatalog = () => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CATALOG_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCatalog = (rows) => {
+  window.localStorage.setItem(CATALOG_KEY, JSON.stringify(rows));
 };
 
 const businessTime = () =>
@@ -127,6 +142,7 @@ export default {
       currency: 'UGX',
       foreignAmount: null,
       queued: readQueue(),
+      catalog: readCatalog(),
       online: typeof navigator === 'undefined' ? true : navigator.onLine,
       error: '',
       success: '',
@@ -141,7 +157,10 @@ export default {
   mounted() {
     window.addEventListener('online', this.onOnline);
     window.addEventListener('offline', this.onOffline);
-    if (this.online) this.flush();
+    if (this.online) {
+      this.flush();
+      this.refreshCatalog();
+    }
   },
   beforeUnmount() {
     window.removeEventListener('online', this.onOnline);
@@ -151,29 +170,56 @@ export default {
     onOnline() {
       this.online = true;
       this.flush();
+      this.refreshCatalog();
+    },
+    async refreshCatalog() {
+      try {
+        const response = await catalogAPI.listBarcodes();
+        const rows = Array.isArray(response.data) ? response.data : [];
+        this.catalog = rows;
+        writeCatalog(rows);
+      } catch {
+        this.catalog = readCatalog();
+      }
+    },
+    addToCart(item) {
+      if (!item?.priceUgx) {
+        this.error = 'This barcode has no selling price at the branch.';
+        return;
+      }
+      const tonnageKg = Number(this.kg) || 1;
+      this.cart.push({
+        produceName: item.produceName,
+        produceType: item.produceType,
+        tonnageKg,
+        amountUgx: item.priceUgx * tonnageKg
+      });
+      this.code = '';
     },
     onOffline() {
       this.online = false;
     },
     async scan() {
       this.error = '';
-      try {
-        const response = await catalogAPI.lookupBarcode(this.code);
-        const item = response.data;
-        if (!item.priceUgx) {
-          this.error = 'This barcode has no selling price at the branch.';
+      const cached = this.catalog.find((row) => row.code === this.code);
+      if (!this.online) {
+        if (!cached) {
+          this.error = 'This barcode is not in the catalog saved on this device.';
           return;
         }
-        const tonnageKg = Number(this.kg) || 1;
-        this.cart.push({
-          produceName: item.produceName,
-          produceType: item.produceType,
-          tonnageKg,
-          amountUgx: item.priceUgx * tonnageKg
-        });
-        this.code = '';
+        this.addToCart(cached);
+        return;
+      }
+      try {
+        const response = await catalogAPI.lookupBarcode(this.code);
+        this.addToCart(response.data);
+        this.refreshCatalog();
       } catch (err) {
-        this.error = err.response?.data?.message || 'Barcode was not found. You need a connection to look one up.';
+        if (cached) {
+          this.addToCart(cached);
+          return;
+        }
+        this.error = err.response?.data?.message || 'Barcode was not found.';
       }
     },
     queueSale(payload) {
@@ -217,7 +263,9 @@ export default {
           }
         }
       }
-      this.success = this.queued.length ? 'Saved on this device until the network returns.' : 'Sale recorded.';
+      this.success = this.queued.length
+        ? this.$t('Saved on this device until the network returns.')
+        : this.$t('Sale recorded.');
       this.cart = [];
       this.buyerName = '';
     },

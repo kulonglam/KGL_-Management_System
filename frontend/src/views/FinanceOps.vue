@@ -291,13 +291,13 @@
     <!-- Period close -->
     <div v-show="activeTab === 'periods'" class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Period close</h5>
+        <h5 class="mb-0">{{ $t('Period close') }}</h5>
         <button type="button" class="btn btn-outline-secondary btn-sm" @click="loadPeriodLocks">Refresh</button>
       </div>
       <div class="card-body">
         <p class="text-muted small">
           Sales, procurement, and credit records dated on or before the lock date can't be created, edited, voided, or
-          deleted. "All branches" applies everywhere; a branch lock adds to it.
+          deleted. Closing the books also moves the remaining sales and expense balances into retained earnings.
         </p>
         <div class="table-responsive mb-3">
           <table class="table table-sm align-middle">
@@ -553,7 +553,7 @@
     </div>
 
     <div v-show="activeTab === 'ledger'" class="card">
-      <div class="card-header"><h5 class="mb-0">Posted journal and trial balance</h5></div>
+      <div class="card-header"><h5 class="mb-0">{{ $t('Posted journal and trial balance') }}</h5></div>
       <div class="card-body">
         <p class="text-muted small">Posts the GL export for the dates above into a stored journal, then shows the trial balance.</p>
         <button v-if="isDirector" type="button" class="btn btn-primary mb-3" :disabled="submitting" @click="postJournal">
@@ -569,12 +569,18 @@
           </thead>
           <tbody>
             <tr v-for="row in trialBalance.accounts" :key="row.account">
-              <td>{{ row.account }}</td>
+              <td>{{ row.name || row.account }} <span class="text-muted">({{ row.account }})</span></td>
               <td class="text-end">{{ formatUgx(row.debitUgx) }}</td>
               <td class="text-end">{{ formatUgx(row.creditUgx) }}</td>
             </tr>
           </tbody>
         </table>
+        <p v-if="trialBalance.foreignBalances && trialBalance.foreignBalances.length" class="small mb-0">
+          Foreign tender still recorded:
+          <span v-for="row in trialBalance.foreignBalances" :key="row.currency" class="me-2">
+            {{ row.currency }} {{ row.foreignAmount }}
+          </span>
+        </p>
       </div>
     </div>
 

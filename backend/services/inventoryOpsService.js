@@ -6,6 +6,7 @@ import { appendStockMovement } from './stockMovementService.js';
 import { calculateInventoryByFilter, getBucketTonnage } from './inventoryService.js';
 import { withStockLocks } from './stockLockService.js';
 import { runInTransaction } from '../utils/transaction.js';
+import { postSameCompanyTransfer } from './intercompanyService.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
 import { deniesBranchAccess } from '../utils/branchAccess.js';
 import { isDirectorAccount } from './authService.js';
@@ -183,6 +184,7 @@ const receiveTransfer = async ({ actorUser, transferId }) => {
   for (const line of transfer.lines) {
     await refreshNotifications(transfer.toBranch, line.produceName, line.produceType);
   }
+  await postSameCompanyTransfer(transfer).catch(() => {});
   return transfer;
 };
 
