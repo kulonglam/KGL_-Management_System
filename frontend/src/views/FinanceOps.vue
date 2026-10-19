@@ -575,7 +575,7 @@
             </tr>
           </tbody>
         </table>
-        <p v-if="trialBalance.foreignBalances && trialBalance.foreignBalances.length" class="small mb-0">
+        <p v-if="trialBalance && trialBalance.foreignBalances && trialBalance.foreignBalances.length" class="small mb-0">
           Foreign tender still recorded:
           <span v-for="row in trialBalance.foreignBalances" :key="row.currency" class="me-2">
             {{ row.currency }} {{ row.foreignAmount }}
