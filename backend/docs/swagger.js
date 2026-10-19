@@ -3264,7 +3264,7 @@ const swaggerSpec = {
       },
       post: {
         tags: ['Procurement'],
-        summary: 'Create a purchase order',
+        summary: 'Create a purchase order (branch manager only)',
         security: [{ bearerAuth: [] }],
         responses: { 201: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }
       }
@@ -3281,7 +3281,7 @@ const swaggerSpec = {
     '/procurement/orders/{id}/receive': {
       post: {
         tags: ['Procurement'],
-        summary: 'Record a goods receipt against a purchase order',
+        summary: 'Record a goods receipt against a purchase order (branch manager only)',
         security: [{ bearerAuth: [] }],
         parameters: [{ $ref: '#/components/parameters/IdParam' }],
         responses: { 200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] }) }

@@ -10,7 +10,7 @@ import {
   deleteProcurement,
   restoreProcurement
 } from '../controllers/procurementController.js';
-import { protect, authorize } from '../middleware/auth.js';
+import { protect, authorize, authorizeExact } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { validateRequest } from '../middleware/validation.js';
 import {
@@ -31,7 +31,7 @@ import {
 router.post(
   '/receipts',
   protect,
-  authorize('manager', 'director'),
+  authorizeExact('manager'),
   writeLimiter,
   [
     body('supplierId').isMongoId(),
@@ -44,9 +44,9 @@ router.post(
   receiveWithoutOrderHandler
 );
 router.get('/orders', protect, authorize('manager', 'director'), listOrdersHandler);
-router.post('/orders', protect, authorize('manager', 'director'), writeLimiter, createOrderHandler);
+router.post('/orders', protect, authorizeExact('manager'), writeLimiter, createOrderHandler);
 router.post('/orders/:id/approve', protect, authorize('manager', 'director'), writeLimiter, mongoIdParamValidation, validateRequest, approveOrderHandler);
-router.post('/orders/:id/receive', protect, authorize('manager', 'director'), writeLimiter, mongoIdParamValidation, validateRequest, receiveOrderHandler);
+router.post('/orders/:id/receive', protect, authorizeExact('manager'), writeLimiter, mongoIdParamValidation, validateRequest, receiveOrderHandler);
 router.get('/orders/:id/match', protect, authorize('manager', 'director'), mongoIdParamValidation, validateRequest, matchOrderHandler);
 
 // GET /api/procurement: list branch procurement records with pagination.

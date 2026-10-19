@@ -66,6 +66,8 @@ const STRINGS = {
       'Amalagiro g’okugula, okufuna ebibala, n’okugerageranya n’obubonero.',
     'Purchase orders, goods receipts, and deliveries that arrive with no order.':
       'Amalagiro g’okugula, okufuna ebibala, n’ebibala ebitajja na kulagira.',
+    'Approve draft purchase orders from the branch managers.':
+      'Kkiriza amalagiro agatandikiddwa abakungu b’amatabi.',
     'Goods with no order': 'Ebibala ebitali na kulagira',
     'Receive into stock': 'Funa mu bubonero',
     'Receive goods': 'Funa ebibala',

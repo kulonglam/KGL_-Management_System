@@ -2,12 +2,12 @@
   <div class="view-shell">
     <div class="view-heading">
       <h2 class="page-title">{{ $t('Purchasing') }}</h2>
-      <p class="page-subtitle">{{ $t('Purchase orders, goods receipts, and deliveries that arrive with no order.') }}</p>
+      <p class="page-subtitle">{{ $t(pageSubtitle) }}</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
-    <div class="card mb-3">
+    <div v-if="canRecordPurchases" class="card mb-3">
       <div class="card-header"><h5 class="mb-0">{{ $t('New order') }}</h5></div>
       <div class="card-body">
         <form class="row g-3" @submit.prevent="createOrder">
@@ -45,7 +45,7 @@
       </div>
     </div>
 
-    <div class="card mb-3">
+    <div v-if="canRecordPurchases" class="card mb-3">
       <div class="card-header"><h5 class="mb-0">{{ $t('Goods with no order') }}</h5></div>
       <div class="card-body">
         <form class="row g-3" @submit.prevent="receiveDirect">
@@ -109,7 +109,7 @@
                   {{ $t('Approve') }}
                 </button>
                 <button
-                  v-if="order.status === 'approved' || order.status === 'partial'"
+                  v-if="canRecordPurchases && (order.status === 'approved' || order.status === 'partial')"
                   type="button"
                   class="btn btn-sm btn-outline-primary me-1"
                   @click="receive(order)"
@@ -128,7 +128,9 @@
 </template>
 
 <script>
+import { mapState } from 'pinia';
 import { procurementAPI, suppliersAPI } from '../services/api';
+import { useAuthStore } from '../stores/auth';
 
 export default {
   name: 'Purchasing',
@@ -146,6 +148,15 @@ export default {
     };
   },
   computed: {
+    ...mapState(useAuthStore, ['user']),
+    canRecordPurchases() {
+      return this.user?.role === 'manager';
+    },
+    pageSubtitle() {
+      return this.canRecordPurchases
+        ? 'Purchase orders, goods receipts, and deliveries that arrive with no order.'
+        : 'Approve draft purchase orders from the branch managers.';
+    },
     walkinSupplier() {
       return this.suppliers.find((supplier) => supplier._id === this.walkin.supplierId) || null;
     },
@@ -163,8 +174,10 @@ export default {
   methods: {
     async load() {
       try {
-        const [orders, suppliers] = await Promise.all([procurementAPI.listOrders(), suppliersAPI.getAll()]);
+        const orders = await procurementAPI.listOrders();
         this.orders = Array.isArray(orders.data) ? orders.data : [];
+        if (!this.canRecordPurchases) return;
+        const suppliers = await suppliersAPI.getAll();
         const supplierPayload = suppliers.data;
         this.suppliers = Array.isArray(supplierPayload) ? supplierPayload : supplierPayload?.items || [];
       } catch (err) {

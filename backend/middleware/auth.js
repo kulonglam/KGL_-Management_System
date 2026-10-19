@@ -131,4 +131,25 @@ const authorizeDirector = (req, res, next) => {
   });
 };
 
-export { protect, authorize, authorizeDirector };
+// Listed roles only. Does not grant the storekeeper or auditor shortcuts from authorize().
+const authorizeExact = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    if (!roles.includes(req.user.role)) {
+      logger.warn('auth.access.denied', {
+        reason: 'role_mismatch',
+        userId: req.user?._id ? String(req.user._id) : null,
+        role: req.user.role,
+        requiredRoles: roles
+      });
+      return res.status(403).json({
+        message: `User role ${req.user.role} is not authorized to access this route`
+      });
+    }
+    return next();
+  };
+};
+
+export { protect, authorize, authorizeExact, authorizeDirector };

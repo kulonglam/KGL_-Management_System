@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { authorize, authorizeDirector, protect } from '../middleware/auth.js';
+import { authorize, authorizeDirector, authorizeExact, protect } from '../middleware/auth.js';
 import { getJwtClaimOptions } from '../config/security.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
@@ -67,6 +67,21 @@ test('authorize returns 401 when req.user is missing', () => {
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 401);
   assert.match(res.body.message, /not authorized/i);
+});
+
+test('authorizeExact rejects a director on a manager-only purchasing route', () => {
+  const middleware = authorizeExact('manager');
+  const req = { user: { role: 'director' }, baseUrl: '/procurement', path: '/orders' };
+  const res = createRes();
+  let nextCalled = false;
+
+  middleware(req, res, () => {
+    nextCalled = true;
+  });
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCode, 403);
+  assert.match(res.body.message, /director is not authorized/i);
 });
 
 test('authorizeDirector allows any director account', () => {
