@@ -235,6 +235,43 @@ const restoreDatabase = async (directory) => {
   return manifest;
 };
 
+const rehearseRestoreDatabase = async (directory) => {
+  const rehearsal = await rehearseRestore(directory);
+  const liveDb = mongoose.connection?.db;
+  const client = mongoose.connection?.getClient?.();
+  if (!liveDb || !client) throw new Error('Database is not connected');
+
+  const liveName = liveDb.databaseName;
+  const scratchName = `kgl_restore_drill_${Date.now()}`;
+  if (!scratchName.startsWith('kgl_restore_drill_') || scratchName === liveName) {
+    throw new Error('Refusing to restore into the live database');
+  }
+
+  const userCollection = mongoose.model('User').collection.collectionName;
+  const liveUsersBefore = await liveDb.collection(userCollection).countDocuments();
+  const scratch = client.db(scratchName);
+  try {
+    const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+    for (const entry of manifest.collections) {
+      const docs = EJSON.parse(await readFile(path.join(directory, entry.file), 'utf8'));
+      const collectionName = mongoose.model(entry.model).collection.collectionName;
+      if (docs.length > 0) await scratch.collection(collectionName).insertMany(docs, { ordered: true });
+      const restored = await scratch.collection(collectionName).countDocuments();
+      if (restored !== entry.count) {
+        throw new Error(`${entry.model} scratch restore count does not match the manifest`);
+      }
+    }
+  } finally {
+    await scratch.dropDatabase();
+  }
+
+  const liveUsersAfter = await liveDb.collection(userCollection).countDocuments();
+  if (liveUsersAfter !== liveUsersBefore) {
+    throw new Error('Restore drill changed the live database');
+  }
+  return rehearsal;
+};
+
 const rehearseRestore = async (directory) => {
   const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
   if (!Array.isArray(manifest.collections) || manifest.collections.length === 0) {
@@ -260,4 +297,12 @@ const rehearseRestore = async (directory) => {
   return { ok: true, collections };
 };
 
-export { SNAPSHOT_MODELS, backupDatabase, materializeBackup, publishBackup, rehearseRestore, restoreDatabase };
+export {
+  SNAPSHOT_MODELS,
+  backupDatabase,
+  materializeBackup,
+  publishBackup,
+  rehearseRestore,
+  rehearseRestoreDatabase,
+  restoreDatabase
+};

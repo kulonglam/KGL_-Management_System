@@ -153,6 +153,7 @@ const fiscalDocumentSchema = new mongoose.Schema(
     branch: { type: String, default: '' },
     grossUgx: { type: Number, default: 0 },
     status: { type: String, enum: ['pending', 'accepted', 'rejected', 'failed', 'not_configured'], default: 'pending' },
+    fiscalCode: { type: String, default: '', maxlength: 80 },
     providerStatus: { type: Number, default: 0 },
     providerBody: { type: String, default: '', maxlength: 2000 }
   },

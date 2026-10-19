@@ -15,7 +15,7 @@
           :class="{ active: activeTab === tab.id }"
           @click="activeTab = tab.id"
         >
-          {{ tab.label }}
+          {{ $t(tab.label) }}
         </button>
       </li>
     </ul>

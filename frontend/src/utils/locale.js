@@ -92,7 +92,24 @@ const STRINGS = {
     'Run payroll': 'Bala empeera',
     'Save employee': 'Tereka omukozi',
     'Record payment': 'Wandika okusasula',
-    'Buyer statement portal': 'Ripoota y’omuguzi'
+    'Buyer statement portal': 'Ripoota y’omuguzi',
+    'Cash-up': 'Okubala kashe',
+    Invoices: 'Invoysi',
+    'GL export': 'Okufulumya ebitabo',
+    Ledger: 'Ebitabo',
+    Receivables: 'Ebbanja',
+    Bank: 'Bbanka',
+    'Write-offs': 'Okusazaamu',
+    Statements: 'Ripoota',
+    'Tax config': 'Enteekateeka y’omusolo',
+    Retention: 'Okukuuma ebiwandiiko',
+    Attendance: 'Obuprezenti',
+    'Request leave': 'Saba oluwummula',
+    Reject: 'Gaana',
+    'Record bill': 'Wandika akapapula',
+    'Add bin': 'Yongera ekifo',
+    'Payroll, supplier bills, warehouse locations, fleet, assets, and budgets.':
+      'Empeera, ebbanja ery’abasuubuzi, ebifo mu wanika, ebidduka, eby’obugagga, n’enteekateeka y’ensimbi.'
   }
 };
 

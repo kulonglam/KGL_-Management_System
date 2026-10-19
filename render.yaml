@@ -49,15 +49,27 @@
       - key: JWT_AUDIENCE
         value: karibu-groceries-api
       - key: MONGODB_URI
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: MONGODB_URI
       - key: JWT_SECRET
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: JWT_SECRET
       - key: ALLOWED_ORIGINS
-        value: https://kgl-frontend.onrender.com
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: ALLOWED_ORIGINS
       - key: BUSINESS_TIMEZONE
         value: Africa/Kampala
       - key: NIN_ENCRYPTION_KEY
-        sync: false
+        fromService:
+          name: kgl-backend
+          type: web
+          envVarKey: NIN_ENCRYPTION_KEY
 
   - type: cron
     name: kgl-backup

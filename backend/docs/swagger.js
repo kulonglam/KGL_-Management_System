@@ -17,6 +17,15 @@ const listSchema = (itemSchema) => ({
   ]
 });
 
+const operationResponse = (summary, tag = 'Operations') => ({
+  tags: [tag],
+  summary,
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+  }
+});
+
 const successResponse = (dataSchema, description = 'Successful response') => ({
   description,
   content: {
@@ -3619,6 +3628,58 @@ const swaggerSpec = {
         }
       }
     },
+    '/operations/employees': {
+      get: operationResponse('List employees'),
+      post: operationResponse('Create an employee')
+    },
+    '/operations/attendance': { post: operationResponse('Mark attendance') },
+    '/operations/leave': {
+      get: operationResponse('List leave requests'),
+      post: operationResponse('Request leave')
+    },
+    '/operations/leave/{id}/decision': { post: operationResponse('Approve or reject leave') },
+    '/operations/payroll': { post: operationResponse('Run payroll for a month') },
+    '/operations/bills': {
+      get: operationResponse('List supplier bills'),
+      post: operationResponse('Record a supplier bill for a received order')
+    },
+    '/operations/bills/{id}/payments': { post: operationResponse('Pay a supplier bill') },
+    '/operations/bins': {
+      get: operationResponse('List warehouse bins'),
+      post: operationResponse('Add a warehouse bin')
+    },
+    '/operations/putaway': { post: operationResponse('Place stock in a bin') },
+    '/operations/pick-lists': { post: operationResponse('Build a pick list for a sale') },
+    '/operations/weighings/latest': { get: operationResponse('Latest stable weighbridge ticket') },
+    '/operations/weighings': { post: operationResponse('Record a weighbridge ticket') },
+    '/operations/fiscal': { get: operationResponse('List fiscal documents') },
+    '/operations/assets': {
+      get: operationResponse('List fixed assets'),
+      post: operationResponse('Record a fixed asset')
+    },
+    '/operations/depreciation': { post: operationResponse('Post depreciation for a month') },
+    '/operations/assets/{id}/dispose': { post: operationResponse('Dispose of a fixed asset') },
+    '/operations/fleet': { get: operationResponse('List vehicles, trips, and fuel') },
+    '/operations/vehicles': { post: operationResponse('Add a vehicle') },
+    '/operations/trips': { post: operationResponse('Record a trip') },
+    '/operations/fuel': { post: operationResponse('Record fuel') },
+    '/operations/budgets': { post: operationResponse('Set a budget line') },
+    '/operations/budgets/variance': { get: operationResponse('Budget against the ledger for a month') },
+    '/operations/restore-drills': {
+      get: operationResponse('List restore drills'),
+      post: operationResponse('Restore a snapshot into a scratch database and remove it')
+    },
+    '/operations/portal-access': { post: operationResponse('Set a buyer portal password') },
+    '/portal/login': {
+      post: {
+        tags: ['Portal'],
+        summary: 'Buyer portal login',
+        responses: {
+          200: successResponse({ oneOf: [{ type: 'object', additionalProperties: true }] })
+        }
+      }
+    },
+    '/portal/home': { get: operationResponse('Buyer statement and invoices', 'Portal') },
     '/healthz': {
       get: {
         tags: ['System'],

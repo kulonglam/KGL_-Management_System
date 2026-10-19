@@ -19,6 +19,7 @@ import { withStockLock, withStockLocks } from '../services/stockLockService.js';
 import { forwardControllerError } from '../utils/httpError.js';
 import { recordAudit, transactionAuditMetadata } from '../services/auditService.js';
 import { assertPeriodOpen } from '../services/periodLockService.js';
+import { deleteRefJournal, replaceRefJournal } from '../services/journalPostingService.js';
 import {
   normalizeProduceName,
   normalizeProduceType,
@@ -265,6 +266,7 @@ const updateProcurement = async (req, res, next) => {
       branch: procurement.branch,
       metadata: transactionAuditMetadata(updatedProcurement)
     });
+    await replaceRefJournal('procurement', updatedProcurement._id);
 
     res.json(normalizeProcurementPayload(updatedProcurement.toObject()));
   } catch (error) {
@@ -332,6 +334,7 @@ const deleteProcurement = async (req, res, next) => {
       branch: procurement.branch,
       metadata: transactionAuditMetadata(procurement)
     });
+    await deleteRefJournal('procurement', procurement._id);
 
     res.json({ message: 'Procurement record removed. You can restore it from removed records.' });
   } catch (error) {
@@ -387,6 +390,7 @@ const restoreProcurement = async (req, res, next) => {
       branch: procurement.branch,
       metadata: { ...transactionAuditMetadata(procurement), restored: true }
     });
+    await replaceRefJournal('procurement', procurement._id);
 
     res.json(normalizeProcurementPayload(procurement.toObject()));
   } catch (error) {

@@ -32,7 +32,7 @@ import {
 import { isDirectorAccount } from './authService.js';
 import { buildCustomerStatement } from './customerStatementService.js';
 import { upsertJournalLines } from './journalPostingService.js';
-import { backupDatabase, rehearseRestore } from './databaseSnapshot.js';
+import { backupDatabase, rehearseRestoreDatabase } from './databaseSnapshot.js';
 import { getJwtClaimOptions } from '../config/security.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { trustedQuery } from '../utils/listQuery.js';
@@ -312,6 +312,15 @@ const latestWeighing = ({ actorUser, branch }) => {
   return WeighTicket.findOne(resolved ? { branch: resolved, stable: true } : { stable: true }).sort({ createdAt: -1 }).lean();
 };
 
+const readFiscalCode = (body) => {
+  try {
+    const parsed = JSON.parse(body);
+    return String(parsed?.fiscalCode || parsed?.code || parsed?.invoiceId || '').slice(0, 80);
+  } catch {
+    return '';
+  }
+};
+
 const queueFiscalDocument = async (invoice) => {
   if (!invoice?.invoiceNumber) return null;
   const existing = await FiscalDocument.findOne({ invoiceNumber: invoice.invoiceNumber });
@@ -339,9 +348,10 @@ const queueFiscalDocument = async (invoice) => {
         grossUgx: doc.grossUgx
       })
     });
-    doc.status = response.ok ? 'accepted' : 'rejected';
     doc.providerStatus = response.status;
     doc.providerBody = (await response.text()).slice(0, 2000);
+    doc.status = response.ok ? 'accepted' : 'rejected';
+    doc.fiscalCode = response.ok ? readFiscalCode(doc.providerBody) : '';
   } catch (error) {
     doc.status = 'failed';
     doc.providerBody = String(error.message || 'EFRIS request failed').slice(0, 2000);
@@ -543,13 +553,13 @@ const budgetVariance = async ({ actorUser, branch, month }) => {
 const recordRestoreDrill = async () => {
   const directory = path.join(os.tmpdir(), `kgl-restore-drill-${Date.now()}`);
   await backupDatabase(directory);
-  const rehearsal = await rehearseRestore(directory);
+  const rehearsal = await rehearseRestoreDatabase(directory);
   const documents = rehearsal.collections.reduce((sum, entry) => sum + entry.count, 0);
   const saved = await RestoreDrill.create({
     ok: true,
     collections: rehearsal.collections.length,
     documents,
-    note: 'Snapshot files were read back and checked for leaked passwords. The live database was not overwritten.'
+    note: 'Snapshot was restored into a scratch database, checked, and removed. The live database was not overwritten.'
   });
   return saved.toObject();
 };

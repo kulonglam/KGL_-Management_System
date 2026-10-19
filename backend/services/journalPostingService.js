@@ -71,4 +71,15 @@ const rememberJournal = async (refType, refId) => {
   }
 };
 
-export { postDocumentJournal, postRefJournal, rememberJournal, upsertJournalLines };
+const deleteRefJournal = async (refType, refId) => {
+  const result = await GlJournalLine.deleteMany({ refType, refId: String(refId) });
+  return { deleted: result.deletedCount || 0 };
+};
+
+// Drop the previous lines, then book the document as it stands now.
+const replaceRefJournal = async (refType, refId) => {
+  await deleteRefJournal(refType, refId);
+  return rememberJournal(refType, refId);
+};
+
+export { deleteRefJournal, postDocumentJournal, postRefJournal, rememberJournal, replaceRefJournal, upsertJournalLines };

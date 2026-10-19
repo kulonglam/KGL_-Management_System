@@ -2,7 +2,7 @@
   <div class="view-shell">
     <div class="view-heading">
       <h2 class="page-title">{{ $t('Back office') }}</h2>
-      <p class="page-subtitle">Payroll, supplier bills, warehouse locations, fleet, assets, and budgets.</p>
+      <p class="page-subtitle">{{ $t('Payroll, supplier bills, warehouse locations, fleet, assets, and budgets.') }}</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -45,7 +45,7 @@
               <option value="leave">Leave</option>
             </select>
           </div>
-          <div class="col-md-2"><button class="btn btn-outline-success w-100" type="submit">Attendance</button></div>
+          <div class="col-md-2"><button class="btn btn-outline-success w-100" type="submit">{{ $t('Attendance') }}</button></div>
         </form>
         <form class="row g-2 mb-3" @submit.prevent="saveLeave">
           <div class="col-md-4">
@@ -56,14 +56,14 @@
           </div>
           <div class="col-md-2"><input v-model="leave.from" type="date" class="form-control" required /></div>
           <div class="col-md-2"><input v-model="leave.to" type="date" class="form-control" required /></div>
-          <div class="col-md-2"><button class="btn btn-outline-success w-100" type="submit">Request leave</button></div>
+          <div class="col-md-2"><button class="btn btn-outline-success w-100" type="submit">{{ $t('Request leave') }}</button></div>
         </form>
         <ul class="list-group mb-3">
           <li v-for="row in leaveRows" :key="row._id" class="list-group-item d-flex justify-content-between">
             <span>{{ row.employee?.name || 'Employee' }} {{ row.from }} to {{ row.to }} ({{ row.status }})</span>
             <span v-if="row.status === 'pending'">
-              <button type="button" class="btn btn-sm btn-success me-1" @click="decide(row, 'approved')">Approve</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" @click="decide(row, 'rejected')">Reject</button>
+              <button type="button" class="btn btn-sm btn-success me-1" @click="decide(row, 'approved')">{{ $t('Approve') }}</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" @click="decide(row, 'rejected')">{{ $t('Reject') }}</button>
             </span>
           </li>
         </ul>
@@ -93,7 +93,7 @@
             </select>
           </div>
           <div class="col-md-3"><input v-model.trim="bill.reference" class="form-control" placeholder="Supplier invoice" /></div>
-          <div class="col-md-2"><button class="btn btn-success" type="submit">Record bill</button></div>
+          <div class="col-md-2"><button class="btn btn-success" type="submit">{{ $t('Record bill') }}</button></div>
           <div class="col-12">
             <p class="text-muted small mb-0">The bill uses the cost of goods already received and does not credit accounts payable again.</p>
           </div>
@@ -117,7 +117,7 @@
         <form class="row g-2 mb-3" @submit.prevent="saveBin">
           <div class="col-md-3"><input v-model.trim="bin.code" class="form-control" placeholder="Bin code" required /></div>
           <div class="col-md-3"><input v-model.trim="bin.aisle" class="form-control" placeholder="Aisle" /></div>
-          <div class="col-md-2"><button class="btn btn-success" type="submit">Add bin</button></div>
+          <div class="col-md-2"><button class="btn btn-success" type="submit">{{ $t('Add bin') }}</button></div>
         </form>
         <form class="row g-2 mb-3" @submit.prevent="savePutaway">
           <div class="col-md-3">
