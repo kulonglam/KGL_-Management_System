@@ -158,6 +158,24 @@ test('sale validation rejects invalid buyer name', async () => {
   assert.equal(hasFieldError(errors, 'buyerName'), true);
 });
 
+test('sale validation accepts a blank tender amount', async () => {
+  const errors = await runValidation({
+    rules: saleCreateValidation,
+    body: { ...validSalePayload(), tenderAmountUgx: '' }
+  });
+
+  assert.equal(errors.length, 0);
+});
+
+test('sale validation rejects a non-numeric tender', async () => {
+  const errors = await runValidation({
+    rules: saleCreateValidation,
+    body: { ...validSalePayload(), tenderAmountUgx: 'cash' }
+  });
+
+  assert.equal(hasFieldError(errors, 'tenderAmountUgx'), true);
+});
+
 test('sale validation rejects missing transaction date', async () => {
   const payload = validSalePayload();
   payload.date = '';

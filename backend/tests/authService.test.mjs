@@ -41,7 +41,7 @@ test('revokeUserTokens throws a not-found error when the user does not exist', a
 
 test('a manager cannot list director accounts through the role filter', () => {
   const allowed = resolveUserListRoleFilter('manager', 'all');
-  assert.deepEqual(allowed.roleIn, ['manager', 'sales_agent']);
+  assert.deepEqual(allowed.roleIn, ['manager', 'sales_agent', 'storekeeper', 'auditor']);
 
   const rejected = resolveUserListRoleFilter('manager', 'director');
   assert.equal(rejected.statusCode, 400);

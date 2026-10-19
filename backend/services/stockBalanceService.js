@@ -422,6 +422,7 @@ export {
   canonicalBucket,
   listStockBalances,
   rebuildStockBalances,
+  markBalancesDirty,
   reconcileStockBalances,
   syncBalancePrices,
   trackStockMovement

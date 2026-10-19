@@ -271,7 +271,7 @@ const saleCreateValidation = [
     .isIn(['cash', 'momo', 'bank'])
     .withMessage('paymentMethod must be cash, momo, or bank'),
   body('tenderAmountUgx')
-    .optional({ values: 'null' })
+    .if((value) => value !== '' && value !== null && value !== undefined)
     .isFloat({ min: 0 })
     .withMessage('tenderAmountUgx must be a non-negative number')
 ];

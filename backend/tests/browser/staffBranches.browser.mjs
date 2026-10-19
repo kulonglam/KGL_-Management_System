@@ -130,7 +130,7 @@ test('a director and a manager use the branch and staff screens', { timeout: 180
     const roleOptions = await manager.locator('#users-role-filter option').allTextContents();
     assert.deepEqual(
       roleOptions.map((option) => option.trim()),
-      ['All roles', 'Manager', 'Sales Agent']
+      ['All roles', 'Manager', 'Sales Agent', 'Storekeeper', 'Auditor']
     );
 
     await manager.getByRole('button', { name: 'New User' }).click();

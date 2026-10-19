@@ -7,6 +7,7 @@ import { appendStockMovement, sumMovementsByBucket } from './stockMovementServic
 import { findOrCreateSupplier, normalizeSupplierName } from './supplierService.js';
 import { normalizeLocalPhone } from '../utils/phoneNumber.js';
 import { normalizeProduceName, normalizeProduceType } from '../utils/produceNormalization.js';
+import { markBalancesDirty } from './stockBalanceService.js';
 
 const BACKFILL_NOTE = 'Backfill: pre-ledger history';
 
@@ -159,6 +160,7 @@ const backfillDocumentMovements = async ({ dryRun = false } = {}) => {
     summary.byKind[kind] = { documents: documents.length, movements: written };
     summary.movementsWritten += written;
   }
+  if (!dryRun && summary.movementsWritten > 0) markBalancesDirty();
   return summary;
 };
 
