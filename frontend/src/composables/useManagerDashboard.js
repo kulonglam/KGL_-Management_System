@@ -22,11 +22,11 @@ const PERIOD_OPTIONS = [
 
 const QUICK_ACTIONS = [
   {
-    key: 'record-procurement',
-    to: '/dashboard/procurement',
+    key: 'receive-goods',
+    to: '/dashboard/purchasing',
     icon: 'bi bi-bag-plus',
-    label: 'Record Procurement',
-    meta: 'Capture incoming stock'
+    label: 'Receive goods',
+    meta: 'Orders and deliveries with no order'
   },
   {
     key: 'record-cash-sale',

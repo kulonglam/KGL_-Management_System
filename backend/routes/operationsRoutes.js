@@ -90,7 +90,7 @@ router.post(
   protect,
   payables,
   writeLimiter,
-  [body('supplierId').isMongoId(), body('amountUgx').isFloat({ min: 1 }), body('purchaseOrderId').optional().isMongoId()],
+  [body('supplierId').isMongoId(), body('purchaseOrderId').isMongoId()],
   validateRequest,
   createBillHandler
 );

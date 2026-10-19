@@ -84,9 +84,19 @@
               <option v-for="row in suppliers" :key="row._id" :value="row._id">{{ row.name }}</option>
             </select>
           </div>
-          <div class="col-md-2"><input v-model.number="bill.amountUgx" type="number" min="1" class="form-control" placeholder="UGX" required /></div>
+          <div class="col-md-3">
+            <select v-model="bill.purchaseOrderId" class="form-select" required>
+              <option value="" disabled>Received order</option>
+              <option v-for="order in supplierOrders" :key="order._id" :value="order._id">
+                {{ order.supplier?.name || 'Supplier' }} — {{ order.status }}
+              </option>
+            </select>
+          </div>
           <div class="col-md-3"><input v-model.trim="bill.reference" class="form-control" placeholder="Supplier invoice" /></div>
-          <div class="col-md-3"><button class="btn btn-success" type="submit">Record bill</button></div>
+          <div class="col-md-2"><button class="btn btn-success" type="submit">Record bill</button></div>
+          <div class="col-12">
+            <p class="text-muted small mb-0">The bill uses the cost of goods already received and does not credit accounts payable again.</p>
+          </div>
         </form>
         <div v-for="row in bills" :key="row._id" class="border rounded p-2 mb-2">
           <div>{{ row.supplier?.name || 'Supplier' }} — open {{ row.balanceUgx }} of {{ row.amountUgx }} UGX</div>
@@ -258,7 +268,7 @@
 </template>
 
 <script>
-import { operationsAPI, suppliersAPI, trustedBuyersAPI } from '../services/api';
+import { operationsAPI, procurementAPI, suppliersAPI, trustedBuyersAPI } from '../services/api';
 import { useAuthStore } from '../stores/auth';
 
 const messageOf = (error) => error.response?.data?.message || error.message || 'Request failed';
@@ -291,7 +301,8 @@ export default {
       employee: { name: '', branch: '', jobTitle: '', contact: '', grossSalaryUgx: 0 },
       attendance: { employeeId: '', date: '', status: 'present' },
       leave: { employeeId: '', from: '', to: '' },
-      bill: { supplierId: '', amountUgx: 0, reference: '' },
+      orders: [],
+      bill: { supplierId: '', purchaseOrderId: '', reference: '' },
       bin: { code: '', aisle: '' },
       put: { binId: '', produceName: '', produceType: '', qtyKg: 0 },
       scale: { scaleId: '', kg: 0, raw: '', stable: true },
@@ -323,6 +334,13 @@ export default {
         { id: 'drill', label: 'Restore drill', roles: ['director'] }
       ];
       return all.filter((section) => section.roles.includes(this.role));
+    },
+    supplierOrders() {
+      return this.orders.filter((order) => {
+        const supplierId = order.supplier?._id || order.supplier;
+        const received = (order.lines || []).some((line) => Number(line.receivedKg) > 0);
+        return String(supplierId) === String(this.bill.supplierId) && received;
+      });
     }
   },
   mounted() {
@@ -351,6 +369,7 @@ export default {
         }
         if (id === 'payables') {
           this.suppliers = items((await suppliersAPI.getAll()).data);
+          this.orders = items((await procurementAPI.listOrders()).data);
           const bills = items((await operationsAPI.listBills()).data);
           this.bills = bills.map((row) => ({ ...row, payAmount: row.balanceUgx, paidOn: '', method: 'bank' }));
         }
@@ -395,7 +414,11 @@ export default {
     },
     saveBill() {
       return this.run(async () => {
-        await operationsAPI.createBill(this.bill);
+        await operationsAPI.createBill({
+          supplierId: this.bill.supplierId,
+          purchaseOrderId: this.bill.purchaseOrderId,
+          reference: this.bill.reference
+        });
         await this.openSection('payables');
       }, 'Bill recorded.');
     },

@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 import Sale from '../models/Sale.js';
 import StockBalance from '../models/StockBalance.js';
 import Supplier from '../models/Supplier.js';
+import Procurement from '../models/Procurement.js';
+import PurchaseOrder from '../models/PurchaseOrder.js';
 import TrustedBuyer from '../models/TrustedBuyer.js';
 import TaxInvoice from '../models/TaxInvoice.js';
 import GlJournalLine from '../models/GlJournalLine.js';
@@ -159,34 +161,26 @@ const runPayroll = async ({ actorUser, month, branch }) => {
 const createSupplierBill = async ({ actorUser, payload }) => {
   const supplier = await Supplier.findById(payload.supplierId);
   if (!supplier) throw fail(404, 'Supplier not found');
-  const branch = branchOf(actorUser, supplier.branch);
-  const amountUgx = roundUgx(payload.amountUgx);
-  const billsAp = !payload.purchaseOrderId;
+  const order = await PurchaseOrder.findById(payload.purchaseOrderId);
+  if (!order) throw fail(404, 'Purchase order not found');
+  const branch = branchOf(actorUser, order.branch);
+  if (String(order.supplier) !== String(supplier._id) || order.branch !== supplier.branch) {
+    throw fail(400, 'That order is for a different supplier');
+  }
+  const existing = await SupplierBill.findOne({ purchaseOrder: order._id });
+  if (existing) throw fail(409, 'This order already has a supplier bill');
+  const receipts = await Procurement.find({ purchaseOrder: order._id, deletedAt: null }).lean();
+  const amountUgx = roundUgx(receipts.reduce((sum, row) => sum + Number(row.costUgx || 0), 0));
+  if (amountUgx < 1) throw fail(400, 'Receive the goods before recording the supplier bill');
   const bill = await SupplierBill.create({
     branch,
     supplier: supplier._id,
-    purchaseOrder: payload.purchaseOrderId || null,
+    purchaseOrder: order._id,
     reference: String(payload.reference || '').slice(0, 60),
     amountUgx,
     balanceUgx: amountUgx,
-    billsAp
+    billsAp: false
   });
-  if (billsAp) {
-    const shared = {
-      date: new Date(),
-      branch,
-      eventType: 'supplier_bill',
-      refType: 'supplierBill',
-      refId: String(bill._id),
-      currency: 'UGX',
-      foreignAmount: 0,
-      fxRateToUgx: 1
-    };
-    await upsertJournalLines([
-      { ...shared, account: '5000', debitUgx: amountUgx, creditUgx: 0, memo: `Bill ${supplier.name}`, lineKey: `bill|${bill._id}|debit` },
-      { ...shared, account: '2000', debitUgx: 0, creditUgx: amountUgx, memo: `Bill ${supplier.name}`, lineKey: `bill|${bill._id}|credit` }
-    ]);
-  }
   return bill.toObject();
 };
 

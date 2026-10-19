@@ -2,7 +2,7 @@
   <div class="view-shell">
     <div class="view-heading">
       <h2 class="page-title">{{ $t('Purchasing') }}</h2>
-      <p class="page-subtitle">{{ $t('Purchase orders, goods receipts, and the match against stock.') }}</p>
+      <p class="page-subtitle">{{ $t('Purchase orders, goods receipts, and deliveries that arrive with no order.') }}</p>
     </div>
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -40,6 +40,45 @@
           </div>
           <div class="col-12">
             <button class="btn btn-primary" type="submit" :disabled="submitting">{{ $t('Create draft') }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">{{ $t('Goods with no order') }}</h5></div>
+      <div class="card-body">
+        <form class="row g-3" @submit.prevent="receiveDirect">
+          <div class="col-md-4">
+            <label class="form-label" for="direct-supplier">{{ $t('Supplier') }}</label>
+            <select id="direct-supplier" v-model="walkin.supplierId" class="form-select" required>
+              <option value="" disabled>Choose a supplier</option>
+              <option v-for="supplier in suppliers" :key="supplier._id" :value="supplier._id">
+                {{ supplier.name }} ({{ supplier.sourceType }})
+              </option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="direct-name">{{ $t('Produce') }}</label>
+            <input id="direct-name" v-model.trim="walkin.produceName" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" for="direct-type">{{ $t('Type') }}</label>
+            <select id="direct-type" v-model="walkin.produceType" class="form-select" required>
+              <option v-for="produceType in produceTypes" :key="produceType" :value="produceType">{{ produceType }}</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <label class="form-label" for="direct-kg">Kg</label>
+            <input id="direct-kg" v-model.number="walkin.tonnageKg" type="number" :min="walkinMinimumKg" class="form-control" required />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" for="direct-cost">{{ $t('Unit cost') }}</label>
+            <input id="direct-cost" v-model.number="walkin.unitCostUgx" type="number" min="0" class="form-control" required />
+          </div>
+          <div class="col-12">
+            <button class="btn btn-success" type="submit" :disabled="submitting">{{ $t('Receive into stock') }}</button>
+            <span class="text-muted small ms-2">{{ walkinHint }}</span>
           </div>
         </form>
       </div>
@@ -102,8 +141,21 @@ export default {
       submitting: false,
       matchResult: '',
       produceTypes: ['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans'],
-      form: { supplierId: '', produceName: '', produceType: 'Beans', orderedKg: 1000, unitCostUgx: 8000 }
+      form: { supplierId: '', produceName: '', produceType: 'Beans', orderedKg: 1000, unitCostUgx: 8000 },
+      walkin: { supplierId: '', produceName: '', produceType: 'Beans', tonnageKg: 1000, unitCostUgx: 8000 }
     };
+  },
+  computed: {
+    walkinSupplier() {
+      return this.suppliers.find((supplier) => supplier._id === this.walkin.supplierId) || null;
+    },
+    walkinMinimumKg() {
+      return this.walkinSupplier?.sourceType === 'individual' ? 1000 : 100;
+    },
+    walkinHint() {
+      if (this.walkinSupplier?.sourceType === 'individual') return 'An individual supplier needs at least 1000 kg.';
+      return 'A company or farm supplier needs at least 100 kg.';
+    }
   },
   mounted() {
     this.load();
@@ -138,6 +190,18 @@ export default {
         await this.load();
       } catch (err) {
         this.error = err.response?.data?.message || 'Failed to create the order.';
+      } finally {
+        this.submitting = false;
+      }
+    },
+    async receiveDirect() {
+      this.submitting = true;
+      this.error = '';
+      try {
+        await procurementAPI.receiveWithoutOrder(this.walkin);
+        this.success = this.$t('Goods received and stock updated.');
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Receipt failed.';
       } finally {
         this.submitting = false;
       }

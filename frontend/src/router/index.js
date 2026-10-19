@@ -9,7 +9,6 @@ const DashboardLayout = () => import('../views/DashboardLayout.vue');
 const DirectorDashboard = () => import('../views/DirectorDashboard.vue');
 const ManagerDashboard = () => import('../views/ManagerDashboard.vue');
 const SalesAgentDashboard = () => import('../views/SalesAgentDashboard.vue');
-const Procurement = () => import('../views/Procurement.vue');
 const ProcurementRecords = () => import('../views/ProcurementRecords.vue');
 const Sales = () => import('../views/Sales.vue');
 const SalesRecords = () => import('../views/SalesRecords.vue');
@@ -82,9 +81,7 @@ const routes = [
       },
       {
         path: 'procurement',
-        name: 'Procurement',
-        component: Procurement,
-        meta: { roles: ['manager', 'storekeeper'] }
+        redirect: '/dashboard/purchasing'
       },
       {
         path: 'procurement-records',

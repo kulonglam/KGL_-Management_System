@@ -8,6 +8,10 @@ import { normalizeProduceName, normalizeProduceType } from '../utils/produceNorm
 import { roundUgx } from '../utils/money.js';
 import { trustedQuery } from '../utils/listQuery.js';
 import { businessToday } from '../utils/businessTime.js';
+import { assertPeriodOpen } from './periodLockService.js';
+import { withStockLock } from './stockLockService.js';
+import { syncStockLevelNotifications } from './stockNotificationService.js';
+import { calculateInventoryByFilter, getBucketTonnage } from './inventoryService.js';
 import { runInTransaction } from '../utils/transaction.js';
 import { recordProcurementLot } from './stockLotService.js';
 import { postDocumentJournal, rememberJournal } from './journalPostingService.js';
@@ -132,12 +136,7 @@ const receiveGoods = async ({ actorUser, id, lines, note }) => {
   }
   const fullyReceived = order.lines.every((row) => row.receivedKg >= row.orderedKg);
   order.status = fullyReceived ? 'received' : 'partial';
-  const timeReceived = new Intl.DateTimeFormat('en-GB', {
-    timeZone: process.env.BUSINESS_TIMEZONE || 'Africa/Kampala',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  }).format(new Date());
+  const timeReceived = receiptClock();
 
   let journalInTransaction = false;
   const result = await runInTransaction(async (session) => {
@@ -226,4 +225,76 @@ const matchPurchaseOrder = async ({ actorUser, id }) => {
   };
 };
 
-export { approvePurchaseOrder, createPurchaseOrder, listPurchaseOrders, matchPurchaseOrder, receiveGoods };
+const receiptClock = () =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: process.env.BUSINESS_TIMEZONE || 'Africa/Kampala',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(new Date());
+
+const receiveWithoutOrder = async ({ actorUser, payload }) => {
+  const supplier = await Supplier.findById(payload.supplierId);
+  if (!supplier || supplier.deletedAt || supplier.isActive === false) {
+    throw createServiceError(404, 'Supplier not found');
+  }
+  assertBranch(actorUser, supplier.branch);
+  const produceName = normalizeProduceName(payload.produceName);
+  const produceType = normalizeProduceType(payload.produceType);
+  const tonnageKg = Number(payload.tonnageKg);
+  const minimumKg = supplier.sourceType === 'individual' ? 1000 : 100;
+  if (!(tonnageKg >= minimumKg)) {
+    throw createServiceError(400, `Receive at least ${minimumKg} kg so it can enter stock`);
+  }
+  const costUgx = roundUgx(tonnageKg * roundUgx(payload.unitCostUgx));
+  if (costUgx < 10000) throw createServiceError(400, 'The receipt cost must be at least 10000 UGX');
+  const receivedOn = businessToday();
+  await assertPeriodOpen({ branch: supplier.branch, dates: [receivedOn] });
+  const sellingPrice = await sellingPriceFor(supplier.branch, produceName, produceType, payload.unitCostUgx);
+
+  let journalInTransaction = false;
+  const procurement = await withStockLock({ branch: supplier.branch, produceName, produceType }, () =>
+    runInTransaction(async (session) => {
+      const doc = {
+        produceName,
+        produceType,
+        sourceType: supplier.sourceType,
+        dateReceived: receivedOn,
+        timeReceived: receiptClock(),
+        tonnageKg,
+        costUgx,
+        dealerName: supplier.name,
+        dealerContact: supplier.contact,
+        supplier: supplier._id,
+        lotCode: `DIR-${String(supplier._id).slice(-6)}-${Date.now().toString(36)}`.slice(0, 40),
+        branch: supplier.branch,
+        sellingPrice,
+        recordedBy: actorUser._id
+      };
+      const created = session ? (await Procurement.create([doc], { session }))[0] : await Procurement.create(doc);
+      await recordProcurementLot(created, session);
+      if (session) await postDocumentJournal('procurement', created.toObject(), session);
+      journalInTransaction = Boolean(session);
+      return created;
+    })
+  );
+
+  if (!journalInTransaction) await rememberJournal('procurement', procurement._id);
+  const snapshot = await calculateInventoryByFilter({ branch: supplier.branch });
+  await syncStockLevelNotifications({
+    branch: supplier.branch,
+    produceName,
+    produceType,
+    remainingStock: getBucketTonnage(snapshot, produceName, produceType, supplier.branch)
+  });
+  return typeof procurement.toObject === 'function' ? procurement.toObject() : procurement;
+};
+
+export {
+  approvePurchaseOrder,
+  createPurchaseOrder,
+  listPurchaseOrders,
+  matchPurchaseOrder,
+  receiveGoods,
+  receiveWithoutOrder
+};

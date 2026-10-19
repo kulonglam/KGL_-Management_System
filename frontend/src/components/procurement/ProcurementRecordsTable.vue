@@ -13,9 +13,7 @@
           Show removed
         </label>
         <RecordExportActions title="Procurement records" filename="procurement_records" :columns="exportColumns" :rows="procurements" />
-        <router-link to="/dashboard/procurement" class="btn btn-primary btn-sm">
-          Record Procurement
-        </router-link>
+        <router-link to="/dashboard/purchasing" class="btn btn-primary btn-sm">Receive goods</router-link>
         <button
           class="btn btn-outline-primary btn-sm"
           @click="$emit('refresh')"

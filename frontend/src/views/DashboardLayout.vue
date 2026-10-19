@@ -346,7 +346,6 @@ export default {
           { path: '/dashboard/inventory', icon: 'bi bi-box', label: 'Inventory' },
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
           { path: '/dashboard/finance', icon: 'bi bi-cash-coin', label: 'Finance' },
-          { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
           { path: '/dashboard/back-office', icon: 'bi bi-briefcase', label: 'Back office' },
           { path: '/dashboard/sales', icon: 'bi bi-grid', label: 'Cash Sales' },
@@ -382,7 +381,6 @@ export default {
       } else if (this.user.role === 'storekeeper') {
         items.push(
           { path: '/dashboard/inventory-ops', icon: 'bi bi-arrow-left-right', label: 'Stock Ops' },
-          { path: '/dashboard/procurement', icon: 'bi bi-file-text', label: 'Procurement' },
           { path: '/dashboard/purchasing', icon: 'bi bi-bag-check', label: 'Purchasing' },
           { path: '/dashboard/back-office', icon: 'bi bi-briefcase', label: 'Back office' },
           { path: '/dashboard/suppliers', icon: 'bi bi-truck', label: 'Suppliers' },
@@ -435,7 +433,6 @@ export default {
           items: pick([
             '/dashboard/manager',
             '/dashboard/inventory',
-            '/dashboard/procurement',
             '/dashboard/purchasing',
             '/dashboard/sales',
             '/dashboard/till',

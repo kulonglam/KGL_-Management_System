@@ -12,7 +12,8 @@ import {
   createPurchaseOrder,
   listPurchaseOrders,
   matchPurchaseOrder,
-  receiveGoods
+  receiveGoods,
+  receiveWithoutOrder
 } from '../services/purchasingService.js';
 import { listOutbox, recordDeliveryReceipt, retryOutboxMessage } from '../services/messageService.js';
 import { listExchangeRates, quoteCurrency, setExchangeRate } from '../services/currencyService.js';
@@ -78,6 +79,11 @@ const receiveOrderHandler = wrap(async (req) =>
 
 const matchOrderHandler = wrap(async (req) => matchPurchaseOrder({ actorUser: req.user, id: req.params.id }));
 
+const receiveWithoutOrderHandler = wrap(async (req) => {
+  const procurement = await receiveWithoutOrder({ actorUser: req.user, payload: req.body });
+  return { statusCode: 201, body: procurement };
+});
+
 const listOutboxHandler = wrap(async (req) => listOutbox({ status: req.query.status, channel: req.query.channel }));
 
 const retryOutboxHandler = wrap(async (req) => retryOutboxMessage(req.params.id));
@@ -116,6 +122,7 @@ export {
   postJournalHandler,
   quoteRateHandler,
   receiveOrderHandler,
+  receiveWithoutOrderHandler,
   retryOutboxHandler,
   setRateHandler,
   trialBalanceHandler

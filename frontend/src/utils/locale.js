@@ -64,6 +64,11 @@ const STRINGS = {
     'Barcode catalog saved on this device.': 'Baakoodi zitereddwa ku kyuma kino.',
     'Purchase orders, goods receipts, and the match against stock.':
       'Amalagiro g’okugula, okufuna ebibala, n’okugerageranya n’obubonero.',
+    'Purchase orders, goods receipts, and deliveries that arrive with no order.':
+      'Amalagiro g’okugula, okufuna ebibala, n’ebibala ebitajja na kulagira.',
+    'Goods with no order': 'Ebibala ebitali na kulagira',
+    'Receive into stock': 'Funa mu bubonero',
+    'Receive goods': 'Funa ebibala',
     'Sale receipt': 'Risiti y’entunda',
     Tonnage: 'Obuzito',
     Amount: 'Ssente',

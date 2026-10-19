@@ -218,6 +218,7 @@ export const procurementAPI = {
   createOrder: (data) => api.post('/procurement/orders', data),
   approveOrder: (id) => api.post(`/procurement/orders/${id}/approve`),
   receiveOrder: (id, data) => api.post(`/procurement/orders/${id}/receive`, data),
+  receiveWithoutOrder: (data) => api.post('/procurement/receipts', data),
   matchOrder: (id) => api.get(`/procurement/orders/${id}/match`)
 };
 

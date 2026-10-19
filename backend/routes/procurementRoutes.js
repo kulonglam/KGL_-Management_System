@@ -19,8 +19,10 @@ import {
   createOrderHandler,
   listOrdersHandler,
   matchOrderHandler,
-  receiveOrderHandler
+  receiveOrderHandler,
+  receiveWithoutOrderHandler
 } from '../controllers/enterpriseController.js';
+import { body } from 'express-validator';
 import {
   paginationValidation,
   mongoIdParamValidation,
@@ -28,6 +30,21 @@ import {
   procurementUpdateValidation
 } from '../validators/requestValidators.js';
 
+router.post(
+  '/receipts',
+  protect,
+  authorize('manager', 'director'),
+  writeLimiter,
+  [
+    body('supplierId').isMongoId(),
+    body('produceName').trim().notEmpty(),
+    body('produceType').isIn(['Beans', 'Grain Maize', 'Cow peas', 'Groundnuts', 'Soybeans']),
+    body('tonnageKg').isFloat({ gt: 0 }),
+    body('unitCostUgx').isFloat({ min: 0 })
+  ],
+  validateRequest,
+  receiveWithoutOrderHandler
+);
 router.get('/orders', protect, authorize('manager', 'director'), listOrdersHandler);
 router.post('/orders', protect, authorize('manager', 'director'), writeLimiter, createOrderHandler);
 router.post('/orders/:id/approve', protect, authorize('manager', 'director'), writeLimiter, mongoIdParamValidation, validateRequest, approveOrderHandler);
