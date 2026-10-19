@@ -3434,7 +3434,7 @@ const swaggerSpec = {
     '/suppliers': {
       get: {
         tags: ['Suppliers'],
-        summary: 'List suppliers for the manager branch',
+        summary: 'List suppliers for the caller branch, or every branch for a director',
         security: [{ bearerAuth: [] }],
         parameters: [
           { $ref: '#/components/parameters/SearchQuery' },

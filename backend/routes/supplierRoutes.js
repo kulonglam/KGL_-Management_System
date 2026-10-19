@@ -21,7 +21,7 @@ const router = express.Router();
 router.get(
   '/',
   protect,
-  authorize('manager'),
+  authorize('manager', 'director'),
   paginationValidation,
   validateRequest,
   listSuppliers
